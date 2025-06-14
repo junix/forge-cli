@@ -1,16 +1,84 @@
-# Knowledge Forge Command Line Tools
+# Forge CLI - Modern Command Line Tools for Knowledge Forge API
 
 ## Overview
 
-This directory contains command-line tools for interacting with the Knowledge Forge API. These tools provide a simple way to:
+This project provides modern, modular command-line tools and SDK for interacting with the Knowledge Forge API. Built with Python 3.8+ and structured as a proper Python package, it offers comprehensive functionality for:
 
-- Send queries to the Language Model (LLM) service
-- Create and manage vector stores
-- Upload and manage files
-- Search through documents using vector search
-- Stream responses using Server-Sent Events (SSE)
+- **Interactive Chat Mode**: Multi-turn conversations with context preservation
+- **File Search**: Semantic search through uploaded documents with AI-powered responses
+- **Web Search**: Real-time web search integration for current information
+- **File Management**: Upload, process, and manage document files
+- **Vector Store Operations**: Create and query vector stores for document search
+- **Streaming Responses**: Real-time response streaming with rich terminal UI
 
-The tools are designed to be both user-friendly command-line utilities and reference implementations for developers building applications with the Knowledge Forge API.
+The tools feature a modern event-based display architecture (v2) with multiple output formats (Rich UI, Plain text, JSON) and comprehensive chat functionality with command system.
+
+## Installation & Quick Start
+
+### Prerequisites
+
+- Python 3.8+
+- `uv` package manager (recommended) or `pip`
+
+### Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd forge-cli
+
+# Install dependencies with uv
+uv sync
+
+# Or with pip
+pip install -e .
+```
+
+### Environment Configuration
+
+```bash
+export KNOWLEDGE_FORGE_URL=http://localhost:9999  # Default server URL
+export OPENAI_API_KEY=your-api-key                # Optional, for some features
+```
+
+### Running Commands
+
+**IMPORTANT**: All commands must be run from the `src` directory for Python to properly find the `forge_cli` package.
+
+```bash
+# Navigate to the src directory first
+cd /path/to/forge-cli/src
+
+# Then run commands using Python module syntax
+python -m forge_cli --help
+
+# Examples:
+python -m forge_cli --chat                           # Start chat mode
+python -m forge_cli -q "Your question" --vec-id vs_123  # File search
+python -m forge_cli -t web-search -q "Latest AI news"   # Web search
+```
+
+### Common Usage Examples
+
+```bash
+# Interactive chat mode
+python -m forge_cli --chat
+
+# File search with vector store
+python -m forge_cli -q "What information is in these documents?" --vec-id your-vector-store-id
+
+# Web search  
+python -m forge_cli -t web-search -q "Latest AI developments"
+
+# Multiple tools combined
+python -m forge_cli -t file-search -t web-search --vec-id vs_123 -q "Compare internal docs with industry trends"
+
+# JSON output for scripting
+python -m forge_cli --json -q "Your question"
+
+# Debug mode for troubleshooting
+python -m forge_cli --debug -q "Your question"
+```
 
 ## Important Guidelines for Developers
 
@@ -286,6 +354,112 @@ All scripts support the following server configuration methods:
    ```
 
 3. Default (if not specified): `http://localhost:9999`
+
+## Troubleshooting
+
+### Common Issues and Solutions
+
+#### Module Import Errors
+
+**Problem**: `python -m forge_cli` fails with "No module named forge_cli"
+
+**Solution**: Ensure you're running the command from the correct directory:
+
+```bash
+# WRONG - running from project root
+cd /path/to/forge-cli
+python -m forge_cli --chat  # ❌ This will fail
+
+# CORRECT - running from src directory  
+cd /path/to/forge-cli/src
+python -m forge_cli --chat  # ✅ This works
+```
+
+#### Chat Mode Response Issues  
+
+**Problem**: Messages appear twice or responses disappear
+
+**Solution**: This was fixed in the v2 display system. Ensure you're using the latest version. If issues persist, try debug mode:
+
+```bash
+python -m forge_cli --chat --debug
+```
+
+#### Connection Issues
+
+**Problem**: "Connection refused" or timeout errors
+
+**Solutions**:
+
+1. Verify the Knowledge Forge server is running:
+
+   ```bash
+   curl http://localhost:9999/health  # or your server URL
+   ```
+
+2. Check your server URL setting:
+
+   ```bash
+   python -m forge_cli --server http://your-server:port --chat
+   ```
+
+3. Set environment variable:
+
+   ```bash
+   export KNOWLEDGE_FORGE_URL=http://your-server:port
+   ```
+
+#### Vector Store Not Found
+
+**Problem**: "Vector store not found" errors
+
+**Solution**: Verify your vector store ID exists:
+
+```bash
+# Use debug mode to see detailed error information
+python -m forge_cli --debug --vec-id your-vec-id -q "test"
+```
+
+#### Missing Rich UI Features
+
+**Problem**: Plain text output instead of rich formatting
+
+**Solutions**:
+
+1. Install rich library:
+
+   ```bash
+   pip install rich
+   ```
+
+2. Force rich mode if terminal detection fails:
+
+   ```bash
+   python -m forge_cli --debug --chat  # Debug shows which display is selected
+   ```
+
+### Debug Mode
+
+Enable debug mode for detailed troubleshooting information:
+
+```bash
+python -m forge_cli --debug [other-options]
+```
+
+Debug mode shows:
+
+- Event types and data during streaming
+- Display strategy selection
+- API request/response details
+- Error stack traces
+
+### Getting Help
+
+For additional help:
+
+- Use the built-in help: `python -m forge_cli --help`
+- In chat mode, type `/help` for available commands
+- Check the server logs for API-related issues
 
 ## Development Guidelines
 
