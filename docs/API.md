@@ -43,35 +43,53 @@ The main AI response generation endpoint with RAG capabilities, streaming suppor
 
 #### Request Format
 
-```json
-{
-  "user": "user-123",
-  "input": [
-    {
-      "type": "input_text", 
-      "text": "What is the refund policy in our documents?"
-    }
-  ],
-  "tools": [
-    {
-      "type": "file_search",
-      "file_search": {
-        "vector_store_ids": ["vs_abc123"],
-        "max_num_results": 10
-      }
-    },
-    {
-      "type": "web_search",
-      "web_search": {
-        "max_results": 5
-      }
-    }
-  ],
-  "effort": "high",
-  "stream": true,
-  "store": true,
-  "previous_response_id": "resp_xyz789"
-}
+Below is an example of how to construct a typed `Request` object using Python. The `forge_cli.response._types` module provides the necessary classes.
+
+```python
+from forge_cli.response._types import Request, InputMessage, FileSearchTool, WebSearchTool
+
+# Create input messages
+messages = [
+    InputMessage(
+        type="input_text", # This might be inferred by Pydantic if text is given directly
+        text="What is the refund policy in our documents?"
+    )
+]
+
+# Define tools
+tools = [
+    FileSearchTool( # Populates the 'tool_choice' or specific tool fields if applicable
+        file_search={
+            "vector_store_ids": ["vs_abc123"],
+            "max_num_results": 10
+        }
+    ),
+    WebSearchTool(
+        web_search={
+            "max_results": 5
+        }
+    )
+]
+
+# Create the typed Request object
+# Note: Some fields like 'user' might be part of a session or client config
+# rather than directly in each Request model instance depending on SDK design.
+# The example below assumes 'user' is part of the Request model.
+typed_request = Request(
+    user="user-123", # Or handle user via client/session
+    input=messages,
+    tools=tools,
+    effort="high",
+    stream=True,
+    store=True,
+    previous_response_id="resp_xyz789"
+    # Other parameters like 'temperature', 'max_output_tokens' can be added here
+)
+
+# To get the dictionary format (e.g., for sending as JSON to an older endpoint):
+# request_dict = typed_request.model_dump(by_alias=True, exclude_none=True)
+# import json
+# print(json.dumps(request_dict, indent=2))
 ```
 
 #### Request Parameters
@@ -146,6 +164,66 @@ curl -X POST "http://localhost:10000/v1/responses" \
     "effort": "high",
     "stream": true
   }'
+```
+
+Below is a Python example demonstrating how to use the typed `Request` object with the SDK function `astream_typed_response` for streaming:
+
+```python
+import asyncio
+from forge_cli.response._types import Request, InputMessage, FileSearchTool
+from forge_cli.sdk import astream_typed_response # Or async_create_typed_response for non-streaming
+
+async def get_ai_response():
+    # 1. Create a typed Request object
+    messages = [
+        InputMessage(text="Explain our refund policy")
+    ]
+
+    tools = [
+        FileSearchTool(
+            file_search={"vector_store_ids": ["vs_123"]}
+        )
+    ]
+
+    request = Request(
+        user="user-123", # Ensure 'user' is a valid field in your Request model or handle appropriately
+        input=messages,
+        tools=tools,
+        effort="high",
+        stream=True # Important for astream_typed_response
+    )
+
+    # 2. Call the typed SDK function for streaming
+    print("Streaming response:")
+    try:
+        async for event_type, event_data in astream_typed_response(request):
+            if event_data is None: # Some events might have no data (e.g. just 'done')
+                if event_type == "done":
+                    print("\n\nStream completed (done event).")
+                continue
+
+            if event_type == "response.output_text.delta" and event_data.delta:
+                print(event_data.delta.text, end="", flush=True)
+            elif event_type == "response.completed":
+                print("\n\nStream completed (response.completed event).")
+                # The final Response object is often part of event_data here for 'response.completed'
+                # Example: final_response_data = event_data.response
+                # print(f"Final Response ID: {final_response_data.id if final_response_data else 'N/A'}")
+            elif event_type == "error" and event_data.message:
+                print(f"\nError: {event_data.message}")
+                break
+            # Add more specific event handling as needed
+            # For example, to see all events:
+            # else:
+            #    print(f"\nEvent: {event_type}, Data: {event_data.model_dump_json(indent=2) if hasattr(event_data, 'model_dump_json') else event_data}")
+
+    except Exception as e:
+        print(f"\nAn error occurred during streaming: {e}")
+
+if __name__ == "__main__":
+    # Note: Ensure KNOWLEDGE_FORGE_URL environment variable is set if your SDK relies on it.
+    # Example: os.environ["KNOWLEDGE_FORGE_URL"] = "http://localhost:10000"
+    asyncio.run(get_ai_response())
 ```
 
 ### 2. File Management API
@@ -488,177 +566,335 @@ Health checks and server information.
 
 #### Input Message Types
 
-```json
-// Text input
-{
-  "type": "input_text",
-  "text": "Your question here"
-}
+Input messages are structured using Pydantic models from `forge_cli.response._types`. An `InputMessage` object typically contains a list of content parts (like text or images).
 
-// File input
-{
-  "type": "input_file", 
-  "file": {
-    "id": "file_123",
-    "content": [/* chunk objects */]
-  }
-}
+```python
+from forge_cli.response._types import InputMessage, InputTextContent, InputImageContent
 
-// Image input
-{
-  "type": "input_image",
-  "image": {
-    "url": "https://example.com/image.jpg"
-  }
-}
+# Text Input Example
+# The 'content' field of InputMessage can be a simple string for text,
+# or a list of content blocks for multi-modal input.
+text_message = InputMessage(
+    role="user",
+    content="Your question here" # Simple text content
+)
+
+# Alternatively, for more structured text or multi-part messages:
+structured_text_message = InputMessage(
+    role="user",
+    content=[
+        InputTextContent(type="text", text="Your question here")
+    ]
+)
+
+# Image Input Example
+# Assuming InputImageContent is used within the content list of an InputMessage
+image_message = InputMessage(
+    role="user",
+    content=[
+        InputTextContent(type="text", text="What do you see in this image?"),
+        InputImageContent(
+            type="image_url", # or "image_base64"
+            image_url={"url": "https://example.com/image.jpg", "detail": "auto"}
+            # For base64: image_base64={"base64": "...", "media_type": "image/jpeg"}
+        )
+    ]
+)
+
+# File Input (Conceptual)
+# Direct file content within an InputMessage is less common with Pydantic models.
+# Typically, files are uploaded separately and referred to by ID, or specific tools handle file inputs.
+# If a model like 'InputFileContent' were available for direct inclusion:
+# file_content_message = InputMessage(
+#     role="user",
+#     content=[
+#         InputFileContent(type="file_url", file_url={"url": "https://example.com/document.pdf"})
+#         # Or, if referring to an already uploaded file:
+#         # InputFileReference(type="file_id", file_id="file_abc123")
+#     ]
+# )
+# Note: The exact structure for InputFileContent would depend on its definition in _types.
+# For now, text and image inputs are more clearly defined for the content list.
 ```
 
 #### Tool Definitions
 
-```json
-// File search tool
-{
-  "type": "file_search",
-  "file_search": {
-    "vector_store_ids": ["vs_123"],
-    "max_num_results": 10,
-    "filters": {"key": "value"}
-  }
-}
+Tools are defined using Pydantic models from `forge_cli.response._types`. These models are then included in the `tools` list of a `Request` object.
 
-// Web search tool  
-{
-  "type": "web_search",
-  "web_search": {
-    "max_results": 5,
-    "search_context_size": "medium"
-  }
-}
+```python
+from forge_cli.response._types import (
+    FileSearchTool,
+    WebSearchTool,
+    DocumentFinderTool,
+    FileSearchToolParam, # Parameter models for tool configuration
+    WebSearchToolParam,
+    DocumentFinderToolParam
+)
 
-// Document finder tool
-{
-  "type": "document_finder",
-  "document_finder": {
-    "vector_store_ids": ["vs_123"],
-    "max_num_results": 5,
-    "filters": {"key": "value"}
-  }
-}
+# File Search Tool Example
+# The main tool model (e.g., FileSearchTool) often wraps a parameter model
+# (e.g., FileSearchToolParam) that holds the actual configuration.
+file_search_params = FileSearchToolParam(
+    vector_store_ids=["vs_123"],
+    max_num_results=10,
+    filters={"key": "value"} # Filters might have a more structured type
+)
+file_search_tool = FileSearchTool(
+    type="file_search", # This type field is often part of the base Tool model
+    file_search=file_search_params
+)
+
+
+# Web Search Tool Example
+web_search_params = WebSearchToolParam(
+    max_results=5
+    # search_context_size="medium" # Include if part of WebSearchToolParam
+)
+web_search_tool = WebSearchTool(
+    type="web_search",
+    web_search=web_search_params
+)
+
+
+# Document Finder Tool Example
+doc_finder_params = DocumentFinderToolParam(
+    vector_store_ids=["vs_123", "vs_456"],
+    max_num_results=5, # If 'max_num_results' is part of DocumentFinderToolParam
+    filters={"document_type": "policy"} # Filters might have a more structured type
+)
+doc_finder_tool = DocumentFinderTool(
+    type="document_finder",
+    document_finder=doc_finder_params
+)
+
+# These tool objects would then be used in a Request:
+# from forge_cli.response._types import Request, InputMessage
+# request = Request(
+#     input=[InputMessage(content="Search for policy documents.")],
+#     tools=[file_search_tool, web_search_tool, doc_finder_tool]
+# )
 ```
 
 #### Response Structure
 
-```json
-{
-  "id": "resp_123",
-  "object": "response",
-  "created_at": 1699061776,
-  "status": "completed",
-  "output": [
-    {
-      "type": "text",
-      "text": "Based on the documents¹, our refund policy..."
-    }
-  ],
-  "tool_calls": [
-    {
-      "id": "call_123",
-      "type": "file_search",
-      "status": "completed",
-      "results": [...]
-    }
-  ],
-  "usage": {
-    "input_tokens": 100,
-    "output_tokens": 200,
-    "total_tokens": 300
-  }
-}
+The API response is a Pydantic model, `Response`, defined in `forge_cli.response._types`. It includes various nested models for output items, tool calls, and usage statistics.
+
+```python
+from datetime import datetime
+from typing import List, Optional, Dict, Any
+from forge_cli.response._types import (
+    Response,
+    ResponseOutputText, # Example of an output item
+    ResponseFileSearchToolCall, # Example of a tool call item
+    ResponseUsage,
+    AnnotationFileCitation # For annotations within text
+)
+
+# Example of constructing a Response object (typically done by the SDK when receiving API data)
+# This demonstrates the structure; you usually wouldn't build this manually as a user.
+
+# Sample annotation
+sample_annotation = AnnotationFileCitation(
+    type="file_citation",
+    text="documents",
+    file_id="file_doc456",
+    start_index=18,
+    end_index=27,
+    filename="policy.pdf",
+    snippet="the relevant section from policy.pdf"
+)
+
+# Sample output item (text)
+output_text_item = ResponseOutputText(
+    type="output_text",
+    text="Based on the documents, our refund policy...",
+    annotations=[sample_annotation] # Annotations list
+)
+
+# Sample tool call (file search)
+file_search_tool_call = ResponseFileSearchToolCall(
+    id="call_123",
+    type="file_search", # This should match the specific tool call type, e.g. "file_search_tool_call"
+    # The actual tool call data would be nested here, e.g.,
+    # file_search={"queries": ["refund policy"], "results": [...]}
+    # For simplicity, specific tool call fields are omitted here.
+    # Refer to specific tool call models like ResponseFileSearchToolCall,
+    # ResponseWebSearchToolCall, etc., for their detailed structure.
+    status="completed", # Added status, which is common for tool calls
+    results=[{"document_id": "doc_xyz", "score": 0.9}] # Simplified results
+)
+
+# Sample usage statistics
+usage_stats = ResponseUsage(
+    input_tokens=100,
+    output_tokens=200,
+    total_tokens=300
+)
+
+# Constructing the main Response object
+api_response = Response(
+    id="resp_123",
+    object="response", # Or inferred if it's a Literal in the model
+    created_at=datetime.now(), # Or an int timestamp: 1699061776
+    status="completed",
+    model="qwen-max-latest", # Added model field
+    output=[output_text_item], # List of ResponseOutputItem instances
+    # The 'tool_calls' field might be part of 'output' items of type 'tool_call',
+    # or a separate top-level field depending on the exact Pydantic model definition.
+    # If tool calls are part of output:
+    # output=[output_text_item, file_search_tool_call],
+    # If 'tool_calls' is a distinct field:
+    # tool_calls=[file_search_tool_call], # Assuming a top-level field
+    usage=usage_stats,
+    # Other fields like 'user', 'effort', 'previous_response_id' might also be present
+    user="user-123",
+    effort="high"
+)
+
+# Accessing data from the typed Response object:
+# print(f"Response ID: {api_response.id}")
+# if api_response.output:
+#     for item in api_response.output:
+#         if isinstance(item, ResponseOutputText):
+#             print(f"Assistant says: {item.text}")
+#             if item.annotations:
+#                 for ann in item.annotations:
+#                     if isinstance(ann, AnnotationFileCitation):
+#                         print(f"  Cited: {ann.filename} (ID: {ann.file_id})")
+# if api_response.usage:
+#     print(f"Tokens used: {api_response.usage.total_tokens}")
+
 ```
 
 ## Client Libraries
 
 ### Python SDK Example
 
+The following example demonstrates using the Python SDK with the new typed Pydantic models for requests and responses. It showcases both streaming and non-streaming response generation.
+
 ```python
-import requests
-import json
+import asyncio
+import os
+from forge_cli.response._types import (
+    Request,
+    InputMessage,
+    # InputTextContent, # Use if you prefer structured text content
+    FileSearchTool,
+    FileSearchToolParam,
+    Response # For non-streaming example
+)
+# Assuming your SDK functions are available in forge_cli.sdk
+from forge_cli.sdk import (
+    astream_typed_response,
+    async_create_typed_response,
+    # Conceptual: async_upload_file,
+    # Conceptual: async_create_vectorstore
+)
 
-class KnowledgeForgeClient:
-    def __init__(self, base_url="http://localhost:10000", api_key=None):
-        self.base_url = base_url
-        self.headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-    
-    def ask(self, question, vector_store_ids=None, effort="high", stream=False):
-        """Ask a question with optional vector store search"""
-        payload = {
-            "user": "user-123",
-            "input": [{"type": "input_text", "text": question}],
-            "effort": effort,
-            "stream": stream
-        }
-        
-        if vector_store_ids:
-            payload["tools"] = [{
-                "type": "file_search",
-                "file_search": {"vector_store_ids": vector_store_ids}
-            }]
-        
-        if stream:
-            return self._stream_request(payload)
-        else:
-            response = requests.post(
-                f"{self.base_url}/v1/responses",
-                json=payload,
-                headers=self.headers
-            )
-            return response.json()
-    
-    def upload_file(self, file_path, purpose="qa"):
-        """Upload a file for processing"""
-        with open(file_path, 'rb') as f:
-            files = {'file': f}
-            data = {'purpose': purpose}
-            response = requests.post(
-                f"{self.base_url}/v1/files",
-                files=files,
-                data=data,
-                headers=self.headers
-            )
-            return response.json()
-    
-    def create_vector_store(self, name, description, file_ids=None):
-        """Create a new vector store"""
-        payload = {
-            "name": name,
-            "description": description,
-            "file_ids": file_ids or []
-        }
-        response = requests.post(
-            f"{self.base_url}/v1/vector_stores",
-            json=payload,
-            headers=self.headers
+# Note: For a runnable example, ensure KNOWLEDGE_FORGE_URL is set, e.g.:
+# os.environ["KNOWLEDGE_FORGE_URL"] = "http://localhost:10000"
+# Actual file/VS management SDK functions would be used in a real scenario.
+
+async def main():
+    # --- Conceptual Setup: File and Vector Store ---
+    # This part is illustrative. In a real application, you'd use actual file paths
+    # and await the results of async_upload_file and async_create_vectorstore.
+    # For this documentation example, we'll use placeholder IDs.
+    file_id = "file_placeholder_doc.pdf"
+    vs_id = "vs_placeholder_my_documents"
+    print(f"Conceptual setup: Using File ID: {file_id}, Vector Store ID: {vs_id}\n")
+    # --- End of Conceptual Setup ---
+
+    # 1. Create a typed Request for asking a question
+    messages = [
+        InputMessage(role="user", content="What is mentioned about refunds in the document?")
+        # Example with structured text content:
+        # InputMessage(role="user", content=[InputTextContent(text="What about refunds?")])
+    ]
+
+    tools = [
+        FileSearchTool(
+            type="file_search",
+            file_search=FileSearchToolParam(vector_store_ids=[vs_id], max_num_results=5)
         )
-        return response.json()
+        # Example of adding WebSearchTool:
+        # from forge_cli.response._types import WebSearchTool, WebSearchToolParam
+        # WebSearchTool(type="web_search", web_search=WebSearchToolParam(max_results=3))
+    ]
 
-# Usage example
-client = KnowledgeForgeClient(api_key="your-token")
+    # Create the main request object for streaming
+    typed_request_streaming = Request(
+        input=messages,
+        tools=tools,
+        model="qwen-max-latest", # Specify your desired model
+        effort="high",
+        stream=True,
+        user="typed_sdk_user_streaming" # Optional: if your Request model includes user
+    )
 
-# Upload a document
-file_result = client.upload_file("document.pdf")
+    # 2. Get response using streaming with astream_typed_response
+    print("--- Streaming Typed Response Example ---")
+    try:
+        async for event_type, event_data in astream_typed_response(request=typed_request_streaming):
+            if event_data is None: # Some events like 'done' might not have data
+                if event_type == "done":
+                    print("\nStream finished (done event).")
+                continue
 
-# Create vector store
-vs_result = client.create_vector_store(
-    name="My Documents",
-    description="Personal document collection",
-    file_ids=[file_result["id"]]
-)
+            if event_type == "response.output_text.delta" and hasattr(event_data, 'delta') and event_data.delta:
+                print(event_data.delta.text, end="", flush=True)
+            elif event_type == "response.completed" and hasattr(event_data, 'response'):
+                print("\nStream fully completed (response.completed event).")
+                if event_data.response and event_data.response.usage:
+                   print(f"Usage: {event_data.response.usage.total_tokens} tokens")
+            elif event_type == "error" and hasattr(event_data, 'message'):
+                print(f"\nError during stream: {event_data.message}")
+                break
+            # Add more handlers for other event types (e.g., tool calls) as needed
+            # elif "tool_call" in event_type:
+            #     print(f"\nTool event: {event_type} - Data: {event_data.model_dump_json(indent=2)}")
+        print("\n------------------------------------")
+    except Exception as e:
+        print(f"\nError during streaming response: {e}")
+        print("------------------------------------")
 
-# Ask a question
-answer = client.ask(
-    "What is mentioned about refunds?",
-    vector_store_ids=[vs_result["id"]]
-)
+
+    # 3. (Alternative) Get a non-streaming typed response
+    print("\n--- Non-Streaming Typed Response Example ---")
+    # Create a new request object or copy and modify the streaming one
+    typed_request_non_streaming = Request(
+        input=messages, # Reusing messages and tools from above
+        tools=tools,
+        model="qwen-max-latest",
+        effort="high",
+        stream=False, # Key change for non-streaming
+        user="typed_sdk_user_non_streaming"
+    )
+    try:
+        final_response: Response = await async_create_typed_response(request=typed_request_non_streaming)
+        if final_response:
+            print(f"Response ID: {final_response.id}")
+            print(f"Status: {final_response.status}")
+            if final_response.output:
+                for item in final_response.output:
+                    # Example: Accessing text from ResponseOutputText
+                    if item.type == "output_text" and hasattr(item, 'text'):
+                        print(f"Output Text: {item.text}")
+                        if hasattr(item, 'annotations') and item.annotations:
+                            print("Annotations:")
+                            for ann in item.annotations:
+                                # .model_dump_json() is a Pydantic V2 method
+                                print(f"  - {ann.model_dump_json(indent=2) if hasattr(ann, 'model_dump_json') else vars(ann)}")
+            if final_response.usage:
+                print(f"Total tokens: {final_response.usage.total_tokens}")
+        else:
+            print("Failed to get a non-streaming typed response.")
+    except Exception as e:
+        print(f"Error during non-streaming typed response: {e}")
+    print("----------------------------------------")
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 ### JavaScript SDK Example
