@@ -89,11 +89,15 @@ def initialize_default_displays():
 
     # Helper function to create v2 displays
     def create_json_display(**kwargs):
+        config = kwargs.get("config", {})
+        chat_active = getattr(config, "chat_mode", False) or getattr(config, "chat", False)
         renderer = JsonRenderer(
-            include_events=kwargs.get("config", {}).debug if hasattr(kwargs.get("config", {}), "debug") else False,
+            include_events=config.debug if hasattr(config, "debug") else False,
             pretty=True,
+            in_chat_mode=chat_active,
         )
-        return Display(renderer)
+        mode = "chat" if chat_active else "default"
+        return Display(renderer, mode=mode)
 
     def create_rich_display(**kwargs):
         config = kwargs.get("config", {})

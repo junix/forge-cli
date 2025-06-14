@@ -12,7 +12,14 @@ from ..events import Event, EventType
 class JsonRenderer(BaseRenderer):
     """JSON output renderer for machine consumption."""
 
-    def __init__(self, file: TextIO | None = None, include_events: bool = False, pretty: bool = True):
+    def __init__(
+        self,
+        file: TextIO | None = None,
+        include_events: bool = False,
+        pretty: bool = True,
+        *,
+        in_chat_mode: bool = False,
+    ):
         """Initialize JSON renderer.
 
         Args:
@@ -26,7 +33,7 @@ class JsonRenderer(BaseRenderer):
         self._include_events = include_events
         self._pretty = pretty
         self._start_time = time.time()
-        self._in_chat_mode = in_chat_mode
+        self._in_chat_mode: bool = in_chat_mode
 
         # Track all events if requested
         self._events: list[dict[str, str | int | float | bool | list | dict]] = []
