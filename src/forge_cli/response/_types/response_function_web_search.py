@@ -77,7 +77,7 @@ class ResponseFunctionWebSearchResult(BaseModel):
             Chunk: A Chunk object containing the search result content and metadata.
         """
         from _types.chunk import Chunk
-        from common.logger import logger
+        from forge_cli.common.logger import logger
 
         # Create a unique ID for the chunk
         chunk_id = f"web-search-{index}"
@@ -361,7 +361,7 @@ class ResponseFunctionWebSearch(BaseModel):
             Union[str, List[Chunk]]: Error message string if conversion fails,
                                    or list of Chunk objects if successful
         """
-        from common.logger import logger
+        from forge_cli.common.logger import logger
         from constants.metadata_keys import (
             DOC_TITLE_KEY,
             DOC_URL_KEY,

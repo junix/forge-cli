@@ -10,7 +10,7 @@ from .response_function_tool_call import (
     ResponseFunctionToolCall,
 )
 
-from common.logger import logger
+from forge_cli.common.logger import logger
 from _types.chunk import Chunk
 from constants.metadata_keys import (
     FILE_ID_KEY,

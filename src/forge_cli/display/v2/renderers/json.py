@@ -240,6 +240,20 @@ class JsonRenderer(BaseRenderer):
                 self._state["metadata"]["end_time"] = time.time()
                 self._state["metadata"]["duration"] = time.time() - self._start_time
 
+            # If including events (debug mode), output raw state without restructuring
+            if self._include_events:
+                raw_output = self._state.copy()
+                if self._events:
+                    raw_output["events"] = self._events
+                json.dump(raw_output, self._file, indent=2 if self._pretty else None, ensure_ascii=False)
+                self._file.flush()
+                # Only mark the renderer as finalized when we are *not* running in
+                # interactive chat mode.  In chat mode the renderer must stay
+                # reusable for the next user message.
+                if not getattr(self, "_in_chat_mode", False):
+                    self._finalized = True
+                return
+
             # Build v1-compatible output structure
             output = {}
 

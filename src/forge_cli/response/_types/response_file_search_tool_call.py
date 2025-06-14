@@ -452,7 +452,7 @@ class ResponseFileSearchToolCall(BaseModel):
             Union[str, List[Chunk]]: Error message string if conversion fails,
                                    or list of Chunk objects if successful
         """
-        from common.logger import logger
+        from forge_cli.common.logger import logger
         
         # Check status
         if self.status == "failed":

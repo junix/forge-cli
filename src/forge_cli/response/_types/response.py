@@ -3,7 +3,7 @@
 from typing import List, Optional, Union, Dict, Any, Set, Tuple, cast, Literal
 
 from openai.types.shared.metadata import Metadata
-from common.logger import logger
+from forge_cli.common.logger import logger
 from openai.types.shared.responses_model import ResponsesModel
 from typing_extensions import Literal, TypeAlias
 

@@ -2,10 +2,12 @@
 
 import time
 from collections.abc import AsyncIterator
+from typing import Dict, Any, Optional, Union
 
 from ..display.v2.base import Display
 from ..models.state import StreamState, ToolStatus
 from ..processors.registry import default_registry
+from ..response._types import ResponseStreamEvent
 
 
 class StreamHandler:
@@ -24,7 +26,7 @@ class StreamHandler:
 
     async def handle_stream(
         self,
-        event_stream: AsyncIterator[tuple[str, dict[str, str | int | float | bool | list | dict]]],
+        event_stream: AsyncIterator[tuple[str, Optional[Union[Dict[str, Any], ResponseStreamEvent]]]],
         question: str,
     ) -> dict[str, str | int | float | bool | list | dict] | None:
         """
@@ -45,13 +47,22 @@ class StreamHandler:
                 if event_type and event_type.startswith("response"):
                     self.state.response_event_count += 1
 
+                # Handle typed events
+                if isinstance(event_data, ResponseStreamEvent):
+                    # Convert typed event to dict for compatibility
+                    event_dict = event_data.model_dump(by_alias=True, exclude_none=True)
+                elif isinstance(event_data, dict):
+                    event_dict = event_data
+                else:
+                    event_dict = {}
+
                 # Update usage if present
-                if isinstance(event_data, dict) and "usage" in event_data:
-                    self.state.usage.update(event_data["usage"])
+                if "usage" in event_dict:
+                    self.state.usage.update(event_dict["usage"])
 
                 # Debug logging
                 if self.debug:
-                    await self._log_debug_info(event_type, event_data)
+                    await self._log_debug_info(event_type, event_dict)
 
                 # Route event to appropriate handler
                 if event_type == "done":
@@ -64,29 +75,27 @@ class StreamHandler:
                     else:
                         # Non-chat mode: complete the display normally
                         self.display.complete()
-                    return event_data
+                    return event_dict
 
                 elif event_type == "error":
-                    error_msg = (
-                        event_data.get("message", "Unknown error") if isinstance(event_data, dict) else "Unknown error"
-                    )
+                    error_msg = event_dict.get("message", "Unknown error")
                     self.display.show_error(error_msg)
                     return None
 
-                elif isinstance(event_data, dict) and "output" in event_data:
+                elif "output" in event_dict:
                     # Snapshot update - primary rendering path
-                    self.state.update_from_snapshot(event_data)
+                    self.state.update_from_snapshot(event_dict)
                     await self._render_current_state(question, event_type)
 
                 elif event_type == "final_response":
                     # Handle final_response event - contains the complete response
-                    if isinstance(event_data, dict) and "output" in event_data:
-                        self.state.update_from_snapshot(event_data)
+                    if "output" in event_dict:
+                        self.state.update_from_snapshot(event_dict)
                         await self._render_current_state(question, event_type)
 
                 elif self._is_tool_event(event_type):
                     # Handle tool-specific events
-                    await self._handle_tool_event(event_type, event_data)
+                    await self._handle_tool_event(event_type, event_dict)
 
                 # Track timing for search events
                 if "file_search_call.searching" in event_type and self.search_start_time is None:
@@ -144,7 +153,7 @@ class StreamHandler:
         return any(pattern in event_type for pattern in tool_patterns)
 
     async def _handle_tool_event(
-        self, event_type: str, event_data: dict[str, str | int | float | bool | list | dict]
+        self, event_type: str, event_data: Dict[str, Any]
     ) -> None:
         """Handle tool-specific events."""
         # Extract tool type from event
@@ -184,7 +193,7 @@ class StreamHandler:
             if self.search_start_time and self.search_completed_time:
                 tool_state.retrieval_time = (self.search_completed_time - self.search_start_time) * 1000
 
-    def _extract_queries(self, event_data: dict[str, str | int | float | bool | list | dict]) -> list[str]:
+    def _extract_queries(self, event_data: Dict[str, Any]) -> list[str]:
         """Extract queries from various event data structures."""
         if not isinstance(event_data, dict):
             return []
@@ -203,7 +212,7 @@ class StreamHandler:
     async def _log_debug_info(
         self,
         event_type: str,
-        event_data: dict[str, str | int | float | bool | list | dict] | str | int | float | bool,
+        event_data: Dict[str, Any],
     ) -> None:
         """Log debug information for events."""
         print(f"\nDEBUG: Event: {event_type}")

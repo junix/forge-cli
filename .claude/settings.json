@@ -1,9 +1,9 @@
 {
   "env": {
-    "PYTHONPATH": "/Users/junix/knowledge-forge-office/knowledge_forge"
+    "PYTHONPATH": "/Users/junix/forge-cli/src/forge_cli"
   },
   "project": {
-    "name": "Knowledge Forge",
+    "name": "Forge  CLI ",
     "description": "A comprehensive knowledge management system with AI-powered capabilities",
     "conventions": {
       "adr": {
