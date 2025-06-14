@@ -5,6 +5,6 @@ from .commands import ChatCommand, CommandRegistry
 
 __all__ = [
     "ChatController",
-    "ChatCommand", 
+    "ChatCommand",
     "CommandRegistry",
 ]

@@ -85,9 +85,7 @@ def prepare_request(config: SearchConfig, question: str) -> Dict[str, Any]:
     return request
 
 
-async def process_search(
-    config: SearchConfig, question: str
-) -> Optional[Dict[str, Any]]:
+async def process_search(config: SearchConfig, question: str) -> Optional[Dict[str, Any]]:
     """Process search with the given configuration."""
     # Initialize processor registry
     initialize_default_registry()
@@ -133,9 +131,7 @@ async def process_search(
         return None
 
 
-async def start_chat_mode(
-    config: SearchConfig, initial_question: Optional[str] = None
-) -> None:
+async def start_chat_mode(config: SearchConfig, initial_question: Optional[str] = None) -> None:
     """Start interactive chat mode."""
     # Initialize processor registry
     initialize_default_registry()
@@ -376,28 +372,18 @@ async def main():
         parser.print_help()
         print("\nExample usage:")
         print("  # File search:")
-        print(
-            '  python -m hello_file_search_refactored -q "What information is in these documents?"'
-        )
-        print(
-            "  python -m hello_file_search_refactored --vec-id vec_123 -t file-search"
-        )
+        print('  python -m hello_file_search_refactored -q "What information is in these documents?"')
+        print("  python -m hello_file_search_refactored --vec-id vec_123 -t file-search")
         print()
         print("  # Web search:")
-        print(
-            '  python -m hello_file_search_refactored -t web-search -q "Latest AI news"'
-        )
+        print('  python -m hello_file_search_refactored -t web-search -q "Latest AI news"')
         print()
         print("  # Both tools:")
-        print(
-            "  python -m hello_file_search_refactored -t file-search -t web-search --vec-id vec_123"
-        )
+        print("  python -m hello_file_search_refactored -t file-search -t web-search --vec-id vec_123")
         print()
         print("  # Interactive chat mode:")
         print("  python -m hello_file_search_refactored --chat")
-        print(
-            "  python -m hello_file_search_refactored -i -t file-search --vec-id vec_123"
-        )
+        print("  python -m hello_file_search_refactored -i -t file-search --vec-id vec_123")
         return
 
     # Handle version
@@ -432,11 +418,7 @@ async def main():
     # Check if chat mode is requested
     if config.chat_mode:
         # If a question was provided with -q, send it as the first message
-        initial_question = (
-            args.question
-            if args.question != "What information can you find in the documents?"
-            else None
-        )
+        initial_question = args.question if args.question != "What information can you find in the documents?" else None
         await start_chat_mode(config, initial_question)
     else:
         # Run single-turn search

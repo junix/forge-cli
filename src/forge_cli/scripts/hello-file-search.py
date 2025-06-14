@@ -96,10 +96,10 @@ class ToolSearchState:
 @dataclass
 class MultiToolState:
     """Tracks state across multiple tool types."""
-    
+
     # Dynamic tool states dictionary instead of hardcoded fields
     tool_states: dict[str, ToolSearchState] = field(default_factory=dict)
-    
+
     def get_tool_state(self, tool_type: str) -> ToolSearchState:
         """Get state for specific tool type, creating if needed."""
         # Normalize tool type by extracting the base name
@@ -107,21 +107,21 @@ class MultiToolState:
         base_tool_type = tool_type
         for pattern in ["response.", "_call", ".searching", ".completed", ".in_progress"]:
             base_tool_type = base_tool_type.replace(pattern, "")
-        
+
         # Create state if it doesn't exist
         if base_tool_type not in self.tool_states:
             self.tool_states[base_tool_type] = ToolSearchState(tool_type=base_tool_type)
-        
+
         return self.tool_states[base_tool_type]
-    
+
     def get_all_completed_info(self) -> list[dict[str, Any]]:
         """Get display info for all completed tools."""
         info_list = []
-        
+
         for tool_state in self.tool_states.values():
             if tool_state.status == FileSearchStatus.COMPLETED:
                 info_list.append(tool_state.to_display_info())
-            
+
         return info_list
 
 
@@ -230,9 +230,7 @@ class MultiToolEventHandler:
     def can_handle(self, event_type: str) -> bool:
         """Check if this handler can process the event."""
         # Handle any event that looks like a tool call event
-        return ("_call.searching" in event_type or 
-                "_call.in_progress" in event_type or 
-                "_call.completed" in event_type)
+        return "_call.searching" in event_type or "_call.in_progress" in event_type or "_call.completed" in event_type
 
     def handle_event(
         self,
@@ -242,7 +240,7 @@ class MultiToolEventHandler:
         retrieval_time: float | None = None,
     ) -> ToolSearchUpdate:
         """Process tool search event and return update."""
-        
+
         # Extract tool type from event type
         # e.g., "response.file_search_call.searching" -> "file_search"
         # e.g., "response.code_interpreter_call.completed" -> "code_interpreter"
@@ -251,7 +249,7 @@ class MultiToolEventHandler:
             tool_type = tool_type.replace("response.", "")
         if "_call." in tool_type:
             tool_type = tool_type.split("_call.")[0]
-        
+
         update = ToolSearchUpdate(tool_type=tool_type)
 
         if "_call.searching" in event_type or "_call.in_progress" in event_type:
@@ -280,7 +278,7 @@ class MultiToolEventHandler:
     def apply_update(self, update: ToolSearchUpdate):
         """Apply an update to the internal state."""
         tool_state = self.state.get_tool_state(update.tool_type)
-        
+
         if update.queries:
             tool_state.queries = update.queries
             tool_state.query = ", ".join(update.queries)
@@ -300,12 +298,12 @@ class MultiToolEventHandler:
         if "output" in snapshot_data and isinstance(snapshot_data["output"], list):
             for item in snapshot_data["output"]:
                 item_type = item.get("type")
-                
+
                 if "_call" in item_type:
                     # Extract tool type from item type (e.g., "file_search_call" -> "file_search")
                     tool_type = item_type.replace("_call", "")
                     update = ToolSearchUpdate(tool_type=tool_type)
-                    
+
                     # Extract queries
                     queries = item.get("queries", [])
                     if queries:
@@ -333,7 +331,7 @@ class MultiToolEventHandler:
                         update.status = FileSearchStatus.COMPLETED
                     elif item.get("status") in ["searching", "in_progress"]:
                         update.status = FileSearchStatus.SEARCHING
-                    
+
                     updates.append(update)
 
         # Apply updates
@@ -393,7 +391,7 @@ def process_snapshot_with_annotations(
                             # Process all annotations
                             for i, ann in enumerate(annotations):
                                 citation_type = ann.get("type")
-                                
+
                                 if citation_type == "file_citation":
                                     # Debug: log annotation structure
                                     if debug and i == 0:  # Only log first annotation
@@ -435,7 +433,7 @@ def process_snapshot_with_annotations(
                                             "title": filename,
                                         }
                                     )
-                                
+
                                 elif citation_type == "url_citation":
                                     # Debug: log annotation structure
                                     if debug and i == 0:  # Only log first annotation
@@ -453,11 +451,12 @@ def process_snapshot_with_annotations(
                                     if not display_name and url:
                                         try:
                                             from urllib.parse import urlparse
+
                                             parsed = urlparse(url)
                                             display_name = parsed.netloc or url
                                         except:
                                             display_name = url
-                                    
+
                                     if not display_name:
                                         display_name = "Web Source"
 
@@ -508,17 +507,17 @@ def format_reasoning_item(reasoning_item: dict[str, Any]) -> str:
     """Format a single reasoning item."""
     if "summary" not in reasoning_item:
         return ""
-    
+
     reasoning_parts = []
     for summary_item in reasoning_item.get("summary", []):
         if summary_item.get("type") == "summary_text":
             text = summary_item.get("text", "")
             if text:
                 # Split text into lines and add markdown quote indicator to each line
-                lines = text.split('\n')
+                lines = text.split("\n")
                 for line in lines:
                     reasoning_parts.append(f"> {line}")
-    
+
     return "\n".join(reasoning_parts) if reasoning_parts else ""
 
 
@@ -527,17 +526,17 @@ def format_file_search_item(search_item: dict[str, Any]) -> str:
     queries = search_item.get("queries", [])
     results = search_item.get("results", [])
     status = search_item.get("status", "")
-    
+
     parts = []
     if queries:
         parts.append("📄 搜索文档:")
         for query in queries:
             parts.append(f"- {query}")
-    
+
     if status == "completed" and results is not None:
         count = len(results) if isinstance(results, list) else 0
         parts.append("\n✅ 搜索已结束")
-    
+
     return "\n".join(parts)
 
 
@@ -546,17 +545,17 @@ def format_document_finder_item(search_item: dict[str, Any]) -> str:
     queries = search_item.get("queries", [])
     results = search_item.get("results", [])
     status = search_item.get("status", "")
-    
+
     parts = []
     if queries:
         parts.append("🔍 查找文档:")
         for query in queries:
             parts.append(f"- {query}")
-    
+
     if status == "completed" and results is not None:
         count = len(results) if isinstance(results, list) else 0
         parts.append("\n✅ 查找已结束")
-    
+
     return "\n".join(parts)
 
 
@@ -567,29 +566,30 @@ def format_file_reader_item(search_item: dict[str, Any]) -> str:
     status = search_item.get("status", "")
     execution_trace = search_item.get("execution_trace", "")
     progress = search_item.get("progress", 0.0)
-    
+
     parts = []
     if query:
         parts.append(f"📖 精读文档: {query}")
     elif doc_ids:
         doc_count = len(doc_ids)
         parts.append(f"📖 精读文档: {doc_count} 个文档")
-    
+
     if status == "completed":
         parts.append("\n\n✅ 精读已结束")
         # Extract chunk count from execution trace if available
         if execution_trace and "chunks" in execution_trace:
             import re
+
             chunk_match = re.search(r"(\d+) chunks", execution_trace)
             if chunk_match:
                 chunk_count = chunk_match.group(1)
                 parts.append(f"  📄 获得 {chunk_count} 个内容块")
     elif status and status != "completed":
         if progress and progress > 0:
-            parts.append(f"\n\n⏳ 正在精读... ({progress*100:.0f}%)")
+            parts.append(f"\n\n⏳ 正在精读... ({progress * 100:.0f}%)")
         else:
             parts.append("\n\n⏳ 正在精读...")
-    
+
     return "\n".join(parts)
 
 
@@ -597,16 +597,16 @@ def format_web_search_item(search_item: dict[str, Any]) -> str:
     """Format a web search tool call item."""
     queries = search_item.get("queries", [])
     status = search_item.get("status", "")
-    
+
     parts = []
     if queries:
         parts.append("🌐 搜索网络:")
         for query in queries:
             parts.append(f"- {query}")
-    
+
     if status == "completed":
         parts.append("\n✅ 搜索已结束")
-    
+
     return "\n".join(parts)
 
 
@@ -614,21 +614,21 @@ def format_message_item(message_item: dict[str, Any], file_id_to_name: dict[str,
     """Format a message item with text and citations."""
     if message_item.get("role") != "assistant":
         return ""
-    
+
     if file_id_to_name is None:
         file_id_to_name = {}
-    
+
     content_list = message_item.get("content", [])
     for content_item in content_list:
         if content_item.get("type") == "output_text":
             text = content_item.get("text", "")
             annotations = content_item.get("annotations", [])
-            
+
             # Process citations from annotations
             citations = []
             for i, ann in enumerate(annotations):
                 citation_type = ann.get("type")
-                
+
                 if citation_type == "file_citation":
                     file_id = ann.get("file_id", "")
                     filename = ann.get("filename", "")
@@ -639,60 +639,65 @@ def format_message_item(message_item: dict[str, Any], file_id_to_name: dict[str,
                             filename = file_id_to_name[file_id]
                         if not filename:
                             filename = "Unknown"
-                    
+
                     page_index = ann.get("index", "N/A")
                     if isinstance(page_index, int):
                         page_index = page_index + 1
-                    
-                    citations.append({
-                        "number": i + 1,
-                        "type": "file",
-                        "page": page_index,
-                        "filename": filename,
-                        "file_id": file_id,
-                        "url": None,
-                        "title": filename,
-                    })
-                
+
+                    citations.append(
+                        {
+                            "number": i + 1,
+                            "type": "file",
+                            "page": page_index,
+                            "filename": filename,
+                            "file_id": file_id,
+                            "url": None,
+                            "title": filename,
+                        }
+                    )
+
                 elif citation_type == "url_citation":
                     url = ann.get("url", "")
                     title = ann.get("title", "")
                     snippet = ann.get("snippet", "")
-                    
+
                     display_name = title
                     if not display_name and url:
                         try:
                             from urllib.parse import urlparse
+
                             parsed = urlparse(url)
                             display_name = parsed.netloc or url
                         except:
                             display_name = url
-                    
+
                     if not display_name:
                         display_name = "Web Source"
-                    
-                    citations.append({
-                        "number": i + 1,
-                        "type": "web",
-                        "page": "Web",
-                        "filename": display_name,
-                        "file_id": None,
-                        "url": url,
-                        "title": title,
-                        "snippet": snippet,
-                    })
-            
+
+                    citations.append(
+                        {
+                            "number": i + 1,
+                            "type": "web",
+                            "page": "Web",
+                            "filename": display_name,
+                            "file_id": None,
+                            "url": url,
+                            "title": title,
+                            "snippet": snippet,
+                        }
+                    )
+
             # Format the message content
             parts = []
             if text:
                 parts.append(text)
-            
+
             if citations:
                 parts.append("")  # Empty line
                 parts.append(format_citations_table(citations))
-            
+
             return "\n".join(parts)
-    
+
     return ""
 
 
@@ -700,19 +705,16 @@ def format_citations_table(citations: list[dict[str, Any]]) -> str:
     """Format citations as a markdown table."""
     if not citations:
         return ""
-    
+
     # Check citation types to determine table format
     has_file_citations = any(cite.get("type") == "file" for cite in citations)
     has_web_citations = any(cite.get("type") == "web" for cite in citations)
-    
+
     parts = ["### 📚 References", ""]
-    
+
     if has_file_citations and has_web_citations:
         # Mixed citations - flexible table
-        parts.extend([
-            "| Citation | Source | Location | ID/URL |",
-            "|----------|--------|----------|--------|"
-        ])
+        parts.extend(["| Citation | Source | Location | ID/URL |", "|----------|--------|----------|--------|"])
         for cite in citations:
             if cite.get("type") == "web":
                 url_display = cite.get("url", "")
@@ -720,13 +722,12 @@ def format_citations_table(citations: list[dict[str, Any]]) -> str:
                     url_display = url_display[:47] + "..."
                 parts.append(f"| [{cite['number']}] | {cite['filename']} | Web | {url_display} |")
             else:
-                parts.append(f"| [{cite['number']}] | {cite['filename']} | p.{cite['page']} | {cite.get('file_id', 'N/A')} |")
+                parts.append(
+                    f"| [{cite['number']}] | {cite['filename']} | p.{cite['page']} | {cite.get('file_id', 'N/A')} |"
+                )
     elif has_web_citations:
         # Web citations only
-        parts.extend([
-            "| Citation | Title | URL |",
-            "|----------|-------|-----|"
-        ])
+        parts.extend(["| Citation | Title | URL |", "|----------|-------|-----|"])
         for cite in citations:
             url_display = cite.get("url", "")
             if len(url_display) > 60:
@@ -734,13 +735,10 @@ def format_citations_table(citations: list[dict[str, Any]]) -> str:
             parts.append(f"| [{cite['number']}] | {cite['filename']} | {url_display} |")
     else:
         # File citations only
-        parts.extend([
-            "| Citation | Document | Page | File ID |",
-            "|----------|----------|------|---------|"
-        ])
+        parts.extend(["| Citation | Document | Page | File ID |", "|----------|----------|------|---------|"])
         for cite in citations:
             parts.append(f"| [{cite['number']}] | {cite['filename']} | {cite['page']} | {cite.get('file_id', 'N/A')} |")
-    
+
     return "\n".join(parts)
 
 
@@ -750,10 +748,10 @@ def format_generic_tool_call_item(search_item: dict[str, Any]) -> str:
     queries = search_item.get("queries", [])
     results = search_item.get("results", [])
     status = search_item.get("status", "")
-    
+
     # Extract tool name from type (e.g., "file_search_call" -> "file_search")
     tool_name = item_type.replace("_call", "") if "_call" in item_type else item_type
-    
+
     # Map tool names to emojis and Chinese names
     tool_mapping = {
         "file_search": ("📄", "搜索文档"),
@@ -761,87 +759,86 @@ def format_generic_tool_call_item(search_item: dict[str, Any]) -> str:
         "web_search": ("🌐", "搜索网络"),
         "code_interpreter": ("💻", "执行代码"),
     }
-    
+
     tool_emoji, tool_action = tool_mapping.get(tool_name, ("🔧", "执行工具"))
-    
+
     parts = []
     if queries:
         parts.append(f"{tool_emoji} {tool_action}:")
         for query in queries:
             parts.append(f"- {query}")
-    
+
     if status == "completed" and results is not None:
         count = len(results) if isinstance(results, list) else 0
         parts.append("\n✅ 操作已结束")
-    
+
     return "\n".join(parts)
 
 
 def format_native_order_display(
-    output_items: list[dict[str, Any]], 
-    file_id_to_name: dict[str, str] | None = None
+    output_items: list[dict[str, Any]], file_id_to_name: dict[str, str] | None = None
 ) -> str:
     """
     Format display content in native output order, preserving the original sequence
     and keeping reasoning segments separate.
-    
+
     Args:
         output_items: Complete output array from response
         file_id_to_name: Mapping of file IDs to filenames
-    
+
     Returns:
         Formatted markdown string in native order
     """
     if file_id_to_name is None:
         file_id_to_name = {}
-    
+
     content_parts = []
-    
+
     for item in output_items:
         item_type = item.get("type")
-        
+
         if item_type == "reasoning":
             # Format individual reasoning segment
             reasoning_content = format_reasoning_item(item)
             if reasoning_content:
                 content_parts.append(reasoning_content)
-                
+
         elif item_type == "file_search_call":
             # Format file search tool call
             search_content = format_file_search_item(item)
             if search_content:
                 content_parts.append(search_content)
-                
+
         elif item_type == "document_finder_call":
             # Format document finder tool call
             search_content = format_document_finder_item(item)
             if search_content:
                 content_parts.append(search_content)
-                
+
         elif item_type == "file_reader_call":
             # Format file reader tool call
             search_content = format_file_reader_item(item)
             if search_content:
                 content_parts.append(search_content)
-                
+
         elif item_type == "web_search_call":
-            # Format web search tool call  
+            # Format web search tool call
             search_content = format_web_search_item(item)
             if search_content:
                 content_parts.append(search_content)
-                
+
         elif item_type == "message":
             # Format message with text and citations
             message_content = format_message_item(item, file_id_to_name)
             if message_content:
                 content_parts.append(message_content)
-                
+
         elif item_type and "_call" in item_type:
             # Handle any other tool call types generically
             search_content = format_generic_tool_call_item(item)
             if search_content:
                 content_parts.append(search_content)
-    
+
     return "\n\n".join(content_parts)
 
 
@@ -869,7 +866,7 @@ def format_annotated_display(
 
     # Add search info if available (use list if provided, otherwise single info)
     info_list = search_info_list if search_info_list else ([search_info] if search_info else [])
-    
+
     for info in info_list:
         if info and info.get("query"):
             tool_type = info.get("tool_type", "")
@@ -885,12 +882,12 @@ def format_annotated_display(
             else:
                 tool_emoji = "🔧"
                 tool_name = "工具"
-            
+
             query_line = f"{tool_emoji} 搜索{tool_name}: {info['query']}"
             if info.get("query_time"):
                 query_line += f" (查询生成: {info['query_time']:.0f}ms)"
             content_parts.append(query_line)
-            
+
         if info and "results_count" in info:
             count = info.get("results_count")
             tool_type = info.get("tool_type", "")
@@ -902,7 +899,7 @@ def format_annotated_display(
                 result_type = "网络结果"
             else:
                 result_type = "结果"
-            
+
             if count is not None:
                 results_line = f"\n✅ 搜索已结束，找到了 {count} 个相关{result_type}"
             else:
@@ -911,7 +908,7 @@ def format_annotated_display(
                 results_line += f" (检索时间: {info['retrieval_time']:.0f}ms)"
             content_parts.append(results_line)
             content_parts.append("")  # Add extra newline after each tool's results
-    
+
     if info_list:
         content_parts.append("")  # Empty line
 
@@ -932,11 +929,11 @@ def format_annotated_display(
         content_parts.append("")  # Empty line
         content_parts.append("### 📚 References")
         content_parts.append("")
-        
+
         # Check if we have mixed citation types
         has_file_citations = any(cite.get("type") == "file" for cite in citations)
         has_web_citations = any(cite.get("type") == "web" for cite in citations)
-        
+
         if has_file_citations and has_web_citations:
             # Mixed citations - use flexible table
             content_parts.append("| Citation | Source | Location | ID/URL |")
@@ -948,7 +945,9 @@ def format_annotated_display(
                         url_display = url_display[:47] + "..."
                     content_parts.append(f"| [{cite['number']}] | {cite['filename']} | Web | {url_display} |")
                 else:
-                    content_parts.append(f"| [{cite['number']}] | {cite['filename']} | p.{cite['page']} | {cite.get('file_id', 'N/A')} |")
+                    content_parts.append(
+                        f"| [{cite['number']}] | {cite['filename']} | p.{cite['page']} | {cite.get('file_id', 'N/A')} |"
+                    )
         elif has_web_citations:
             # Web citations only
             content_parts.append("| Citation | Title | URL |")
@@ -963,7 +962,9 @@ def format_annotated_display(
             content_parts.append("| Citation | Document | Page | File ID |")
             content_parts.append("|----------|----------|------|---------|")
             for cite in citations:
-                content_parts.append(f"| [{cite['number']}] | {cite['filename']} | {cite['page']} | {cite.get('file_id', 'N/A')} |")
+                content_parts.append(
+                    f"| [{cite['number']}] | {cite['filename']} | {cite['page']} | {cite.get('file_id', 'N/A')} |"
+                )
 
     # Join all parts
     return "\n".join(content_parts)
@@ -1012,7 +1013,7 @@ async def process_with_streaming(
 
     # Create tools list based on enabled tools
     tools = []
-    
+
     # Add file search tool if enabled and vectorstore IDs are provided
     if enabled_tools and "file-search" in enabled_tools and vec_ids:
         file_search_tool = {
@@ -1021,17 +1022,17 @@ async def process_with_streaming(
             "max_num_results": max_results,
         }
         tools.append(file_search_tool)
-    
+
     # Add web search tool if enabled
     if enabled_tools and "web-search" in enabled_tools:
         web_search_tool = {"type": "web_search"}
-        
+
         # Add location context if provided
         if web_location:
             web_search_tool["user_location"] = {"type": "approximate", **web_location}
-        
+
         tools.append(web_search_tool)
-    
+
     # Set tools to None if empty
     tools = tools if tools else None
 
@@ -1253,7 +1254,7 @@ async def process_with_streaming(
                         # Fallback for early tool events before any snapshot
                         tool_state = tool_handler.state.get_tool_state(update.tool_type)
                         search_info = tool_state.to_display_info()
-                        
+
                         status_text = ""
                         if tool_state.status == FileSearchStatus.SEARCHING:
                             tool_name = "文档" if update.tool_type == "file_search" else "网络"
@@ -1291,7 +1292,7 @@ async def process_with_streaming(
             elif event_data and "output" in event_data:
                 # Store complete output items for native order display
                 current_output_items = event_data.get("output", [])
-                
+
                 # Extract full text and citations from snapshot (for backward compatibility)
                 snapshot_text, snapshot_citations = process_snapshot_with_annotations(
                     event_data,
@@ -1363,10 +1364,7 @@ async def process_with_streaming(
                     "response.web_search_call.searching",
                     "response.web_search_call.in_progress",
                 ]:
-                    if (
-                        tool_state.status == FileSearchStatus.SEARCHING
-                        and prev_status != FileSearchStatus.SEARCHING
-                    ):
+                    if tool_state.status == FileSearchStatus.SEARCHING and prev_status != FileSearchStatus.SEARCHING:
                         search_type = "vector stores" if "file_search" in event_type else "web"
                         print(f"\n🔍 Searching {search_type}...")
 
@@ -1734,20 +1732,26 @@ async def main():
     if show_help and not any(arg in sys.argv for arg in ["-h", "--help"]):
         parser.print_help()
         print("\nExample usage:")
-        print('  # File search only (default if vec-id provided)')
+        print("  # File search only (default if vec-id provided)")
         print('  python -m commands.hello-file-search -q "What information is in these documents?"')
         print("  python -m commands.hello-file-search --vec-id vec_id1 vec_id2 --model qwen-max --effort medium")
         print("")
-        print('  # Web search only')
+        print("  # Web search only")
         print('  python -m commands.hello-file-search -t web-search -q "What happened today in tech?"')
-        print('  python -m commands.hello-file-search -t web-search --country US --city "San Francisco" -q "Local weather"')
+        print(
+            '  python -m commands.hello-file-search -t web-search --country US --city "San Francisco" -q "Local weather"'
+        )
         print("")
-        print('  # Both tools together')
-        print('  python -m commands.hello-file-search -t file-search -t web-search --vec-id vec_id1 -q "Compare docs with latest info"')
-        print('  python -m commands.hello-file-search --tool file-search --tool web-search --vec-id vec_id1 --effort high -q "Research question"')
+        print("  # Both tools together")
+        print(
+            '  python -m commands.hello-file-search -t file-search -t web-search --vec-id vec_id1 -q "Compare docs with latest info"'
+        )
+        print(
+            '  python -m commands.hello-file-search --tool file-search --tool web-search --vec-id vec_id1 --effort high -q "Research question"'
+        )
         print("")
-        print('  # Explicit tool selection')
-        print('  python -m commands.hello-file-search -t file-search --vec-id vec_id1 --effort dev --debug')
+        print("  # Explicit tool selection")
+        print("  python -m commands.hello-file-search -t file-search --vec-id vec_id1 --effort dev --debug")
         return
 
     # Handle version display
@@ -1773,11 +1777,11 @@ async def main():
 
     # Prepare enabled tools list
     enabled_tools = args.tool if args.tool else []
-    
+
     # If no tools specified, default to file-search for backward compatibility (only if vec_ids provided)
     if not enabled_tools and args.vec_id:
         enabled_tools = ["file-search"]
-    
+
     # Prepare web location context
     web_location = None
     if args.country or args.city:

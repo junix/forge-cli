@@ -23,5 +23,6 @@ if __name__ == "__main__":
         print(f"\n❌ Fatal error: {type(e).__name__}: {e}")
         if "--debug" in sys.argv or "-d" in sys.argv:
             import traceback
+
             traceback.print_exc()
         sys.exit(1)

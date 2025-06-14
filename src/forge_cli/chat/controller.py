@@ -14,51 +14,50 @@ from .commands import CommandRegistry
 
 class ChatController:
     """Controls the chat interaction flow."""
-    
+
     def __init__(self, config: SearchConfig, display: BaseDisplay):
         self.config = config
         self.display = display
-        self.conversation = ConversationState(
-            model=config.model,
-            tools=self.prepare_tools()
-        )
+        self.conversation = ConversationState(model=config.model, tools=self.prepare_tools())
         self.commands = CommandRegistry()
         self.running = False
-    
+
     def prepare_tools(self) -> List[Dict[str, Any]]:
         """Prepare tools configuration based on config."""
         tools = []
-        
+
         # File search tool
         if "file-search" in self.config.enabled_tools and self.config.vec_ids:
-            tools.append({
-                "type": "file_search",
-                "vector_store_ids": self.config.vec_ids,
-                "max_num_results": self.config.max_results,
-            })
-        
+            tools.append(
+                {
+                    "type": "file_search",
+                    "vector_store_ids": self.config.vec_ids,
+                    "max_num_results": self.config.max_results,
+                }
+            )
+
         # Web search tool
         if "web-search" in self.config.enabled_tools:
             web_tool = {"type": "web_search"}
-            
+
             # Add location if provided
             location = self.config.get_web_location()
             if location:
                 web_tool["user_location"] = {"type": "approximate", **location}
-            
+
             tools.append(web_tool)
-        
+
         return tools
-    
+
     async def start_chat_loop(self) -> None:
         """Start the interactive chat loop."""
         # This method is kept for backward compatibility
         # The actual loop is now in main.py
         pass
-    
+
     async def show_welcome(self) -> None:
         """Show welcome message and chat info."""
-        if hasattr(self.display, 'show_welcome'):
+        if hasattr(self.display, "show_welcome"):
             await self.display.show_welcome(self.config)
         else:
             # Fallback welcome message
@@ -66,28 +65,29 @@ class ChatController:
                 "╭─ Knowledge Forge Chat ─────────────────────────────────────╮",
                 f"│ Model: {self.config.model:<20} Session: {self.conversation.session_id} │",
             ]
-            
+
             if self.config.enabled_tools:
                 tools_str = ", ".join(self.config.enabled_tools)
                 lines.append(f"│ Tools: {tools_str:<49} │")
-            
+
             lines.append("╰─────────────────────────────────────────────────────────────╯")
             lines.append("\nWelcome to Knowledge Forge Chat! Type /help for commands.")
-            
+
             await self.display.show_status("\n".join(lines))
-    
+
     async def get_user_input(self) -> Optional[str]:
         """Get input from the user with prompt_toolkit support for auto-completion."""
         try:
             # Try to use prompt_toolkit for better input experience
             import sys
+
             if sys.stdin.isatty():
                 try:
                     from prompt_toolkit import PromptSession
                     from prompt_toolkit.completion import Completer, Completion
                     from prompt_toolkit.formatted_text import FormattedText
                     from prompt_toolkit.styles import Style
-                    
+
                     # Custom completer class for commands
                     class CommandCompleter(Completer):
                         def __init__(self, commands_dict, aliases_dict):
@@ -100,43 +100,43 @@ class ChatController:
                             for alias in aliases_dict.keys():
                                 self.all_commands.append(f"/{alias}")
                             self.all_commands.sort()
-                        
+
                         def get_completions(self, document, complete_event):
                             text = document.text_before_cursor.lstrip()
-                            
+
                             # If text starts with /, show command completions
-                            if text.startswith('/'):
+                            if text.startswith("/"):
                                 # Get the partial command (including the /)
                                 partial = text.lower()
-                                
+
                                 # Find all matching commands
                                 for cmd in self.all_commands:
                                     if cmd.lower().startswith(partial):
                                         # Calculate the completion text (what to add)
-                                        completion_text = cmd[len(text):]
+                                        completion_text = cmd[len(text) :]
                                         yield Completion(
                                             completion_text,
                                             start_position=0,
                                             display=cmd,  # Show full command in menu
-                                            display_meta=self._get_description(cmd)
+                                            display_meta=self._get_description(cmd),
                                         )
-                            
+
                             # If just typed /, show all commands
-                            elif text == '':
+                            elif text == "":
                                 word_before_cursor = document.get_word_before_cursor(WORD=True)
-                                if word_before_cursor == '/':
+                                if word_before_cursor == "/":
                                     for cmd in self.all_commands:
                                         yield Completion(
                                             cmd[1:],  # Remove the leading /
                                             start_position=-1,  # Replace the /
                                             display=cmd,
-                                            display_meta=self._get_description(cmd)
+                                            display_meta=self._get_description(cmd),
                                         )
-                        
+
                         def _get_description(self, cmd_with_slash):
                             # Remove leading slash
-                            cmd = cmd_with_slash[1:] if cmd_with_slash.startswith('/') else cmd_with_slash
-                            
+                            cmd = cmd_with_slash[1:] if cmd_with_slash.startswith("/") else cmd_with_slash
+
                             # Check if it's an alias
                             if cmd in self.aliases:
                                 actual_cmd = self.commands[self.aliases[cmd]]
@@ -144,32 +144,31 @@ class ChatController:
                             elif cmd in self.commands:
                                 return self.commands[cmd].description
                             return ""
-                    
+
                     # Create custom completer
                     completer = CommandCompleter(self.commands.commands, self.commands.aliases)
-                    
+
                     # Create style
-                    style = Style.from_dict({
-                        'prompt': 'bold cyan',
-                        '': '#ffffff',  # Default text color
-                    })
-                    
+                    style = Style.from_dict(
+                        {
+                            "prompt": "bold cyan",
+                            "": "#ffffff",  # Default text color
+                        }
+                    )
+
                     # Create prompt session with custom completer
                     session = PromptSession(
                         completer=completer,
                         complete_while_typing=True,
                         style=style,
-                        complete_style='MULTI_COLUMN',  # Show completions in columns
-                        mouse_support=True  # Enable mouse support
+                        complete_style="MULTI_COLUMN",  # Show completions in columns
+                        mouse_support=True,  # Enable mouse support
                     )
-                    
+
                     # Use prompt_toolkit with auto-completion
                     loop = asyncio.get_event_loop()
                     future = loop.run_in_executor(
-                        None,
-                        lambda: session.prompt(
-                            FormattedText([('class:prompt', 'You: ')])
-                        )
+                        None, lambda: session.prompt(FormattedText([("class:prompt", "You: ")]))
                     )
                     user_input = await future
                     return user_input.strip()
@@ -180,9 +179,9 @@ class ChatController:
                         print(f"DEBUG: prompt_toolkit error: {e}")
         except:
             pass
-        
+
         # Fallback to display method or basic input
-        if hasattr(self.display, 'prompt_for_input'):
+        if hasattr(self.display, "prompt_for_input"):
             return await self.display.prompt_for_input()
         else:
             # Basic fallback
@@ -193,17 +192,17 @@ class ChatController:
                 return user_input.strip()
             except (EOFError, KeyboardInterrupt):
                 return None
-    
+
     async def process_input(self, user_input: str) -> bool:
         """
         Process user input - either as command or message.
-        
+
         Returns:
             True to continue chat, False to exit
         """
         # Parse for commands
         command_name, args = self.commands.parse_command(user_input)
-        
+
         if command_name is not None:
             # Handle command
             return await self.handle_command(command_name, args)
@@ -211,69 +210,67 @@ class ChatController:
             # Send as message
             await self.send_message(user_input)
             return True
-    
+
     async def handle_command(self, command_name: str, args: str) -> bool:
         """
         Handle a chat command.
-        
+
         Returns:
             True to continue chat, False to exit
         """
         command = self.commands.get_command(command_name)
-        
+
         if command is None:
-            await self.display.show_error(
-                f"Unknown command: /{command_name}\n"
-                f"Type /help to see available commands."
-            )
+            await self.display.show_error(f"Unknown command: /{command_name}\nType /help to see available commands.")
             return True
-        
+
         # Execute command
         return await command.execute(args, self)
-    
+
     async def send_message(self, content: str) -> None:
         """Send a message and get response."""
         # Add user message to conversation
         user_message = self.conversation.add_user_message(content)
-        
+
         # Show user message if display supports it
-        if hasattr(self.display, 'show_user_message'):
+        if hasattr(self.display, "show_user_message"):
             await self.display.show_user_message(content)
-        
+
         # Mark display as in chat mode
-        if hasattr(self.display, 'console'):
+        if hasattr(self.display, "console"):
             self.display._in_chat_mode = True
-        
+
         # Prepare request with conversation history
         request = self.prepare_request()
-        
+
         if self.config.debug:
             print(f"\nDEBUG: Conversation has {self.conversation.get_message_count()} messages")
             print("DEBUG: Conversation history:")
             for i, msg in enumerate(self.conversation.messages):
                 print(f"  [{i}] {msg.role}: {msg.content[:50]}...")
-        
+
         # Create stream handler
         handler = StreamHandler(self.display, debug=self.config.debug)
-        
+
         # Store the final formatted content
         final_content = None
-        
+
         try:
             # Import SDK from parent directory
             import sys
             from pathlib import Path
+
             sys.path.insert(0, str(Path(__file__).parent.parent.parent))
             from sdk import astream_response
-            
+
             # Stream the response
             if self.config.debug:
                 print(f"DEBUG: Request keys: {list(request.keys())}")
                 print(f"DEBUG: Request: {json.dumps(request, indent=2)[:500]}...")
-            
+
             event_stream = astream_response(**request)
             response = await handler.handle_stream(event_stream, content)
-            
+
             if response:
                 # Extract and add the assistant's response
                 if "output" in response:
@@ -290,30 +287,33 @@ class ChatController:
                                 if self.config.debug:
                                     print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
                                 break  # Only add the first assistant message
-                    
+
                     if self.config.debug and not assistant_added:
                         print("DEBUG: No assistant message found in response output")
-                        print(f"DEBUG: Response output items: {[item.get('type') for item in response.get('output', [])]}")
-                
+                        print(
+                            f"DEBUG: Response output items: {[item.get('type') for item in response.get('output', [])]}"
+                        )
+
                 # Update conversation metadata
                 if "model" in response:
                     self.conversation.model = response["model"]
-            
+
         except Exception as e:
             await self.display.show_error(f"Failed to get response: {str(e)}")
             if self.config.debug:
                 import traceback
+
                 traceback.print_exc()
         finally:
             # Unmark chat mode
-            if hasattr(self.display, '_in_chat_mode'):
-                delattr(self.display, '_in_chat_mode')
-    
+            if hasattr(self.display, "_in_chat_mode"):
+                delattr(self.display, "_in_chat_mode")
+
     def prepare_request(self) -> Dict[str, Any]:
         """Prepare API request with conversation history."""
         # Update tools in case they changed
         self.conversation.tools = self.prepare_tools()
-        
+
         # The SDK expects "input_messages"
         request = {
             "input_messages": self.conversation.to_api_format(),
@@ -322,22 +322,22 @@ class ChatController:
             "store": True,
             "debug": self.config.debug,
         }
-        
+
         # Add tools if any
         if self.conversation.tools:
             request["tools"] = self.conversation.tools
-        
+
         return request
-    
+
     def extract_text_from_message(self, message_item: Dict[str, Any]) -> Optional[str]:
         """Extract text content from a message item."""
         # Handle different content formats
         content = message_item.get("content", [])
-        
+
         # If content is a string, return it directly
         if isinstance(content, str):
             return content
-        
+
         # If content is a list, look for text items
         if isinstance(content, list):
             for content_item in content:
@@ -351,5 +351,5 @@ class ChatController:
                 elif isinstance(content_item, str):
                     # If content item is just a string
                     return content_item
-        
+
         return None

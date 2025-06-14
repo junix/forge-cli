@@ -5,12 +5,14 @@ from typing import TypedDict, List, Optional, Literal, Any, Union
 
 class SummaryItem(TypedDict):
     """Summary item within reasoning blocks."""
+
     text: str
     type: Literal["summary_text"]
 
 
 class ReasoningItem(TypedDict):
     """Reasoning output item containing thinking/analysis."""
+
     id: str
     summary: List[SummaryItem]
     type: Literal["reasoning"]
@@ -20,6 +22,7 @@ class ReasoningItem(TypedDict):
 
 class FileSearchCall(TypedDict):
     """File search tool call output item."""
+
     id: str
     queries: List[str]
     status: str
@@ -30,6 +33,7 @@ class FileSearchCall(TypedDict):
 
 class DocumentFinderCall(TypedDict):
     """Document finder tool call output item."""
+
     id: str
     queries: List[str]
     count: int
@@ -39,6 +43,7 @@ class DocumentFinderCall(TypedDict):
 
 class WebSearchCall(TypedDict):
     """Web search tool call output item."""
+
     id: str
     queries: List[str]
     status: str
@@ -48,6 +53,7 @@ class WebSearchCall(TypedDict):
 
 class FileReaderCall(TypedDict):
     """File reader tool call output item."""
+
     id: str
     query: Optional[str]
     doc_ids: List[str]
@@ -59,6 +65,7 @@ class FileReaderCall(TypedDict):
 
 class Annotation(TypedDict):
     """Citation annotation within message content."""
+
     file_id: Optional[str]
     index: int
     type: Literal["file_citation", "url_citation"]
@@ -71,6 +78,7 @@ class Annotation(TypedDict):
 
 class MessageContent(TypedDict):
     """Content within a message item."""
+
     annotations: List[Annotation]
     text: str
     type: Literal["output_text"]
@@ -78,6 +86,7 @@ class MessageContent(TypedDict):
 
 class MessageItem(TypedDict):
     """Message output item containing the final response."""
+
     id: str
     content: List[MessageContent]
     role: Literal["assistant"]
@@ -93,5 +102,5 @@ OutputItem = Union[
     WebSearchCall,
     FileReaderCall,
     MessageItem,
-    dict  # For unknown/future types
+    dict,  # For unknown/future types
 ]
