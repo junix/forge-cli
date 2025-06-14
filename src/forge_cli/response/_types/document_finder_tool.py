@@ -4,7 +4,8 @@ from typing import Any, Dict, List, Optional, Union
 from typing_extensions import Literal
 
 from ._models import BaseModel
-from message._types.tool import Tool, JSONSchemaParameters, JSONSchemaProperty
+from .function_definition import FunctionDefinition
+from .function_parameters import FunctionParameters
 
 __all__ = ["DocumentFinderTool"]
 
