@@ -426,4 +426,11 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        # Exit silently on keyboard interrupt (Ctrl+C)
+        sys.exit(0)
+    except Exception:
+        # Exit silently on other exceptions
+        sys.exit(1)
