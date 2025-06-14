@@ -80,7 +80,7 @@ class RichDisplay(BaseDisplay):
         try:
             panel = Panel(
                 Markdown(content),
-                title=metadata.get("question", "Processing") if metadata else "Processing",
+                title="Response",
                 subtitle=subtitle,
                 border_style="green",
             )
@@ -89,7 +89,7 @@ class RichDisplay(BaseDisplay):
             # Fallback to plain text if markdown fails
             panel = Panel(
                 Text(content),
-                title=metadata.get("question", "Processing") if metadata else "Processing",
+                title="Response",
                 subtitle=subtitle,
                 border_style="green",
             )
