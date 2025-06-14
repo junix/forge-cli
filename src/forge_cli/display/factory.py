@@ -1,16 +1,17 @@
 """Factory for creating display instances with v1/v2 compatibility."""
 
 import sys
-from typing import Union
 
 from ..config import SearchConfig
 from .base import BaseDisplay  # v1 interface
-from .v2.base import Display as DisplayV2  # v2 interface
 from .v2.adapter import V1ToV2Adapter
+from .v2.base import Display as DisplayV2  # v2 interface
+from .v2.renderers.json import JsonRenderer
 from .v2.renderers.plain import PlainRenderer
+from .v2.renderers.rich import RichRenderer
 
 
-def create_display(config: SearchConfig) -> Union[BaseDisplay, DisplayV2]:
+def create_display(config: SearchConfig) -> BaseDisplay | DisplayV2:
     """Factory function with feature flag support.
 
     Args:
@@ -36,16 +37,16 @@ def _create_v2_display(config: SearchConfig) -> DisplayV2:
     """
     # Select renderer based on config
     if config.json_output:
-        # TODO: Implement JsonRenderer
-        renderer = PlainRenderer()  # Fallback for now
-    elif not config.use_rich or not sys.stdout.isatty():
+        renderer = JsonRenderer(include_events=config.debug, pretty=True)
+    elif not config.use_rich:
         renderer = PlainRenderer()
     else:
         try:
-            # TODO: Implement RichRenderer
-            renderer = PlainRenderer()  # Fallback for now
-        except ImportError:
+            renderer = RichRenderer(show_reasoning=config.show_reasoning)
+        except ImportError as e:
             # Fallback if rich not available
+            if config.display_api_debug:
+                print(f"[DEBUG] Rich import failed: {e}", file=sys.stderr)
             renderer = PlainRenderer()
 
     if config.display_api_debug:
@@ -64,9 +65,9 @@ def _create_v1_display(config: SearchConfig) -> BaseDisplay:
         A v1 BaseDisplay instance
     """
     # Import existing displays
-    from .rich_display import RichDisplay
-    from .plain_display import PlainDisplay
     from .json_display import JsonDisplay
+    from .plain_display import PlainDisplay
+    from .rich_display import RichDisplay
 
     if config.json_output:
         if config.chat_mode:
