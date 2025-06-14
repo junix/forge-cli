@@ -1,6 +1,6 @@
 """Document finder tool call processor."""
 
-from typing import Dict, Any
+from typing import Dict, Union, List
 from .base import BaseToolCallProcessor
 
 

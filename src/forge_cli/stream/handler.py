@@ -1,6 +1,6 @@
 """Main stream handler for processing API responses."""
 
-from typing import AsyncIterator, Tuple, Dict, Any, Optional
+from typing import AsyncIterator, Tuple, Dict, Union, List, Optional
 import time
 
 from ..models.state import StreamState, ToolStatus
@@ -24,8 +24,8 @@ class StreamHandler:
         self.search_completed_time: Optional[float] = None
 
     async def handle_stream(
-        self, event_stream: AsyncIterator[Tuple[str, Dict[str, Any]]], question: str
-    ) -> Optional[Dict[str, Any]]:
+        self, event_stream: AsyncIterator[Tuple[str, Dict[str, Union[str, int, float, bool, List, Dict]]]], question: str
+    ) -> Optional[Dict[str, Union[str, int, float, bool, List, Dict]]]:
         """
         Process event stream and return final response.
 
@@ -142,7 +142,7 @@ class StreamHandler:
         tool_patterns = ["_call.searching", "_call.in_progress", "_call.completed"]
         return any(pattern in event_type for pattern in tool_patterns)
 
-    async def _handle_tool_event(self, event_type: str, event_data: Dict[str, Any]) -> None:
+    async def _handle_tool_event(self, event_type: str, event_data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle tool-specific events."""
         # Extract tool type from event
         tool_type = event_type
@@ -181,7 +181,7 @@ class StreamHandler:
             if self.search_start_time and self.search_completed_time:
                 tool_state.retrieval_time = (self.search_completed_time - self.search_start_time) * 1000
 
-    def _extract_queries(self, event_data: Dict[str, Any]) -> list:
+    def _extract_queries(self, event_data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> List[str]:
         """Extract queries from various event data structures."""
         if not isinstance(event_data, dict):
             return []
@@ -197,7 +197,7 @@ class StreamHandler:
 
         return []
 
-    async def _log_debug_info(self, event_type: str, event_data: Any) -> None:
+    async def _log_debug_info(self, event_type: str, event_data: Union[Dict[str, Union[str, int, float, bool, List, Dict]], str, int, float, bool]) -> None:
         """Log debug information for events."""
         print(f"\nDEBUG: Event: {event_type}")
 

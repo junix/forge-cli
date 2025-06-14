@@ -1,7 +1,7 @@
 """Rich renderer - interactive terminal UI with live updates."""
 
 import time
-from typing import Any, Optional
+from typing import Dict, Union, List, Optional
 
 try:
     from rich.console import Console
@@ -71,7 +71,7 @@ class RichRenderer(BaseRenderer):
             transient=True,
         )
 
-    def render_stream_event(self, event_type: str, data: dict[str, Any]) -> None:
+    def render_stream_event(self, event_type: str, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Render a stream event with Rich UI."""
         # In chat mode, we allow reuse of the renderer after finalization
         if not self._in_chat_mode:

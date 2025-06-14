@@ -3,7 +3,7 @@
 import json
 import sys
 import time
-from typing import Any, TextIO
+from typing import Dict, Union, List, TextIO
 
 from ..base import BaseRenderer
 from ..events import Event, EventType
@@ -41,7 +41,7 @@ class JsonRenderer(BaseRenderer):
             "metadata": {"start_time": self._start_time, "model": "", "effort": "", "temperature": 0.0},
         }
 
-    def render_stream_event(self, event_type: str, data: dict[str, Any]) -> None:
+    def render_stream_event(self, event_type: str, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Process and accumulate event data."""
         self._ensure_not_finalized()
 

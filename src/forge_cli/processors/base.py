@@ -1,7 +1,7 @@
 """Base processor protocol for output items."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Dict, Union, List, Optional
 
 
 class OutputProcessor(ABC):
@@ -13,7 +13,7 @@ class OutputProcessor(ABC):
         pass
 
     @abstractmethod
-    def process(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def process(self, item: Dict[str, Union[str, int, float, bool, List, Dict]]) -> Optional[Dict[str, Union[str, int, float, bool, List, Dict]]]:
         """
         Process the output item and return processed data.
 
@@ -26,7 +26,7 @@ class OutputProcessor(ABC):
         pass
 
     @abstractmethod
-    def format(self, processed: Dict[str, Any]) -> str:
+    def format(self, processed: Dict[str, Union[str, int, float, bool, List, Dict]]) -> str:
         """
         Format processed item for display.
 

@@ -1,6 +1,6 @@
 """Output type definitions matching the Knowledge Forge API response structure."""
 
-from typing import TypedDict, List, Optional, Literal, Any, Union
+from typing import TypedDict, List, Optional, Literal, Dict, Union
 
 
 class SummaryItem(TypedDict):
@@ -28,7 +28,7 @@ class FileSearchCall(TypedDict):
     status: str
     type: Literal["file_search_call"]
     file_id: Optional[str]
-    public_results: Optional[Any]
+    public_results: Optional[List[Dict[str, Union[str, int, float]]]]
 
 
 class DocumentFinderCall(TypedDict):
@@ -48,7 +48,7 @@ class WebSearchCall(TypedDict):
     queries: List[str]
     status: str
     type: Literal["web_search_call"]
-    results: Optional[List[Any]]
+    results: Optional[List[Dict[str, Union[str, int, float]]]]
 
 
 class FileReaderCall(TypedDict):

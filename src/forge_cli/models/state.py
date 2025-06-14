@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Any, Optional
 
 
 class ToolStatus(Enum):
@@ -20,13 +19,13 @@ class ToolState:
 
     tool_type: str = ""
     query: str = ""
-    queries: List[str] = field(default_factory=list)
-    results_count: Optional[int] = None
+    queries: list[str] = field(default_factory=list)
+    results_count: int | None = None
     status: ToolStatus = ToolStatus.IDLE
-    query_time: Optional[float] = None
-    retrieval_time: Optional[float] = None
+    query_time: float | None = None
+    retrieval_time: float | None = None
 
-    def to_display_info(self) -> Dict[str, Any]:
+    def to_display_info(self) -> dict[str, str | int | float]:
         """Convert to display information dictionary."""
         info = {"tool_type": self.tool_type}
 
@@ -48,32 +47,32 @@ class StreamState:
     """Manages complete state during streaming."""
 
     # Current output items from latest snapshot
-    output_items: List[Dict[str, Any]] = field(default_factory=list)
+    output_items: list[dict[str, str | int | float | bool | list | dict]] = field(default_factory=list)
 
     # Tool states by tool type
-    tool_states: Dict[str, ToolState] = field(default_factory=dict)
+    tool_states: dict[str, ToolState] = field(default_factory=dict)
 
     # File ID to filename mapping
-    file_id_to_name: Dict[str, str] = field(default_factory=dict)
+    file_id_to_name: dict[str, str] = field(default_factory=dict)
 
     # Extracted citations
-    citations: List[Dict[str, Any]] = field(default_factory=list)
+    citations: list[dict[str, str | int]] = field(default_factory=list)
 
     # Current reasoning text
     current_reasoning: str = ""
 
     # Usage statistics
-    usage: Dict[str, int] = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
+    usage: dict[str, int] = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
 
     # Event counters
     event_count: int = 0
     response_event_count: int = 0
 
     # Response metadata
-    response_id: Optional[str] = None
-    model: Optional[str] = None
+    response_id: str | None = None
+    model: str | None = None
 
-    def update_from_snapshot(self, snapshot: Dict[str, Any]) -> None:
+    def update_from_snapshot(self, snapshot: dict[str, str | int | float | list | dict]) -> None:
         """Update state from response snapshot."""
         if "output" in snapshot:
             self.output_items = snapshot["output"]
@@ -138,9 +137,9 @@ class StreamState:
 
         return self.tool_states[base_tool_type]
 
-    def get_completed_tools(self) -> List[Dict[str, Any]]:
+    def get_completed_tools(self) -> list[dict[str, str | int | float]]:
         """Get display info for all completed tools."""
-        completed = []
+        completed: list[dict[str, str | int | float]] = []
 
         for tool_state in self.tool_states.values():
             if tool_state.status == ToolStatus.COMPLETED:

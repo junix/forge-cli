@@ -1,7 +1,7 @@
 """Event type definitions for streaming responses."""
 
 from enum import Enum
-from typing import TypedDict, Any, Optional
+from typing import TypedDict, Dict, List, Union, Optional
 
 
 class EventType(Enum):
@@ -52,5 +52,5 @@ class StreamEvent(TypedDict):
     """Structure of a streaming event."""
 
     type: str
-    data: Any
-    usage: Optional[dict]
+    data: Union[Dict[str, Union[str, int, float, bool, List, Dict]], str, int, float, bool]
+    usage: Optional[Dict[str, Union[str, int]]]

@@ -1,6 +1,7 @@
 """Processor for message output items."""
 
-from typing import Dict, Any, Optional, List
+from typing import Any
+
 from .base import OutputProcessor
 
 
@@ -11,7 +12,9 @@ class MessageProcessor(OutputProcessor):
         """Check if this processor can handle the item type."""
         return item_type == "message"
 
-    def process(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def process(
+        self, item: dict[str, str | int | float | bool | list | dict]
+    ) -> dict[str, str | int | float | bool | list | dict] | None:
         """Extract text and annotations from message content."""
         if item.get("role") != "assistant":
             return None
@@ -34,7 +37,7 @@ class MessageProcessor(OutputProcessor):
             "status": item.get("status", "completed"),
         }
 
-    def format(self, processed: Dict[str, Any]) -> str:
+    def format(self, processed: dict[str, str | int | float | bool | list | dict]) -> str:
         """Format message with text and citations."""
         text = processed.get("text", "")
         annotations = processed.get("annotations", [])
@@ -54,7 +57,7 @@ class MessageProcessor(OutputProcessor):
 
         return "\n".join(parts)
 
-    def _process_annotations(self, annotations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _process_annotations(self, annotations: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Process annotations into citation format."""
         citations = []
 
@@ -123,7 +126,7 @@ class MessageProcessor(OutputProcessor):
 
         return citations
 
-    def _format_citations_table(self, citations: List[Dict[str, Any]]) -> str:
+    def _format_citations_table(self, citations: list[dict[str, Any]]) -> str:
         """Format citations as a markdown table."""
         if not citations:
             return ""

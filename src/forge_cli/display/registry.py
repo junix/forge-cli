@@ -1,7 +1,7 @@
 """Display registry module for rendering implementations."""
 
 from collections.abc import Callable
-from typing import Any
+from typing import Union
 
 from .v2.base import Display, Renderer
 
@@ -15,7 +15,7 @@ class DisplayRegistry:
 
     _displays: dict[str, type[Display]] = {}
     _factories: dict[str, Callable[..., Display]] = {}
-    _conditions: dict[str, Callable[[Any], bool]] = {}
+    _conditions: dict[str, Callable[[object], bool]] = {}
 
     @classmethod
     def register_display(
@@ -23,7 +23,7 @@ class DisplayRegistry:
         name: str,
         display_cls: type[Display],
         factory: Callable[..., Display] = None,
-        condition: Callable[[Any], bool] = None,
+        condition: Callable[[object], bool] = None,
     ):
         """Register a display implementation.
 
@@ -63,7 +63,7 @@ class DisplayRegistry:
         return cls._displays[name](**kwargs)
 
     @classmethod
-    def get_display_for_config(cls, config: Any) -> Display:
+    def get_display_for_config(cls, config: object) -> Display:
         """Get the appropriate display for the given configuration.
 
         Evaluates registered conditions and returns the first matching display.

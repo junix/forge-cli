@@ -1,7 +1,7 @@
 """File reader tool call processor."""
 
 import re
-from typing import Dict, Any
+from typing import Dict, Union, List
 from .base import BaseToolCallProcessor
 
 

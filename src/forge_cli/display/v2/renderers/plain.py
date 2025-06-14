@@ -1,7 +1,7 @@
 """Plain text renderer - simple output without formatting."""
 
 import sys
-from typing import Any, Dict, Optional, TextIO
+from typing import Dict, Union, List, Optional, TextIO
 
 from ..base import BaseRenderer
 from ..events import EventType
@@ -23,7 +23,7 @@ class PlainRenderer(BaseRenderer):
         self._active_tools = {}
         self._accumulated_text = ""  # Store text like v1
 
-    def render_stream_event(self, event_type: str, data: Dict[str, Any]) -> None:
+    def render_stream_event(self, event_type: str, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Render a stream event as plain text."""
         self._ensure_not_finalized()
 

@@ -1,6 +1,6 @@
 """Base class for tool call processors."""
 
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Union, List, Optional, Tuple
 from ..base import OutputProcessor
 
 
@@ -21,7 +21,7 @@ class BaseToolCallProcessor(OutputProcessor):
         """Check if this processor can handle the item type."""
         return item_type == f"{self.TOOL_TYPE}_call"
 
-    def process(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def process(self, item: Dict[str, Union[str, int, float, bool, List, Dict]]) -> Optional[Dict[str, Union[str, int, float, bool, List, Dict]]]:
         """Process tool call output item."""
         processed = {
             "type": self.TOOL_TYPE,
@@ -42,11 +42,11 @@ class BaseToolCallProcessor(OutputProcessor):
 
         return processed
 
-    def _add_tool_specific_data(self, item: Dict[str, Any], processed: Dict[str, Any]) -> None:
+    def _add_tool_specific_data(self, item: Dict[str, Union[str, int, float, bool, List, Dict]], processed: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Override in subclasses to add tool-specific data."""
         pass
 
-    def format(self, processed: Dict[str, Any]) -> str:
+    def format(self, processed: Dict[str, Union[str, int, float, bool, List, Dict]]) -> str:
         """Format processed item for display."""
         parts = []
 
@@ -72,6 +72,6 @@ class BaseToolCallProcessor(OutputProcessor):
 
         return "\n".join(parts)
 
-    def _add_tool_specific_formatting(self, processed: Dict[str, Any], parts: list) -> None:
+    def _add_tool_specific_formatting(self, processed: Dict[str, Union[str, int, float, bool, List, Dict]], parts: List[str]) -> None:
         """Override in subclasses to add tool-specific formatting."""
         pass

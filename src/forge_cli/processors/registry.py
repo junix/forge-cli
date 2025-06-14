@@ -1,6 +1,6 @@
 """Central registry for output processors."""
 
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Union, List
 from .base import OutputProcessor
 
 
@@ -32,7 +32,7 @@ class ProcessorRegistry:
         """
         return self._processors.get(output_type)
 
-    def process_item(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def process_item(self, item: Dict[str, Union[str, int, float, bool, List, Dict]]) -> Optional[Dict[str, Union[str, int, float, bool, List, Dict]]]:
         """
         Process an output item using appropriate processor.
 
@@ -49,7 +49,7 @@ class ProcessorRegistry:
             return processor.process(item)
         return None
 
-    def format_item(self, item: Dict[str, Any]) -> Optional[str]:
+    def format_item(self, item: Dict[str, Union[str, int, float, bool, List, Dict]]) -> Optional[str]:
         """
         Format an output item for display.
 

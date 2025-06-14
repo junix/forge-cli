@@ -1,6 +1,6 @@
 """File search tool call processor."""
 
-from typing import Dict, Any
+from typing import Dict, Union, List
 from .base import BaseToolCallProcessor
 
 
@@ -16,7 +16,7 @@ class FileSearchProcessor(BaseToolCallProcessor):
         "results_text": "个相关内容块",
     }
 
-    def _add_tool_specific_data(self, item: Dict[str, Any], processed: Dict[str, Any]) -> None:
+    def _add_tool_specific_data(self, item: Dict[str, Union[str, int, float, bool, List, Dict]], processed: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Add file search specific data."""
         # Add file_id if searching specific file
         file_id = item.get("file_id")
