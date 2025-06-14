@@ -7,6 +7,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# Import the TestDataset loader
+from forge_cli.dataset import TestDataset
+
 # Add parent directory to path for SDK import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 # Use absolute imports from top-level directory
@@ -264,6 +267,12 @@ async def main():
         default=None,
         help="Vector store ID(s) to search in (can specify multiple)",
     )
+    # Dataset argument
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        help="Path to dataset JSON file with vectorstore ID and file configurations",
+    )
 
     # Model arguments
     parser.add_argument(
@@ -398,8 +407,26 @@ async def main():
         print("Error: --chat and --json options cannot be used together")
         return
 
+    # Handle dataset if provided
+    dataset = None
+    if hasattr(args, "dataset") and args.dataset:
+        try:
+            dataset = TestDataset.from_json(args.dataset)
+            if not args.quiet:
+                print(f"Loaded dataset from {args.dataset}")
+                print(f"  Vector Store ID: {dataset.vectorstore_id}")
+                print(f"  Files: {len(dataset.files)}")
+        except Exception as e:
+            print(f"Error loading dataset: {e}")
     # Create configuration
     config = SearchConfig.from_args(args)
+
+    # Use vectorstore ID from dataset if no command line vec_ids provided
+    if dataset and dataset.vectorstore_id and not args.vec_id:
+        config.vec_ids = [dataset.vectorstore_id]
+        # Enable file-search tool when using dataset
+        if "file-search" not in config.enabled_tools:
+            config.enabled_tools.append("file-search")
 
     # Use default vector IDs if none provided
     if not config.vec_ids:
