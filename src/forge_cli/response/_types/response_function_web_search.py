@@ -1,17 +1,21 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from message._types.tool_call import ToolCall
+from typing import Literal
+
 from pydantic import PrivateAttr
+
 from .response_function_tool_call import (
     ResponseFunctionToolCall,
 )
-from typing_extensions import Literal
+
 if TYPE_CHECKING:
-    from .annotations import AnnotationURLCitation
     from _types.chunk import Chunk
+
+    from .annotations import AnnotationURLCitation
 
 from ._models import BaseModel
 
@@ -21,42 +25,41 @@ __all__ = ["ResponseFunctionWebSearch", "ResponseFunctionWebSearchResult"]
 class ResponseFunctionWebSearchResult(BaseModel):
     """Structured result from a web search operation."""
 
-    title: Optional[str] = None
+    title: str | None = None
     """The title of the web page."""
 
-    url: Optional[str] = None
+    url: str | None = None
     """The URL of the web page."""
 
-    snippet: Optional[str] = None
+    snippet: str | None = None
     """A snippet or description of the web page content."""
 
-    site_name: Optional[str] = None
+    site_name: str | None = None
     """The name of the source website."""
 
-    date_published: Optional[str] = None
+    date_published: str | None = None
     """The publication date of the content."""
 
-    score: Optional[float] = None
+    score: float | None = None
     """The relevance score of the result - a value between 0 and 1."""
 
-    metadata: Optional[Dict[str, Any]] = None
-
+    metadata: dict[str, Any] | None = None
 
     @property
-    def citation_id(self) -> Optional[Union[int, str]]:
+    def citation_id(self) -> int | str | None:
         """The citation sequence number for this result."""
         if self.metadata is None:
             return None
         return self.metadata.get("citation_id")
 
     @citation_id.setter
-    def citation_id(self, value: Union[int, str]) -> None:
+    def citation_id(self, value: int | str) -> None:
         """Set the citation sequence number for this result."""
         if self.metadata is None:
             self.metadata = {}
         self.metadata["citation_id"] = value
 
-    def set_citation_id(self, citation_id: Union[int, str]) -> None:
+    def set_citation_id(self, citation_id: int | str) -> None:
         """Set the citation sequence number for this result (method interface)."""
         self.citation_id = citation_id
 
@@ -77,34 +80,29 @@ class ResponseFunctionWebSearchResult(BaseModel):
             Chunk: A Chunk object containing the search result content and metadata.
         """
         from _types.chunk import Chunk
-        from forge_cli.common.logger import logger
 
         # Create a unique ID for the chunk
         chunk_id = f"web-search-{index}"
 
         # Create metadata with relevant information
         metadata = {} if self.metadata is None else dict(self.metadata)
-        metadata.update({
-            "annotation_type": "url_citation",
-            "doc_url": self.url,
-            "doc_title": self.title,
-            "site": self.site_name,
-            "date": self.date_published
-        })
+        metadata.update(
+            {
+                "annotation_type": "url_citation",
+                "doc_url": self.url,
+                "doc_title": self.title,
+                "site": self.site_name,
+                "date": self.date_published,
+            }
+        )
 
         # Create and return the chunk
-        chunk = Chunk(
-            id=chunk_id,
-            content=self.snippet,
-            index=index,
-            metadata=metadata
-        )
+        chunk = Chunk(id=chunk_id, content=self.snippet, index=index, metadata=metadata)
         return chunk
-
 
     def as_annotation(self) -> Optional["AnnotationURLCitation"]:
         """Convert this web search result to an annotation using URL as document reference.
-        
+
         For web search results, there is no document segment index since they are
         not part of a structured document. Uses URL as the document reference.
 
@@ -135,15 +133,15 @@ class ResponseFunctionWebSearchResult(BaseModel):
             url=self.url,
             title=self.title or "Web Result",
             start_index=-1,  # No document position for web results
-            end_index=-1,    # No document position for web results
+            end_index=-1,  # No document position for web results
             snippet=snippet or "",
             favicon=favicon,
         )
 
 
 class ResponseFunctionWebSearch(BaseModel):
-    _results: List[ResponseFunctionWebSearchResult] = PrivateAttr(default_factory=list)
-    _native_tool_call: Optional[ResponseFunctionToolCall] = PrivateAttr(default=None)
+    _results: list[ResponseFunctionWebSearchResult] = PrivateAttr(default_factory=list)
+    _native_tool_call: ResponseFunctionToolCall | None = PrivateAttr(default=None)
     """Private attribute that won't be included in serialization."""
 
     id: str
@@ -159,7 +157,7 @@ class ResponseFunctionWebSearch(BaseModel):
     """The search query used for web search."""
 
     @property
-    def results(self) -> List[ResponseFunctionWebSearchResult]:
+    def results(self) -> list[ResponseFunctionWebSearchResult]:
         return self._results
 
     def add_result(self, result: ResponseFunctionWebSearchResult) -> None:
@@ -168,10 +166,10 @@ class ResponseFunctionWebSearch(BaseModel):
         Args:
             result: Either a ResponseFunctionWebSearchResult object or a dict with result data
         """
-        assert  isinstance(result, ResponseFunctionWebSearchResult)
+        assert isinstance(result, ResponseFunctionWebSearchResult)
         self._results.append(result)
 
-    def add_results(self, results: List[ResponseFunctionWebSearchResult]) -> None:
+    def add_results(self, results: list[ResponseFunctionWebSearchResult]) -> None:
         """Add multiple web search results.
 
         Args:
@@ -306,18 +304,15 @@ class ResponseFunctionWebSearch(BaseModel):
             ToolCall: Internal ToolCall object for use throughout Knowledge Forge.
         """
         # Import ToolCall here to avoid circular imports
-        from message._types.tool_call import ToolCall, FunctionCall
-        
+        from message._types.tool_call import FunctionCall, ToolCall
+
         if self._native_tool_call is not None:
             # If we have a native tool call, extract its properties
             native = self._native_tool_call.to_chat_tool_call()
             return ToolCall(
                 id=native.id,
                 type="function",
-                function=FunctionCall(
-                    name=native.function.name,
-                    arguments=native.function.arguments
-                )
+                function=FunctionCall(name=native.function.name, arguments=native.function.arguments),
             )
 
         # Create a JSON string of the query
@@ -329,14 +324,10 @@ class ResponseFunctionWebSearch(BaseModel):
         return ToolCall(
             id=self.id,
             type="function",
-            function=FunctionCall(
-                name="web_search", 
-                arguments=arguments
-            ),
+            function=FunctionCall(name="web_search", arguments=arguments),
         )
-    
 
-    def as_chat_toolcall_result(self, **kwargs) -> Union[str, List["Chunk"]]:
+    def as_chat_toolcall_result(self, **kwargs) -> str | list["Chunk"]:
         """Convert the web search tool call results to either a string or list of Chunks.
 
         This method is kept for backward compatibility. It delegates to chunkify().
@@ -350,13 +341,13 @@ class ResponseFunctionWebSearch(BaseModel):
         """
         return self.chunkify()
 
-    def chunkify(self) -> Union[str, List["Chunk"]]:
+    def chunkify(self) -> str | list["Chunk"]:
         """Convert this web search tool call to chunks or return error message.
-        
+
         This method encapsulates the conversion logic for web search results.
         Returns a descriptive string if conversion isn't possible, otherwise
         returns a list of Chunk objects for further processing.
-        
+
         Returns:
             Union[str, List[Chunk]]: Error message string if conversion fails,
                                    or list of Chunk objects if successful
@@ -367,38 +358,38 @@ class ResponseFunctionWebSearch(BaseModel):
             DOC_URL_KEY,
             SCORE_KEY,
         )
-        
+
         # Check status
         if self.status == "failed":
             return "Web search failed - no results available."
-        
+
         if self.status == "incomplete":
             return "Web search incomplete - partial or no results available."
-            
+
         if self.status != "completed":
             logger.debug(f"ResponseFunctionWebSearch.chunkify: Unexpected status '{self.status}'")
             return f"Web search not completed - status: {self.status}"
-        
+
         # Check for results
         if not self._results:
             return "Web search completed but no results found."
-        
+
         # Import Chunk here to avoid circular imports
         from _types.chunk import Chunk
-        
+
         # Convert results to chunks
         chunks = []
         valid_results = 0
         source_type = "web_search_call"
-        
+
         for i, result in enumerate(self._results):
             try:
                 # Count results with actual content
                 if result.snippet and result.snippet.strip():
                     valid_results += 1
-                    
+
                     chunk_id = f"web_search_call_{i}"
-                    
+
                     # Build metadata
                     metadata = {
                         "annotation_type": "url_citation",
@@ -411,17 +402,17 @@ class ResponseFunctionWebSearch(BaseModel):
                             result.score if result.score is not None else (1.0 - (i * 0.1))
                         ),  # Use provided score or simple relevance scoring
                     }
-                    
+
                     # Add optional fields if available
                     if result.date_published:
                         metadata["date_published"] = result.date_published
                     if result.site_name:
                         metadata["site_name"] = result.site_name
-                    
+
                     # Merge original metadata (if any)
                     if result.metadata:
                         metadata.update(result.metadata)
-                    
+
                     chunk = Chunk(
                         id=chunk_id,
                         content=result.snippet,
@@ -429,17 +420,16 @@ class ResponseFunctionWebSearch(BaseModel):
                         metadata=metadata,
                     )
                     chunks.append(chunk)
-                
+
             except Exception as e:
                 logger.warning(f"Failed to convert web search result {i}: {e}")
                 continue
-        
+
         # Return appropriate message or chunks
         if not chunks:
             if valid_results == 0:
                 return "Web search completed but no results with content found."
             else:
                 return "Web search completed but failed to convert results to chunks."
-        
-        return chunks
 
+        return chunks
