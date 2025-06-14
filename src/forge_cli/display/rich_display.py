@@ -99,6 +99,17 @@ class RichDisplay(BaseDisplay):
         if self.live:
             panel = Panel(Text(status, style="yellow"), title="Status", border_style="yellow")
             self.live.update(panel)
+        else:
+            # Print directly to console when live display is not initialized
+            self.console.print(Panel(Text(status, style="yellow"), title="Status", border_style="yellow"))
+
+    async def show_status_rich(self, rich_content) -> None:
+        """Show a rich content (like Table) in the live display."""
+        if self.live:
+            self.live.update(rich_content)
+        else:
+            # Print directly to console when live display is not initialized
+            self.console.print(rich_content)
 
     async def show_error(self, error: str) -> None:
         """Show an error message."""

@@ -1,8 +1,7 @@
 """Command system for chat mode."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, TYPE_CHECKING
-import os
+from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .controller import ChatController
@@ -13,7 +12,7 @@ class ChatCommand(ABC):
 
     name: str = ""
     description: str = ""
-    aliases: List[str] = []
+    aliases: list[str] = []
 
     @abstractmethod
     async def execute(self, args: str, controller: "ChatController") -> bool:
@@ -67,18 +66,25 @@ class HelpCommand(ChatCommand):
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
         """Show help message."""
+        from rich.table import Table
+
         registry = controller.commands
 
-        lines = ["📋 Available Commands:"]
-        for cmd_name, cmd in sorted(registry.commands.items()):
-            if cmd.aliases:
-                aliases = f", /{', /'.join(cmd.aliases)}"
-            else:
-                aliases = ""
-            lines.append(f"  /{cmd.name}{aliases:<20} - {cmd.description}")
+        # Create a table for commands
+        table = Table(title="📋 Available Commands", show_header=True, header_style="bold cyan")
+        table.add_column("Command", style="green")
+        table.add_column("Aliases", style="yellow")
+        table.add_column("Description", style="white")
 
-        help_text = "\n".join(lines)
-        await controller.display.show_status(help_text)
+        # Add rows for each command
+        for cmd_name, cmd in sorted(registry.commands.items()):
+            command = f"/{cmd.name}"
+            aliases = f"/{', /'.join(cmd.aliases)}" if cmd.aliases else ""
+            description = cmd.description
+            table.add_row(command, aliases, description)
+
+        # Display the table
+        await controller.display.show_status_rich(table)
         return True
 
 
@@ -375,8 +381,8 @@ class CommandRegistry:
     """Registry for chat commands."""
 
     def __init__(self):
-        self.commands: Dict[str, ChatCommand] = {}
-        self.aliases: Dict[str, str] = {}
+        self.commands: dict[str, ChatCommand] = {}
+        self.aliases: dict[str, str] = {}
 
         # Register default commands
         self._register_default_commands()
