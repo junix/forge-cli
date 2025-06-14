@@ -115,6 +115,10 @@ class RichRenderer(BaseRenderer):
                     self._handle_citation_found(data)
                 case _:
                     pass
+        else:
+            # Handle custom events not in EventType enum
+            if event_type == "tool_status":
+                self._handle_tool_status(data)
 
         # Update display
         self._update_display()
@@ -239,6 +243,26 @@ class RichRenderer(BaseRenderer):
         }
         self._citations.append(citation)
 
+    def _handle_tool_status(self, data: dict[str, str | int | float | bool | list | dict]) -> None:
+        """Handle tool status update event."""
+        tool_type = data.get("tool_type", "unknown")
+        tool_id = f"{tool_type}_status"
+        
+        # Create or update tool entry
+        if tool_id not in self._active_tools:
+            self._active_tools[tool_id] = {
+                "type": tool_type,
+                "status": "running",
+                "started_at": time.time(),
+            }
+        
+        # Update with any provided data
+        if "query" in data:
+            self._active_tools[tool_id]["query"] = data["query"]
+        if "results_count" in data:
+            self._active_tools[tool_id]["results_count"] = data["results_count"]
+            self._active_tools[tool_id]["status"] = "completed"
+
     def _format_status_info(self, metadata: dict[str, str | int | float | bool | list | dict] | None = None) -> Text:
         """Format status information with usage statistics - matches v1 exactly."""
         status_info = Text()
@@ -317,15 +341,16 @@ class RichRenderer(BaseRenderer):
             
             # Determine panel style and title based on state
             if self._reasoning_active:
-                panel_title = status_info if status_info else "🤔 Thinking..."
                 border_style = "yellow"
+            elif self._active_tools:
+                border_style = "blue"
             else:
-                panel_title = status_info if status_info else "🔄 Streaming response..."
                 border_style = "green"
             
+            # Always show status info as title
             panel = Panel(
                 content_group,
-                title=panel_title,
+                title=status_info,
                 border_style=border_style,
             )
             self._live.update(panel)
@@ -333,7 +358,7 @@ class RichRenderer(BaseRenderer):
             # Show waiting panel
             panel = Panel(
                 Text("Waiting for response...", style="dim italic"),
-                title=status_info if status_info else "🔄 Streaming response...",
+                title=status_info,
                 border_style="blue",
             )
             self._live.update(panel)
