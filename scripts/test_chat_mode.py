@@ -6,12 +6,14 @@ import sys
 from pathlib import Path
 
 # Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from hello_file_search_refactored.config import SearchConfig
-from hello_file_search_refactored.display.plain_display import PlainDisplay
-from hello_file_search_refactored.chat.controller import ChatController
-from hello_file_search_refactored.processors.registry import initialize_default_registry
+from forge_cli.config import SearchConfig
+from forge_cli.display.v2.renderers.plain import PlainRenderer
+from forge_cli.display.v2.base import Display
+from forge_cli.display.v2.adapter import V1ToV2Adapter
+from forge_cli.chat.controller import ChatController
+from forge_cli.processors.registry import initialize_default_registry
 
 
 async def test_basic_chat():
@@ -26,8 +28,10 @@ async def test_basic_chat():
     config.enabled_tools = ["web-search"]
     config.model = "qwen-max-latest"
 
-    # Create display
-    display = PlainDisplay()
+    # Create display using v2 renderer
+    renderer = PlainRenderer()
+    display_v2 = Display(renderer)
+    display = V1ToV2Adapter(display_v2)
 
     # Create controller
     controller = ChatController(config, display)
@@ -43,7 +47,7 @@ async def test_command_parsing():
     """Test command parsing."""
     print("\n=== Testing Command Parsing ===")
 
-    from hello_file_search_refactored.chat.commands import CommandRegistry
+    from forge_cli.chat.commands import CommandRegistry
 
     registry = CommandRegistry()
 
@@ -68,7 +72,7 @@ async def test_conversation_state():
     """Test conversation state management."""
     print("\n=== Testing Conversation State ===")
 
-    from hello_file_search_refactored.models.conversation import ConversationState
+    from forge_cli.models.conversation import ConversationState
 
     # Create conversation
     conv = ConversationState(model="test-model")

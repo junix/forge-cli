@@ -10,7 +10,7 @@ import asyncio
 import sys
 
 # Import and run the main function from the refactored module
-from hello_file_search_refactored.main import main
+from forge_cli.main import main
 
 
 if __name__ == "__main__":

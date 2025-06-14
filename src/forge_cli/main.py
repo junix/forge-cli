@@ -31,10 +31,14 @@ def create_display(config: SearchConfig) -> BaseDisplay:
     try:
         return DisplayRegistry.get_display_for_config(config)
     except (ValueError, ImportError) as e:
-        # Fallback to plain display if there's an error
-        from forge_cli.display.plain_display import PlainDisplay
-
-        return PlainDisplay()
+        # Fallback to v2 plain renderer with v1 adapter if there's an error
+        from forge_cli.display.v2.renderers.plain import PlainRenderer
+        from forge_cli.display.v2.base import Display
+        from forge_cli.display.v2.adapter import V1ToV2Adapter
+        
+        renderer = PlainRenderer()
+        display_v2 = Display(renderer)
+        return V1ToV2Adapter(display_v2)
 
 
 def prepare_request(config: SearchConfig, question: str) -> dict[str, Any]:
