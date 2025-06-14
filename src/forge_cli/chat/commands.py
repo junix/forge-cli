@@ -223,9 +223,7 @@ class ModelCommand(ChatCommand):
         if not args.strip():
             # Show current model
             controller.display.show_status(f"🤖 Current model: {controller.config.model}")
-            controller.display.show_status(
-                "Available models: qwen-max-latest, gpt-4, gpt-3.5-turbo, deepseek-chat"
-            )
+            controller.display.show_status("Available models: qwen-max-latest, gpt-4, gpt-3.5-turbo, deepseek-chat")
         else:
             # Change model
             new_model = args.strip()

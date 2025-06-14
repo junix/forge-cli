@@ -62,19 +62,19 @@ class PlainRenderer(BaseRenderer):
         """Handle stream start event."""
         # Match v1 style with emojis and formatting
         print("\n📄 Request Information:", file=self._file)
-        
+
         query = data.get("query", "")
         if query:
             print(f"  💬 Question: {query}", file=self._file)
-            
+
         model = data.get("model", "")
         if model:
             print(f"  🤖 Model: {model}", file=self._file)
-            
+
         effort = data.get("effort", "")
         if effort:
             print(f"  ⚙️ Effort Level: {effort}", file=self._file)
-            
+
         print("\n🔄 Streaming response (please wait):", file=self._file)
         print("=" * 80, file=self._file)
 
@@ -144,14 +144,14 @@ class PlainRenderer(BaseRenderer):
         """Complete rendering and ensure final newline."""
         if not self._finalized:
             print("=" * 80, file=self._file)
-            
+
             # Show final content like v1
-            if hasattr(self, '_accumulated_text') and self._accumulated_text:
+            if hasattr(self, "_accumulated_text") and self._accumulated_text:
                 print("\n📃 Response Content:", file=self._file)
                 print(self._accumulated_text, file=self._file)
-            
+
             # Show completion info
             print("\n✅ Response completed successfully!", file=self._file)
-            
+
             self._file.flush()
             self._finalized = True

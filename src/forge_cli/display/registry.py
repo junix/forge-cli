@@ -92,16 +92,14 @@ def initialize_default_displays():
     def create_json_display(**kwargs):
         renderer = JsonRenderer(
             include_events=kwargs.get("config", {}).debug if hasattr(kwargs.get("config", {}), "debug") else False,
-            pretty=True
+            pretty=True,
         )
         return Display(renderer)
 
     def create_rich_display(**kwargs):
         config = kwargs.get("config", {})
         try:
-            renderer = RichRenderer(
-                show_reasoning=config.show_reasoning if hasattr(config, "show_reasoning") else True
-            )
+            renderer = RichRenderer(show_reasoning=config.show_reasoning if hasattr(config, "show_reasoning") else True)
             mode = "chat" if getattr(config, "chat_mode", False) or getattr(config, "chat", False) else "default"
             return Display(renderer, mode=mode)
         except ImportError:

@@ -237,8 +237,7 @@ class ChatController:
         user_message = self.conversation.add_user_message(content)
 
         # Show user message if display supports it
-        # Show user message using v2 display event
-        self.display.handle_event("user_message", {"content": content})
+        # For v2 displays, we don't need to show user message - it's already visible in the terminal
 
         # Mark display as in chat mode
         if hasattr(self.display, "console"):
@@ -246,9 +245,9 @@ class ChatController:
 
         # Prepare request with conversation history
         request = self.prepare_request()
-        
+
         # Start the display for this message (creates Live display if needed)
-        if hasattr(self.display, 'show_request_info'):
+        if hasattr(self.display, "show_request_info"):
             # Don't show full request info in chat mode, just ensure display is ready
             self.display.handle_event("stream_start", {"query": content})
 

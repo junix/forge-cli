@@ -32,13 +32,13 @@ def create_display(config: SearchConfig) -> Display:
         # Get v2 display directly from registry
         display = DisplayRegistry.get_display_for_config(config)
         # If registry returns v1 display (with adapter), extract the v2 display
-        if hasattr(display, '_display_v2'):
+        if hasattr(display, "_display_v2"):
             return display._display_v2
         return display
     except (ValueError, ImportError) as e:
         # Fallback to v2 plain renderer if there's an error
         from forge_cli.display.v2.renderers.plain import PlainRenderer
-        
+
         renderer = PlainRenderer()
         return Display(renderer)
 

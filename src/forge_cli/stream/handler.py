@@ -56,9 +56,9 @@ class StreamHandler:
                 if event_type == "done":
                     # In chat mode, just finalize the renderer to preserve content
                     # but don't complete the display (which would prevent further messages)
-                    if hasattr(self.display, 'mode') and self.display.mode == 'chat':
+                    if hasattr(self.display, "mode") and self.display.mode == "chat":
                         # Call renderer's finalize directly to preserve content
-                        if hasattr(self.display, '_renderer') and hasattr(self.display._renderer, 'finalize'):
+                        if hasattr(self.display, "_renderer") and hasattr(self.display._renderer, "finalize"):
                             self.display._renderer.finalize()
                     else:
                         # Non-chat mode: complete the display normally
@@ -115,10 +115,7 @@ class StreamHandler:
         }
 
         # Convert to v2 display event format
-        self.display.handle_event("text_delta", {
-            "text": formatted_content,
-            "metadata": metadata
-        })
+        self.display.handle_event("text_delta", {"text": formatted_content, "metadata": metadata})
 
     def _format_output_items(self) -> str:
         """Format all output items in native order."""

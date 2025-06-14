@@ -28,7 +28,7 @@ class V1ToV2Adapter(BaseDisplay):
     async def show_request_info(self, info: Dict[str, Any]) -> None:
         """Convert v1 request info to v2 stream start event."""
         # Use the display's show_request_info method if available
-        if hasattr(self._display, 'show_request_info'):
+        if hasattr(self._display, "show_request_info"):
             self._display.show_request_info(info)
         else:
             self._display.handle_event(
@@ -57,7 +57,7 @@ class V1ToV2Adapter(BaseDisplay):
         appropriate v2 events based on the status content.
         """
         # Use the display's show_status method if available
-        if hasattr(self._display, 'show_status'):
+        if hasattr(self._display, "show_status"):
             self._display.show_status(status)
         else:
             status_lower = status.lower()
@@ -82,7 +82,7 @@ class V1ToV2Adapter(BaseDisplay):
     async def show_status_rich(self, rich_content: Any) -> None:
         """Show rich content like tables - v1 compatibility."""
         # Use the display's show_status_rich method if available
-        if hasattr(self._display, 'show_status_rich'):
+        if hasattr(self._display, "show_status_rich"):
             self._display.show_status_rich(rich_content)
         else:
             # Fallback: convert to text if possible
@@ -91,7 +91,7 @@ class V1ToV2Adapter(BaseDisplay):
     async def show_error(self, error: str) -> None:
         """Convert v1 error to v2 error event."""
         # Use the display's show_error method if available
-        if hasattr(self._display, 'show_error'):
+        if hasattr(self._display, "show_error"):
             self._display.show_error(error)
         else:
             self._display.handle_event(EventType.STREAM_ERROR.value, {"error": error, "timestamp": time.time()})
@@ -109,8 +109,8 @@ class V1ToV2Adapter(BaseDisplay):
         )
 
         # If renderer has render_finalize, call it before completing
-        renderer = getattr(self._display, '_renderer', None)
-        if renderer and hasattr(renderer, 'render_finalize'):
+        renderer = getattr(self._display, "_renderer", None)
+        if renderer and hasattr(renderer, "render_finalize"):
             renderer.render_finalize(response, state)
         else:
             # Complete the display normally
@@ -120,7 +120,7 @@ class V1ToV2Adapter(BaseDisplay):
     async def show_welcome(self, config: Any) -> None:
         """Show welcome message for chat mode."""
         # Use the display's show_welcome method if available
-        if hasattr(self._display, 'show_welcome'):
+        if hasattr(self._display, "show_welcome"):
             self._display.show_welcome(config)
         else:
             self._display.handle_event(

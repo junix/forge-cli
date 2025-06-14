@@ -57,10 +57,10 @@ class Display:
         self._event_count = 0
         self._finalized = False
         self._mode = mode
-        
+
         # Set chat mode on renderer if it supports it
-        if hasattr(renderer, '_in_chat_mode'):
-            renderer._in_chat_mode = (mode == "chat")
+        if hasattr(renderer, "_in_chat_mode"):
+            renderer._in_chat_mode = mode == "chat"
 
     def handle_event(self, event_type: str, data: Dict[str, Any]) -> None:
         """Route events to renderer.
@@ -85,30 +85,30 @@ class Display:
         if not self._finalized:
             self._renderer.finalize()
             self._finalized = True
-    
+
     def show_request_info(self, info: Dict[str, Any]) -> None:
         """Show request information if renderer supports it."""
-        if hasattr(self._renderer, 'render_request_info'):
+        if hasattr(self._renderer, "render_request_info"):
             self._renderer.render_request_info(info)
-    
+
     def show_status(self, message: str) -> None:
         """Show status message if renderer supports it."""
-        if hasattr(self._renderer, 'render_status'):
+        if hasattr(self._renderer, "render_status"):
             self._renderer.render_status(message)
-    
+
     def show_status_rich(self, rich_content: Any) -> None:
         """Show rich content if renderer supports it."""
-        if hasattr(self._renderer, 'render_status_rich'):
+        if hasattr(self._renderer, "render_status_rich"):
             self._renderer.render_status_rich(rich_content)
-    
+
     def show_error(self, error: str) -> None:
         """Show error if renderer supports it."""
-        if hasattr(self._renderer, 'render_error'):
+        if hasattr(self._renderer, "render_error"):
             self._renderer.render_error(error)
-    
+
     def show_welcome(self, config: Any) -> None:
         """Show welcome message if renderer supports it."""
-        if hasattr(self._renderer, 'render_welcome'):
+        if hasattr(self._renderer, "render_welcome"):
             self._renderer.render_welcome(config)
 
     @property
@@ -120,16 +120,16 @@ class Display:
     def is_finalized(self) -> bool:
         """Check if display has been finalized."""
         return self._finalized
-    
+
     @property
     def mode(self) -> str:
         """Get display mode."""
         return self._mode
-    
+
     @mode.setter
     def mode(self, value: str) -> None:
         """Set display mode."""
         self._mode = value
         # Update renderer if it supports mode changes
-        if hasattr(self._renderer, '_in_chat_mode'):
-            self._renderer._in_chat_mode = (value == "chat")
+        if hasattr(self._renderer, "_in_chat_mode"):
+            self._renderer._in_chat_mode = value == "chat"

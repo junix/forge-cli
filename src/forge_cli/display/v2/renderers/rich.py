@@ -43,7 +43,7 @@ class RichRenderer(BaseRenderer):
 
         # Live display will be created when needed
         self._live = None
-        
+
         # State tracking
         self._query = ""
         self._response_text = ""
@@ -57,7 +57,7 @@ class RichRenderer(BaseRenderer):
         self._event_count = 0
         self._current_event_type = ""
         self._usage = {}
-        
+
         # Track previous snapshot lengths for delta detection
         self._last_response_length = 0
         self._last_reasoning_length = 0
@@ -71,11 +71,12 @@ class RichRenderer(BaseRenderer):
             transient=True,
         )
 
-
     def render_stream_event(self, event_type: str, data: dict[str, Any]) -> None:
         """Render a stream event with Rich UI."""
-        self._ensure_not_finalized()
-        
+        # In chat mode, we allow reuse of the renderer after finalization
+        if not self._in_chat_mode:
+            self._ensure_not_finalized()
+
         # Update event tracking
         self._event_count += 1
         self._current_event_type = event_type
@@ -122,10 +123,14 @@ class RichRenderer(BaseRenderer):
         """Handle stream start event."""
         self._query = data.get("query", "")
         self._start_time = time.time()
-        
-        # Only start live if not already started by render_request_info
+
+        # Create live display if needed
         if not self._live:
             self._live = Live(Panel(""), refresh_per_second=10, console=self._console, transient=False)
+            # In chat mode, we need to start it immediately since render_request_info isn't called
+            if self._in_chat_mode and not self._live_started:
+                self._live.start()
+                self._live_started = True
 
     def _handle_stream_end(self, data: dict[str, Any]) -> None:
         """Handle stream end event."""
@@ -147,7 +152,7 @@ class RichRenderer(BaseRenderer):
         text = data.get("text", "")
         # Since this is a snapshot, replace the entire text
         self._response_text = text
-        
+
         # Update metadata if provided
         metadata = data.get("metadata", {})
         if metadata:
@@ -233,7 +238,7 @@ class RichRenderer(BaseRenderer):
             "url": data.get("url", ""),
         }
         self._citations.append(citation)
-    
+
     def _format_status_info(self, metadata: dict[str, Any] | None = None) -> Text:
         """Format status information with usage statistics - matches v1 exactly."""
         status_info = Text()
@@ -262,24 +267,24 @@ class RichRenderer(BaseRenderer):
         """Update display - simple panel mode for v1 compatibility."""
         if not self._live or not self._live_started:
             return
-            
+
         # For v1 compatibility, use simple panels with status info in title
         status_info = self._format_status_info()
-        
+
         # Combine content appropriately
         if self._response_text:
             try:
                 panel = Panel(
                     Markdown(self._response_text),
                     title=status_info if status_info else "🔄 Streaming response...",
-                    border_style="green"
+                    border_style="green",
                 )
             except Exception:
                 # Fallback to plain text if Markdown fails
                 panel = Panel(
                     Text(self._response_text),
                     title=status_info if status_info else "🔄 Streaming response...",
-                    border_style="green"
+                    border_style="green",
                 )
             self._live.update(panel)
         else:
@@ -287,10 +292,9 @@ class RichRenderer(BaseRenderer):
             panel = Panel(
                 Text("Waiting for response...", style="dim italic"),
                 title=status_info if status_info else "🔄 Streaming response...",
-                border_style="blue"
+                border_style="blue",
             )
             self._live.update(panel)
-
 
     def finalize(self) -> None:
         """Complete rendering and stop live display."""
@@ -311,17 +315,21 @@ class RichRenderer(BaseRenderer):
                             # Fallback to plain text if Markdown fails
                             self._console.print(self._response_text)
                         self._console.print()  # Add blank line after response
-                        
+
                         # Reset state for next message in chat mode
                         self._response_text = ""
                         self._reasoning_text = ""
+                        self._reasoning_complete = False
+                        self._event_count = 0  # Reset event count for next message
                         self._finalized = False  # Allow renderer to be used again
+                        self._live_started = False  # Allow live display to restart
+                        self._live = None  # Reset live display reference
                     else:
                         # Non-chat mode - print separator and completion message
                         self._console.print()
                         # Just print a separator line like v1
                         self._console.print("=" * 80, style="blue")
-                        
+
                         # Print completion info like v1
                         completion_text = Text()
                         completion_text.append("\n✅ Response completed successfully!\n", style="green bold")
@@ -332,7 +340,9 @@ class RichRenderer(BaseRenderer):
                     self._console.print()
                     self._print_citations_summary()
 
-            self._finalized = True
+            # Only mark as finalized if not in chat mode
+            if not self._in_chat_mode:
+                self._finalized = True
 
     def _print_citations_summary(self) -> None:
         """Print a summary of citations after live display ends."""
@@ -355,42 +365,42 @@ class RichRenderer(BaseRenderer):
             citations_table.add_row(cite_num, doc, page, quote)
 
         self._console.print(citations_table)
-    
+
     def render_request_info(self, info: dict[str, Any]) -> None:
         """Render request information like v1 show_request_info."""
         request_text = Text()
         request_text.append("\n📄 Request Information:\n", style="cyan bold")
-        
+
         if info.get("question"):
             request_text.append("  💬 Question: ", style="green")
             request_text.append(f"{info['question']}\n")
-            
+
         if info.get("vec_ids"):
             request_text.append("  🔍 Vector Store IDs: ", style="green")
             request_text.append(f"{', '.join(info['vec_ids'])}\n")
-            
+
         if info.get("model"):
             request_text.append("  🤖 Model: ", style="green")
             request_text.append(f"{info['model']}\n")
-            
+
         if info.get("effort"):
             request_text.append("  ⚙️ Effort Level: ", style="green")
             request_text.append(f"{info['effort']}\n")
-            
+
         if info.get("tools"):
             request_text.append("  🛠️ Enabled Tools: ", style="green")
             request_text.append(f"{', '.join(info['tools'])}\n")
-            
+
         self._console.print(request_text)
         self._console.print(Text("\n🔄 Streaming response (please wait):", style="yellow bold"))
         self._console.print("=" * 80, style="blue")
-        
+
         # Start live display - use simple panel like v1
         if not self._live:
             self._live = Live(Panel(""), refresh_per_second=10, console=self._console, transient=False)
             self._live.start()
             self._live_started = True
-    
+
     def render_status(self, message: str) -> None:
         """Render a status message like v1 show_status."""
         if self._live and self._live_started:
@@ -399,14 +409,14 @@ class RichRenderer(BaseRenderer):
         else:
             # Print directly if live not started
             self._console.print(Panel(Text(message, style="yellow"), title="Status", border_style="yellow"))
-    
+
     def render_status_rich(self, rich_content: Any) -> None:
         """Render rich content like v1 show_status_rich."""
         if self._live and self._live_started:
             self._live.update(rich_content)
         else:
             self._console.print(rich_content)
-    
+
     def render_error(self, error: str) -> None:
         """Render error like v1 show_error."""
         if self._live and self._live_started:
@@ -414,7 +424,7 @@ class RichRenderer(BaseRenderer):
             self._live.update(error_panel)
         else:
             self._console.print(Text(f"\n❌ Error: {error}", style="red bold"))
-    
+
     def render_finalize(self, response: dict[str, Any], state: Any) -> None:
         """Finalize rendering like v1 finalize method."""
         # In chat mode, just stop the live display without re-displaying content
@@ -425,36 +435,36 @@ class RichRenderer(BaseRenderer):
             # Add a small spacing for better readability
             self._console.print()
             return
-            
+
         # Non-chat mode finalization
         if self._live and self._live_started:
             self._live.stop()
             self._live = None
-            
+
             # Print separator line like v1
             self._console.print()
             self._console.print("=" * 80, style="blue")
-            
+
             # Print completion info like v1
             completion_text = Text()
             completion_text.append("\n✅ Response completed successfully!\n", style="green bold")
-            
+
             if response:
                 if response.get("id"):
                     completion_text.append("  🆔 Response ID: ", style="yellow")
                     completion_text.append(f"{response['id']}\n")
-                    
+
                 if response.get("model"):
                     completion_text.append("  🤖 Model used: ", style="yellow")
                     completion_text.append(f"{response['model']}\n")
-                    
+
             self._console.print(completion_text)
-            
+
             # Print citations summary if any
             if self._citations:
                 self._console.print()
                 self._print_citations_summary()
-    
+
     # Chat mode specific methods
     def render_welcome(self, config: Any) -> None:
         """Show welcome message for chat mode - matches v1."""
@@ -475,11 +485,11 @@ class RichRenderer(BaseRenderer):
         welcome_text.append("Knowledge Forge Chat", style="bold cyan")
         welcome_text.append("!\n\n", style="bold")
 
-        if hasattr(config, 'model'):
+        if hasattr(config, "model"):
             welcome_text.append("Model: ", style="yellow")
             welcome_text.append(f"{config.model}\n", style="white")
 
-        if hasattr(config, 'enabled_tools') and config.enabled_tools:
+        if hasattr(config, "enabled_tools") and config.enabled_tools:
             welcome_text.append("Tools: ", style="yellow")
             welcome_text.append(f"{', '.join(config.enabled_tools)}\n", style="white")
 

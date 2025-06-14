@@ -233,7 +233,7 @@ class JsonRenderer(BaseRenderer):
 
             # Build v1-compatible output structure
             output = {}
-            
+
             # Add request info
             if self._state["query"]:
                 output["request"] = {
@@ -241,7 +241,7 @@ class JsonRenderer(BaseRenderer):
                     "model": self._state["metadata"].get("model", ""),
                     "effort": self._state["metadata"].get("effort", ""),
                 }
-            
+
             # Add response
             output["response"] = {
                 "id": self._state["metadata"].get("response_id", ""),
@@ -249,18 +249,18 @@ class JsonRenderer(BaseRenderer):
                 "content": self._state["response_text"],
                 "usage": self._state["metadata"].get("usage", {}),
             }
-            
+
             # Add error if any
             if self._state["errors"]:
                 output["error"] = self._state["errors"][-1]["error"] if self._state["errors"] else None
-            
+
             # Add citations summary if any
             if self._state["citations"]:
                 output["citations_summary"] = {
                     "total_citations": len(self._state["citations"]),
                     "citations": self._state["citations"],
                 }
-                
+
             # Output JSON in v1 format
             json.dump(output, self._file, indent=2, ensure_ascii=False)
             self._file.flush()
