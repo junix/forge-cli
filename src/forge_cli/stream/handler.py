@@ -6,13 +6,13 @@ import time
 from ..models.state import StreamState, ToolStatus
 from ..models.events import EventType
 from ..processors.registry import default_registry
-from ..display.v1.base import BaseDisplay
+from ..display.v2.base import Display
 
 
 class StreamHandler:
     """Handles streaming responses with clean architecture."""
 
-    def __init__(self, display: BaseDisplay, debug: bool = False):
+    def __init__(self, display: Display, debug: bool = False):
         self.display = display
         self.debug = debug
         self.state = StreamState()
@@ -54,14 +54,22 @@ class StreamHandler:
 
                 # Route event to appropriate handler
                 if event_type == "done":
-                    await self.display.finalize(event_data, self.state)
+                    # In chat mode, just finalize the renderer to preserve content
+                    # but don't complete the display (which would prevent further messages)
+                    if hasattr(self.display, 'mode') and self.display.mode == 'chat':
+                        # Call renderer's finalize directly to preserve content
+                        if hasattr(self.display, '_renderer') and hasattr(self.display._renderer, 'finalize'):
+                            self.display._renderer.finalize()
+                    else:
+                        # Non-chat mode: complete the display normally
+                        self.display.complete()
                     return event_data
 
                 elif event_type == "error":
                     error_msg = (
                         event_data.get("message", "Unknown error") if isinstance(event_data, dict) else "Unknown error"
                     )
-                    await self.display.show_error(error_msg)
+                    self.display.show_error(error_msg)
                     return None
 
                 elif isinstance(event_data, dict) and "output" in event_data:
@@ -88,7 +96,7 @@ class StreamHandler:
             return None
 
         except Exception as e:
-            await self.display.show_error(f"Stream handling error: {str(e)}")
+            self.display.show_error(f"Stream handling error: {str(e)}")
             if self.debug:
                 import traceback
 
@@ -106,7 +114,11 @@ class StreamHandler:
             "event_count": self.state.response_event_count,
         }
 
-        await self.display.update_content(formatted_content, metadata)
+        # Convert to v2 display event format
+        self.display.handle_event("text_delta", {
+            "text": formatted_content,
+            "metadata": metadata
+        })
 
     def _format_output_items(self) -> str:
         """Format all output items in native order."""

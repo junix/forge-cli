@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from .v1.base import BaseDisplay
+from .v2.base import Display, Renderer
 
 
 class DisplayRegistry:
@@ -13,16 +13,16 @@ class DisplayRegistry:
     making it easy to add new rendering styles without modifying existing code.
     """
 
-    _displays: dict[str, type[BaseDisplay]] = {}
-    _factories: dict[str, Callable[..., BaseDisplay]] = {}
+    _displays: dict[str, type[Display]] = {}
+    _factories: dict[str, Callable[..., Display]] = {}
     _conditions: dict[str, Callable[[Any], bool]] = {}
 
     @classmethod
     def register_display(
         cls,
         name: str,
-        display_cls: type[BaseDisplay],
-        factory: Callable[..., BaseDisplay] = None,
+        display_cls: type[Display],
+        factory: Callable[..., Display] = None,
         condition: Callable[[Any], bool] = None,
     ):
         """Register a display implementation.
@@ -40,17 +40,17 @@ class DisplayRegistry:
             cls._conditions[name] = condition
 
     @classmethod
-    def get_display_class(cls, name: str) -> type[BaseDisplay]:
+    def get_display_class(cls, name: str) -> type[Display]:
         """Get a display class by name."""
         return cls._displays.get(name)
 
     @classmethod
-    def get_display_classes(cls) -> dict[str, type[BaseDisplay]]:
+    def get_display_classes(cls) -> dict[str, type[Display]]:
         """Get all registered display classes."""
         return cls._displays
 
     @classmethod
-    def create_display(cls, name: str, **kwargs) -> BaseDisplay:
+    def create_display(cls, name: str, **kwargs) -> Display:
         """Create a display instance by name with optional parameters."""
         if name not in cls._displays:
             raise ValueError(f"Display implementation '{name}' not found")
@@ -63,7 +63,7 @@ class DisplayRegistry:
         return cls._displays[name](**kwargs)
 
     @classmethod
-    def get_display_for_config(cls, config: Any) -> BaseDisplay:
+    def get_display_for_config(cls, config: Any) -> Display:
         """Get the appropriate display for the given configuration.
 
         Evaluates registered conditions and returns the first matching display.
@@ -81,80 +81,60 @@ class DisplayRegistry:
 
 
 def initialize_default_displays():
-    """Initialize the default display implementations using v2 renderers by default."""
+    """Initialize the default display implementations using v2 directly."""
     # Import v2 components
-    from .v2.adapter import V1ToV2Adapter
-    from .v2.base import Display as DisplayV2
+    from .v2.base import Display
     from .v2.renderers.json import JsonRenderer
     from .v2.renderers.plain import PlainRenderer
     from .v2.renderers.rich import RichRenderer
 
-    # Import v1 displays for fallback
-    from .v1.json_chat_display import JsonChatDisplay
-    from .v1.json_display import JsonDisplay
-    from .v1.plain_display import PlainDisplay
-    from .v1.rich_display import RichDisplay
-
-    # Helper function to create v2 display wrapped in v1 adapter
-    def create_v2_json_display(**kwargs):
+    # Helper function to create v2 displays
+    def create_json_display(**kwargs):
         renderer = JsonRenderer(
             include_events=kwargs.get("config", {}).debug if hasattr(kwargs.get("config", {}), "debug") else False,
             pretty=True
         )
-        display_v2 = DisplayV2(renderer)
-        return V1ToV2Adapter(display_v2)
+        return Display(renderer)
 
-    def create_v2_rich_display(**kwargs):
+    def create_rich_display(**kwargs):
         config = kwargs.get("config", {})
         try:
             renderer = RichRenderer(
                 show_reasoning=config.show_reasoning if hasattr(config, "show_reasoning") else True
             )
-            display_v2 = DisplayV2(renderer)
-            return V1ToV2Adapter(display_v2)
+            mode = "chat" if getattr(config, "chat_mode", False) or getattr(config, "chat", False) else "default"
+            return Display(renderer, mode=mode)
         except ImportError:
             # Fallback to plain if rich not available
             renderer = PlainRenderer()
-            display_v2 = DisplayV2(renderer)
-            return V1ToV2Adapter(display_v2)
+            return Display(renderer)
 
-    def create_v2_plain_display(**kwargs):
+    def create_plain_display(**kwargs):
         renderer = PlainRenderer()
-        display_v2 = DisplayV2(renderer)
-        return V1ToV2Adapter(display_v2)
+        return Display(renderer)
 
-    # Register JSON display using v2
+    # Register JSON display
     DisplayRegistry.register_display(
         "json",
-        V1ToV2Adapter,  # The class type for registry
-        factory=create_v2_json_display,
-        condition=lambda config: getattr(config, "json_output", False) is True
-        and getattr(config, "chat", False) is False,
+        Display,
+        factory=create_json_display,
+        condition=lambda config: getattr(config, "json_output", False) is True,
     )
 
-    # Register JSON Chat display - still using v1 for now (complex chat integration)
-    DisplayRegistry.register_display(
-        "json_chat",
-        JsonChatDisplay,
-        factory=lambda **kwargs: JsonChatDisplay(console=kwargs.get("console", None)),
-        condition=lambda config: getattr(config, "json_output", False) is True
-        and getattr(config, "chat", False) is True,
-    )
-
-    # Register Rich display using v2
+    # Register Rich display
     DisplayRegistry.register_display(
         "rich",
-        V1ToV2Adapter,  # The class type for registry
-        factory=create_v2_rich_display,
+        Display,
+        factory=create_rich_display,
         condition=lambda config: (
             getattr(config, "use_rich", False) is True and getattr(config, "quiet", False) is False
         ),
     )
 
-    # Register Plain display as default using v2
+    # Register Plain display as default
     DisplayRegistry.register_display(
         "plain",
-        V1ToV2Adapter,  # The class type for registry
-        factory=create_v2_plain_display,
+        Display,
+        factory=create_plain_display,
         condition=lambda config: True,  # Will be used as fallback
     )

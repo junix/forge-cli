@@ -184,7 +184,7 @@ class RichDisplay(BaseDisplay):
     # Chat mode specific methods
     async def show_welcome(self, config: Any) -> None:
         """Show welcome message for chat mode."""
-        from ..config import SearchConfig
+        from ...config import SearchConfig
 
         if isinstance(config, SearchConfig):
             # Create a beautiful welcome panel

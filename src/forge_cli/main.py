@@ -15,30 +15,32 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Use absolute imports from top-level directory
 from forge_cli.chat.controller import ChatController
 from forge_cli.config import SearchConfig
-from forge_cli.display.v1.base import BaseDisplay
+from forge_cli.display.v2.base import Display, Renderer
 from forge_cli.display.registry import DisplayRegistry, initialize_default_displays
 from forge_cli.processors.registry import initialize_default_registry
 from forge_cli.sdk import astream_response, async_get_vectorstore
 from forge_cli.stream.handler import StreamHandler
 
 
-def create_display(config: SearchConfig) -> BaseDisplay:
+def create_display(config: SearchConfig) -> Display:
     """Create appropriate display based on configuration using the display registry."""
     # Initialize default displays if not already done
     initialize_default_displays()
 
     # Get the appropriate display from the registry based on config
     try:
-        return DisplayRegistry.get_display_for_config(config)
+        # Get v2 display directly from registry
+        display = DisplayRegistry.get_display_for_config(config)
+        # If registry returns v1 display (with adapter), extract the v2 display
+        if hasattr(display, '_display_v2'):
+            return display._display_v2
+        return display
     except (ValueError, ImportError) as e:
-        # Fallback to v2 plain renderer with v1 adapter if there's an error
+        # Fallback to v2 plain renderer if there's an error
         from forge_cli.display.v2.renderers.plain import PlainRenderer
-        from forge_cli.display.v2.base import Display
-        from forge_cli.display.v2.adapter import V1ToV2Adapter
         
         renderer = PlainRenderer()
-        display_v2 = Display(renderer)
-        return V1ToV2Adapter(display_v2)
+        return Display(renderer)
 
 
 def prepare_request(config: SearchConfig, question: str) -> dict[str, Any]:
@@ -98,7 +100,7 @@ async def process_search(config: SearchConfig, question: str) -> dict[str, Any] 
     display = create_display(config)
 
     # Show request info
-    await display.show_request_info(
+    display.show_request_info(
         {
             "question": question,
             "vec_ids": config.vec_ids,
@@ -127,7 +129,7 @@ async def process_search(config: SearchConfig, question: str) -> dict[str, Any] 
         return response
 
     except Exception as e:
-        await display.show_error(f"Processing error: {str(e)}")
+        display.show_error(f"Processing error: {str(e)}")
         if config.debug:
             import traceback
 
@@ -147,7 +149,7 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
     controller = ChatController(config, display)
 
     # Show welcome
-    await controller.show_welcome()
+    controller.show_welcome()
 
     # If initial question provided, process it first
     if initial_question:
@@ -171,10 +173,10 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
                 break
 
     except KeyboardInterrupt:
-        await display.show_status("\n\n👋 Chat interrupted. Goodbye!")
+        display.show_status("\n\n👋 Chat interrupted. Goodbye!")
 
     except Exception as e:
-        await display.show_error(f"Chat error: {str(e)}")
+        display.show_error(f"Chat error: {str(e)}")
         if config.debug:
             import traceback
 

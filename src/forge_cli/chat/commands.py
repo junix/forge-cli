@@ -39,7 +39,7 @@ class ExitCommand(ChatCommand):
     async def execute(self, args: str, controller: "ChatController") -> bool:
         """Exit the chat."""
         if not controller.config.quiet:
-            await controller.display.show_status("👋 Goodbye! Thanks for chatting.")
+            controller.display.show_status("👋 Goodbye! Thanks for chatting.")
         return False
 
 
@@ -53,7 +53,7 @@ class ClearCommand(ChatCommand):
     async def execute(self, args: str, controller: "ChatController") -> bool:
         """Clear the conversation."""
         controller.conversation.clear()
-        await controller.display.show_status("🧹 Conversation history cleared.")
+        controller.display.show_status("🧹 Conversation history cleared.")
         return True
 
 
@@ -88,7 +88,7 @@ class HelpCommand(ChatCommand):
         aligned_table = Align.center(table)
 
         # Display the centered table
-        await controller.display.show_status_rich(aligned_table)
+        controller.display.show_status_rich(aligned_table)
         return True
 
 
@@ -120,9 +120,9 @@ class SaveCommand(ChatCommand):
         try:
             path = Path(filename)
             controller.conversation.save(path)
-            await controller.display.show_status(f"💾 Conversation saved to: {path}")
+            controller.display.show_status(f"💾 Conversation saved to: {path}")
         except Exception as e:
-            await controller.display.show_error(f"Failed to save conversation: {e}")
+            controller.display.show_error(f"Failed to save conversation: {e}")
 
         return True
 
@@ -139,7 +139,7 @@ class LoadCommand(ChatCommand):
         from pathlib import Path
 
         if not args.strip():
-            await controller.display.show_error("Please specify a file to load: /load <filename>")
+            controller.display.show_error("Please specify a file to load: /load <filename>")
             return True
 
         try:
@@ -149,30 +149,30 @@ class LoadCommand(ChatCommand):
                 path = Path(args.strip() + ".json")
 
             if not path.exists():
-                await controller.display.show_error(f"File not found: {args.strip()}")
+                controller.display.show_error(f"File not found: {args.strip()}")
                 return True
 
             controller.conversation = controller.conversation.load(path)
-            await controller.display.show_status(
+            controller.display.show_status(
                 f"📂 Loaded conversation with {controller.conversation.get_message_count()} messages"
             )
 
             # Show conversation history
             if controller.conversation.messages:
-                await controller.display.show_status("\n--- Conversation History ---")
+                controller.display.show_status("\n--- Conversation History ---")
                 for msg in controller.conversation.messages[-5:]:  # Show last 5 messages
                     if msg.role == "user":
-                        await controller.display.show_status(f"You: {msg.content[:100]}...")
+                        controller.display.show_status(f"You: {msg.content[:100]}...")
                     else:
-                        await controller.display.show_status(f"Assistant: {msg.content[:100]}...")
+                        controller.display.show_status(f"Assistant: {msg.content[:100]}...")
 
                 if controller.conversation.get_message_count() > 5:
-                    await controller.display.show_status(
+                    controller.display.show_status(
                         f"... and {controller.conversation.get_message_count() - 5} more messages"
                     )
 
         except Exception as e:
-            await controller.display.show_error(f"Failed to load conversation: {e}")
+            controller.display.show_error(f"Failed to load conversation: {e}")
 
         return True
 
@@ -187,7 +187,7 @@ class HistoryCommand(ChatCommand):
     async def execute(self, args: str, controller: "ChatController") -> bool:
         """Show conversation history."""
         if not controller.conversation.messages:
-            await controller.display.show_status("No conversation history yet.")
+            controller.display.show_status("No conversation history yet.")
             return True
 
         # Parse number of messages to show
@@ -207,7 +207,7 @@ class HistoryCommand(ChatCommand):
                 content = content[:197] + "..."
             lines.append(f"\n[{i}] {prefix}: {content}")
 
-        await controller.display.show_status("\n".join(lines))
+        controller.display.show_status("\n".join(lines))
         return True
 
 
@@ -222,8 +222,8 @@ class ModelCommand(ChatCommand):
         """Show or change model."""
         if not args.strip():
             # Show current model
-            await controller.display.show_status(f"🤖 Current model: {controller.config.model}")
-            await controller.display.show_status(
+            controller.display.show_status(f"🤖 Current model: {controller.config.model}")
+            controller.display.show_status(
                 "Available models: qwen-max-latest, gpt-4, gpt-3.5-turbo, deepseek-chat"
             )
         else:
@@ -231,7 +231,7 @@ class ModelCommand(ChatCommand):
             new_model = args.strip()
             controller.config.model = new_model
             controller.conversation.model = new_model
-            await controller.display.show_status(f"🤖 Model changed to: {new_model}")
+            controller.display.show_status(f"🤖 Model changed to: {new_model}")
 
         return True
 
@@ -249,42 +249,42 @@ class ToolsCommand(ChatCommand):
             # Show current tools
             if controller.config.enabled_tools:
                 tools_str = ", ".join(controller.config.enabled_tools)
-                await controller.display.show_status(f"🛠️ Enabled tools: {tools_str}")
+                controller.display.show_status(f"🛠️ Enabled tools: {tools_str}")
             else:
-                await controller.display.show_status("🛠️ No tools enabled")
+                controller.display.show_status("🛠️ No tools enabled")
 
-            await controller.display.show_status(
+            controller.display.show_status(
                 "Available tools: file-search, web-search\nUse: /tools add <tool> or /tools remove <tool>"
             )
         else:
             # Parse add/remove command
             parts = args.strip().split(maxsplit=1)
             if len(parts) < 2:
-                await controller.display.show_error("Usage: /tools add|remove <tool-name>")
+                controller.display.show_error("Usage: /tools add|remove <tool-name>")
                 return True
 
             action, tool_name = parts
 
             if action == "add":
                 if tool_name not in ["file-search", "web-search"]:
-                    await controller.display.show_error(f"Unknown tool: {tool_name}")
+                    controller.display.show_error(f"Unknown tool: {tool_name}")
                     return True
 
                 if tool_name not in controller.config.enabled_tools:
                     controller.config.enabled_tools.append(tool_name)
-                    await controller.display.show_status(f"✅ Added tool: {tool_name}")
+                    controller.display.show_status(f"✅ Added tool: {tool_name}")
                 else:
-                    await controller.display.show_status(f"Tool already enabled: {tool_name}")
+                    controller.display.show_status(f"Tool already enabled: {tool_name}")
 
             elif action == "remove":
                 if tool_name in controller.config.enabled_tools:
                     controller.config.enabled_tools.remove(tool_name)
-                    await controller.display.show_status(f"❌ Removed tool: {tool_name}")
+                    controller.display.show_status(f"❌ Removed tool: {tool_name}")
                 else:
-                    await controller.display.show_status(f"Tool not enabled: {tool_name}")
+                    controller.display.show_status(f"Tool not enabled: {tool_name}")
 
             else:
-                await controller.display.show_error(f"Unknown action: {action}")
+                controller.display.show_error(f"Unknown action: {action}")
 
         return True
 
@@ -300,7 +300,7 @@ class NewCommand(ChatCommand):
         """Start new conversation."""
         # Save current conversation if it has messages
         if controller.conversation.messages:
-            await controller.display.show_status(
+            controller.display.show_status(
                 "💡 Tip: Use /save to save the current conversation before starting a new one."
             )
 
@@ -309,7 +309,7 @@ class NewCommand(ChatCommand):
 
         controller.conversation = ConversationState(model=controller.config.model, tools=controller.prepare_tools())
 
-        await controller.display.show_status("🆕 Started new conversation.")
+        controller.display.show_status("🆕 Started new conversation.")
         return True
 
 
@@ -324,9 +324,9 @@ class EnableWebSearchCommand(ChatCommand):
         """Enable web search."""
         if "web-search" not in controller.config.enabled_tools:
             controller.config.enabled_tools.append("web-search")
-            await controller.display.show_status("✅ Web search enabled")
+            controller.display.show_status("✅ Web search enabled")
         else:
-            await controller.display.show_status("Web search is already enabled")
+            controller.display.show_status("Web search is already enabled")
         return True
 
 
@@ -341,9 +341,9 @@ class DisableWebSearchCommand(ChatCommand):
         """Disable web search."""
         if "web-search" in controller.config.enabled_tools:
             controller.config.enabled_tools.remove("web-search")
-            await controller.display.show_status("❌ Web search disabled")
+            controller.display.show_status("❌ Web search disabled")
         else:
-            await controller.display.show_status("Web search is already disabled")
+            controller.display.show_status("Web search is already disabled")
         return True
 
 
@@ -358,9 +358,9 @@ class EnableFileSearchCommand(ChatCommand):
         """Enable file search."""
         if "file-search" not in controller.config.enabled_tools:
             controller.config.enabled_tools.append("file-search")
-            await controller.display.show_status("✅ File search enabled")
+            controller.display.show_status("✅ File search enabled")
         else:
-            await controller.display.show_status("File search is already enabled")
+            controller.display.show_status("File search is already enabled")
         return True
 
 
@@ -375,9 +375,9 @@ class DisableFileSearchCommand(ChatCommand):
         """Disable file search."""
         if "file-search" in controller.config.enabled_tools:
             controller.config.enabled_tools.remove("file-search")
-            await controller.display.show_status("❌ File search disabled")
+            controller.display.show_status("❌ File search disabled")
         else:
-            await controller.display.show_status("File search is already disabled")
+            controller.display.show_status("File search is already disabled")
         return True
 
 

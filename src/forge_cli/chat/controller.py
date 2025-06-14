@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 from ..config import SearchConfig
-from ..display.v1.base import BaseDisplay
+from ..display.v2.base import Display
 from ..models.conversation import ConversationState
 from ..stream.handler import StreamHandler
 from .commands import CommandRegistry
@@ -14,7 +14,7 @@ from .commands import CommandRegistry
 class ChatController:
     """Controls the chat interaction flow."""
 
-    def __init__(self, config: SearchConfig, display: BaseDisplay):
+    def __init__(self, config: SearchConfig, display: Display):
         self.config = config
         self.display = display
         self.conversation = ConversationState(model=config.model, tools=self.prepare_tools())
@@ -54,10 +54,10 @@ class ChatController:
         # The actual loop is now in main.py
         pass
 
-    async def show_welcome(self) -> None:
+    def show_welcome(self) -> None:
         """Show welcome message and chat info."""
         if hasattr(self.display, "show_welcome"):
-            await self.display.show_welcome(self.config)
+            self.display.show_welcome(self.config)
         else:
             # Fallback welcome message
             lines = [
@@ -72,7 +72,7 @@ class ChatController:
             lines.append("╰─────────────────────────────────────────────────────────────╯")
             lines.append("\nWelcome to Knowledge Forge Chat! Type /help for commands.")
 
-            await self.display.show_status("\n".join(lines))
+            self.display.show_status("\n".join(lines))
 
     async def get_user_input(self) -> str | None:
         """Get input from the user with prompt_toolkit support for auto-completion."""
@@ -208,7 +208,7 @@ class ChatController:
         else:
             # Check for empty messages
             if not user_input or user_input.isspace():
-                await self.display.show_error("Empty messages cannot be sent. Please type something.")
+                self.display.show_error("Empty messages cannot be sent. Please type something.")
                 return True
 
             # Send as message
@@ -225,7 +225,7 @@ class ChatController:
         command = self.commands.get_command(command_name)
 
         if command is None:
-            await self.display.show_error(f"Unknown command: /{command_name}\nType /help to see available commands.")
+            self.display.show_error(f"Unknown command: /{command_name}\nType /help to see available commands.")
             return True
 
         # Execute command
@@ -237,8 +237,8 @@ class ChatController:
         user_message = self.conversation.add_user_message(content)
 
         # Show user message if display supports it
-        if hasattr(self.display, "show_user_message"):
-            await self.display.show_user_message(content)
+        # Show user message using v2 display event
+        self.display.handle_event("user_message", {"content": content})
 
         # Mark display as in chat mode
         if hasattr(self.display, "console"):
@@ -260,12 +260,8 @@ class ChatController:
         final_content = None
 
         try:
-            # Import SDK from parent directory
-            import sys
-            from pathlib import Path
-
-            sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-            from sdk import astream_response
+            # Import SDK
+            from ..sdk import astream_response
 
             # Stream the response
             if self.config.debug:
@@ -303,7 +299,7 @@ class ChatController:
                     self.conversation.model = response["model"]
 
         except Exception as e:
-            await self.display.show_error(f"Failed to get response: {str(e)}")
+            self.display.show_error(f"Failed to get response: {str(e)}")
             if self.config.debug:
                 import traceback
 

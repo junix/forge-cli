@@ -4,15 +4,34 @@
 
 The display module implements the Strategy pattern to provide multiple output formatting options for the Forge CLI. It separates presentation logic from business logic, allowing users to choose between rich terminal UI, plain text, or JSON output while maintaining consistent functionality across all formats.
 
+The module has evolved into a dual-version architecture:
+- **v1**: Original display implementations (legacy support)
+- **v2**: Enhanced architecture with pluggable renderers and improved event handling
+
 ## Directory Structure
 
 ```
 display/
 ├── __init__.py          # Module exports
-├── base.py              # Base display interface
-├── rich_display.py      # Rich terminal UI with live updates
-├── plain_display.py     # Simple text output
-└── json_display.py      # Machine-readable JSON format
+├── registry.py          # Display registry for strategy selection/registration
+├── v1/                  # Legacy display implementations
+│   ├── __init__.py
+│   ├── base.py          # v1 base display interface
+│   ├── factory.py       # v1 display factory functions
+│   ├── rich_display.py  # Rich terminal UI with live updates
+│   ├── plain_display.py # Simple text output
+│   ├── json_display.py  # Machine-readable JSON format
+│   └── json_chat_display.py # JSON format for chat mode
+└── v2/                  # Current display architecture
+    ├── __init__.py
+    ├── base.py          # v2 base display and renderer classes
+    ├── adapter.py       # v1-to-v2 adapter for backward compatibility
+    ├── events.py        # Event type definitions
+    └── renderers/       # Pluggable renderers
+        ├── __init__.py
+        ├── plain.py     # Plain text renderer
+        ├── rich.py      # Rich UI renderer
+        └── json.py      # JSON renderer
 ```
 
 ## Architecture & Design
@@ -20,27 +39,56 @@ display/
 ### Design Patterns
 
 1. **Strategy Pattern**: Core pattern - different display strategies for same content
-2. **Template Method**: Base class defines structure, subclasses implement details
-3. **Observer Pattern**: Displays react to processor events
-4. **Facade Pattern**: Unified interface for complex display operations
+2. **Adapter Pattern**: V1ToV2Adapter connects legacy code to new rendering system
+3. **Registry Pattern**: DisplayRegistry manages available displays and selection logic
+4. **Observer Pattern**: Displays react to processor events
+5. **Facade Pattern**: Unified interface for complex display operations
 
-### Display Strategy Selection
+### Display Registry & Factory System
+
+The `DisplayRegistry` class manages the registration and creation of display implementations:
 
 ```python
-# Strategy selection based on configuration
-if config.json_output:
-    display = JsonDisplay(config)
-elif config.no_color or not sys.stdout.isatty():
-    display = PlainDisplay(config)
-else:
-    display = RichDisplay(config)
+# From registry.py
+class DisplayRegistry:
+    """Registry for display implementations."""
+    
+    _displays: dict[str, type[BaseDisplay]] = {}
+    _factories: dict[str, Callable[..., BaseDisplay]] = {}
+    _conditions: dict[str, Callable[[Any], bool]] = {}
+    
+    @classmethod
+    def register_display(
+        cls,
+        name: str,
+        display_cls: type[BaseDisplay],
+        factory: Callable[..., BaseDisplay] = None,
+        condition: Callable[[Any], bool] = None,
+    ):
+        """Register a display implementation."""
+        # ...
+
+    @classmethod
+    def get_display_for_config(cls, config: Any) -> BaseDisplay:
+        """Get the appropriate display for the given configuration."""
+        for name, condition in cls._conditions.items():
+            if condition(config):
+                return cls.create_display(name, config=config)
+        # ...
 ```
 
-## Component Details
+Display selection occurs automatically based on configuration:
 
-### base.py - Base Display Interface
+```python
+# Display strategy selection via registry
+display = DisplayRegistry.get_display_for_config(config)
+```
 
-Defines the contract all display strategies must implement:
+## v1 Component Details (Legacy)
+
+### v1/base.py - Base Display Interface
+
+Defines the contract all v1 display strategies must implement:
 
 ```python
 class BaseDisplay(ABC):
@@ -60,451 +108,189 @@ class BaseDisplay(ABC):
         """Handle incremental text output."""
         pass
     
-    @abstractmethod
-    def handle_reasoning_start(self) -> None:
-        """Handle start of reasoning/thinking."""
-        pass
-    
-    @abstractmethod
-    def handle_reasoning_delta(self, text: str) -> None:
-        """Handle reasoning text updates."""
-        pass
-    
-    @abstractmethod
-    def handle_tool_start(self, tool_type: str, tool_id: str, **kwargs) -> None:
-        """Handle tool execution start."""
-        pass
-    
-    @abstractmethod
-    def handle_tool_complete(self, tool_id: str, results_count: int) -> None:
-        """Handle tool completion."""
-        pass
-    
-    @abstractmethod
-    def handle_citation(self, citation_num: int, citation: Annotation) -> None:
-        """Handle citation display."""
-        pass
-    
-    @abstractmethod
-    def handle_stream_complete(self) -> None:
-        """Called when stream ends."""
-        pass
-    
-    @abstractmethod
-    def handle_error(self, error: str) -> None:
-        """Handle error display."""
-        pass
+    # Additional abstract methods...
 ```
 
-### rich_display.py - Rich Terminal UI
+### v1/rich_display.py, v1/plain_display.py, v1/json_display.py
 
-Provides an interactive, visually appealing terminal interface using the Rich library.
+Original display implementations for various output formats.
 
-**Key Features:**
+## v2 Architecture (Current)
 
-- Live updating panels
-- Progress indicators
-- Syntax highlighting
-- Citation tables
-- Tool execution visualization
-- Markdown rendering
+### v2/base.py - Component Classes
 
-**Components:**
+The v2 system separates concerns between display coordination and rendering:
 
 ```python
-class RichDisplay(BaseDisplay):
-    def __init__(self, config: SearchConfig):
-        super().__init__(config)
-        self.console = Console(
-            force_terminal=True,
-            force_jupyter=False,
-            width=120
-        )
-        self.layout = self._create_layout()
-        self.live = Live(
-            self.layout,
-            console=self.console,
-            refresh_per_second=10
-        )
-```
+class Renderer(Protocol):
+    """Pure renderer protocol - only handles output formatting."""
 
-**Layout Structure:**
+    def render_stream_event(self, event_type: str, data: Dict[str, Any]) -> None:
+        """Render a single stream event."""
+        ...
 
-```
-┌─────────────────────────────────────┐
-│         Header (Title)              │
-├─────────────────────────────────────┤
-│     Thinking/Reasoning Panel        │
-├─────────────────────────────────────┤
-│      Tool Execution Panel           │
-├─────────────────────────────────────┤
-│        Response Panel               │
-├─────────────────────────────────────┤
-│       Citations Table               │
-└─────────────────────────────────────┘
-```
+    def finalize(self) -> None:
+        """Complete rendering and cleanup."""
+        ...
 
-**Key Methods:**
 
-```python
-def handle_text_delta(self, text: str):
-    """Update response panel with streaming text."""
-    self.response_text += text
-    self._update_response_panel()
-    
-def handle_tool_start(self, tool_type: str, tool_id: str, **kwargs):
-    """Show tool execution with spinner."""
-    self.active_tools[tool_id] = {
-        "type": tool_type,
-        "status": "running",
-        "params": kwargs
-    }
-    self._update_tool_panel()
+class Display:
+    """Display coordinator - manages render lifecycle."""
 
-def handle_citation(self, citation_num: int, citation: Annotation):
-    """Add citation to table."""
-    self.citations.append({
-        "num": citation_num,
-        "citation": citation
-    })
-    self._update_citation_table()
-```
-
-**Visual Elements:**
-
-- **Spinners**: Show active operations
-- **Progress bars**: Display completion status
-- **Tables**: Format citations and results
-- **Panels**: Organize content sections
-- **Markdown**: Render formatted text
-
-### plain_display.py - Plain Text Output
-
-Simple, non-interactive text output suitable for logging, piping, and non-TTY environments.
-
-**Key Features:**
-
-- No color codes or formatting
-- Linear output flow
-- Minimal visual indicators
-- Suitable for automation
-
-**Implementation:**
-
-```python
-class PlainDisplay(BaseDisplay):
-    def handle_text_delta(self, text: str):
-        """Direct text output."""
-        print(text, end="", flush=True)
-    
-    def handle_tool_start(self, tool_type: str, tool_id: str, **kwargs):
-        """Simple status message."""
-        print(f"\n[{tool_type.upper()}] Starting...")
-    
-    def handle_citation(self, citation_num: int, citation: Annotation):
-        """Plain citation format."""
-        print(f"\n[{citation_num}] {self._format_citation(citation)}")
-```
-
-**Output Format:**
-
-```
-Thinking...
-[FILE_SEARCH] Starting...
-[FILE_SEARCH] Complete (found 5 results)
-
-Here is the response text with citations [1] and [2].
-
-Citations:
-[1] document.pdf (page 42): "Quote from document"
-[2] report.md: "Another quote"
-```
-
-### json_display.py - JSON Format Output
-
-Machine-readable JSON output for programmatic consumption.
-
-**Key Features:**
-
-- Structured data output
-- Event stream capture
-- Complete state serialization
-- API-compatible format
-
-**Implementation:**
-
-```python
-class JsonDisplay(BaseDisplay):
-    def __init__(self, config: SearchConfig):
-        super().__init__(config)
-        self.events = []
-        self.state = {
-            "status": "started",
-            "text": "",
-            "tools": {},
-            "citations": [],
-            "reasoning": ""
-        }
-    
-    def handle_text_delta(self, text: str):
-        """Accumulate text."""
-        self.state["text"] += text
-        self._add_event("text_delta", {"text": text})
-    
-    def handle_stream_complete(self):
-        """Output final JSON."""
-        self.state["status"] = "completed"
-        self.state["duration"] = time.time() - self.start_time
+    def __init__(self, renderer: Renderer, mode: str = "default"):
+        """Initialize display with a renderer."""
+        self._renderer = renderer
+        self._event_count = 0
+        self._finalized = False
+        self._mode = mode
         
-        output = {
-            "response": self.state,
-            "events": self.events if self.config.debug else []
-        }
+    def handle_event(self, event_type: str, data: Dict[str, Any]) -> None:
+        """Route events to renderer."""
+        # ...
         
-        print(json.dumps(output, indent=2))
+    def complete(self) -> None:
+        """Finalize display."""
+        # ...
 ```
 
-**Output Structure:**
+### v2/adapter.py - Backward Compatibility
 
-```json
-{
-  "response": {
-    "status": "completed",
-    "text": "Response text here",
-    "tools": {
-      "file_search_123": {
-        "type": "file_search",
-        "status": "completed",
-        "results": 5
-      }
-    },
-    "citations": [
-      {
-        "num": 1,
-        "type": "file_citation",
-        "file_id": "file_abc",
-        "quote": "Citation text"
-      }
-    ],
-    "reasoning": "Thinking process...",
-    "duration": 3.456
-  },
-  "events": []  // Full event stream if debug=true
-}
+The adapter allows v2 displays to be used with v1 interfaces:
+
+```python
+class V1ToV2Adapter(BaseDisplay):
+    """Adapter to make v2 Display work with v1 interface."""
+
+    def __init__(self, display_v2: Display):
+        """Initialize adapter with a v2 display."""
+        self._display = display_v2
+        self._start_time = time.time()
+
+    # Implements v1 methods by mapping to v2 events
+    def handle_text_delta(self, text: str) -> None:
+        """Map v1 text delta to v2 event."""
+        self._display.handle_event(EventType.TEXT_DELTA.value, {"text": text})
+        
+    # Additional v1 method implementations...
 ```
+
+### v2/renderers - Output Formatting
+
+Three primary renderer implementations:
+
+1. **rich.py**: Interactive terminal UI with Rich library
+2. **plain.py**: Simple text output for logs/non-TTY
+3. **json.py**: Structured data for API/machine consumption
 
 ## Usage Guidelines
 
 ### For Language Models
 
-When implementing or extending displays:
+When working with the display system:
 
-1. **Creating a new display strategy**:
+1. **Using the registry**:
 
 ```python
-from .base import BaseDisplay
-from forge_cli.config import SearchConfig
+from forge_cli.display.registry import DisplayRegistry
 
-class CustomDisplay(BaseDisplay):
-    def __init__(self, config: SearchConfig):
-        super().__init__(config)
-        # Initialize display-specific state
-    
-    def handle_text_delta(self, text: str):
-        # Implement text handling
-        pass
-    
-    # Implement all abstract methods
+# Get appropriate display based on configuration
+display = DisplayRegistry.get_display_for_config(config)
+
+# Or create specific display
+json_display = DisplayRegistry.create_display("json", config=config)
 ```
 
-2. **Handling different content types**:
+2. **Creating a new v2 renderer**:
 
 ```python
-def handle_tool_start(self, tool_type: str, tool_id: str, **kwargs):
-    if tool_type == "file_search":
-        query = kwargs.get("query", "")
-        stores = kwargs.get("vector_stores", [])
-        # Display file search info
-    elif tool_type == "web_search":
-        query = kwargs.get("query", "")
-        location = kwargs.get("location", {})
-        # Display web search info
+from forge_cli.display.v2.base import BaseRenderer
+
+class CustomRenderer(BaseRenderer):
+    def render_stream_event(self, event_type: str, data: dict):
+        if event_type == "text_delta":
+            # Handle text output
+            text = data.get("text", "")
+            # Custom rendering logic
+        elif event_type == "tool_start":
+            # Handle tool execution
+            # ...
+    
+    def finalize(self):
+        # Cleanup and finalization
 ```
 
-3. **Managing state**:
+3. **Using with v1 interface**:
 
 ```python
-class StatefulDisplay(BaseDisplay):
-    def __init__(self, config: SearchConfig):
-        super().__init__(config)
-        self.response_text = ""
-        self.citations = []
-        self.active_tools = {}
-        self.reasoning_text = ""
-    
-    def handle_text_delta(self, text: str):
-        self.response_text += text
-        self._render()  # Update display
+from forge_cli.display.v2.adapter import V1ToV2Adapter
+from forge_cli.display.v2.base import Display
+from forge_cli.display.v2.renderers.rich import RichRenderer
+
+# Create v2 display with rich renderer
+renderer = RichRenderer()
+display_v2 = Display(renderer)
+
+# Adapt to v1 interface
+display_v1_compatible = V1ToV2Adapter(display_v2)
+
+# Use with v1 methods
+display_v1_compatible.handle_text_delta("Hello world")
 ```
 
 ## Development Guidelines
 
 ### Adding New Display Strategies
 
-1. **Inherit from BaseDisplay**:
+1. **Create a v2 renderer**:
 
 ```python
-from .base import BaseDisplay
+from forge_cli.display.v2.base import BaseRenderer
 
-class NewDisplay(BaseDisplay):
-    """New display strategy description."""
-    pass
+class NewRenderer(BaseRenderer):
+    """New renderer description."""
+    
+    def render_stream_event(self, event_type: str, data: dict):
+        # Implement rendering logic
+        pass
+    
+    def finalize(self):
+        # Cleanup and finalization
+        pass
 ```
 
-2. **Implement all abstract methods**:
-
-- Use IDE to generate method stubs
-- Ensure consistent behavior with other displays
-
-3. **Export from **init**.py**:
+2. **Register with DisplayRegistry**:
 
 ```python
-from .new_display import NewDisplay
-__all__ = [..., "NewDisplay"]
+from forge_cli.display.registry import DisplayRegistry
+from forge_cli.display.v2.adapter import V1ToV2Adapter
+from forge_cli.display.v2.base import Display
+
+def create_new_display(**kwargs):
+    renderer = NewRenderer()
+    display_v2 = Display(renderer)
+    return V1ToV2Adapter(display_v2)
+
+DisplayRegistry.register_display(
+    "new_display",
+    V1ToV2Adapter,  # Class type for registry
+    factory=create_new_display,
+    condition=lambda config: getattr(config, "use_new_display", False) is True,
+)
 ```
 
-4. **Add to strategy selection**:
-
-```python
-# In main.py or config handler
-if config.new_format:
-    display = NewDisplay(config)
-```
-
-### Display Best Practices
+### Best Practices
 
 1. **State Management**:
-   - Track all relevant state
-   - Update incrementally for performance
-   - Clear state between sessions
+   - Keep rendering state in the renderer
+   - Use the Display class to coordinate events
+   - Separate formatting from business logic
 
 2. **Error Handling**:
+   - Provide error rendering in all renderers
+   - Gracefully handle unexpected event types
+   - Support finalization even after errors
 
-```python
-def handle_error(self, error: str):
-    # Always show errors clearly
-    self._show_error(f"Error: {error}")
-    
-    # Log for debugging
-    if self.config.debug:
-        self._show_traceback()
-```
-
-3. **Performance Optimization**:
-   - Batch updates when possible
-   - Throttle refresh rates
-   - Minimize redraws
-
-4. **User Experience**:
-   - Provide clear feedback
-   - Show progress for long operations
-   - Format output readably
-
-### Common Patterns
-
-#### Progress Indication
-
-```python
-def show_progress(self, current: int, total: int, message: str):
-    if isinstance(self, RichDisplay):
-        self.progress_bar.update(task_id, completed=current)
-    elif isinstance(self, PlainDisplay):
-        print(f"\r{message}: {current}/{total}", end="")
-    elif isinstance(self, JsonDisplay):
-        self._add_event("progress", {
-            "current": current,
-            "total": total,
-            "message": message
-        })
-```
-
-#### Citation Formatting
-
-```python
-def format_citation(self, citation: Annotation) -> str:
-    if isinstance(citation, FileCitationAnnotation):
-        return f"{citation.file_name} (page {citation.page_number}): \"{citation.quote}\""
-    elif isinstance(citation, UrlCitationAnnotation):
-        return f"{citation.title} - {citation.url}"
-```
-
-## Testing Display Strategies
-
-```python
-import pytest
-from io import StringIO
-from unittest.mock import Mock, patch
-
-def test_plain_display_text_output():
-    config = Mock(debug=False)
-    display = PlainDisplay(config)
-    
-    with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
-        display.handle_text_delta("Hello ")
-        display.handle_text_delta("World")
-        
-        output = mock_stdout.getvalue()
-        assert output == "Hello World"
-
-def test_json_display_structure():
-    config = Mock(debug=False)
-    display = JsonDisplay(config)
-    
-    display.handle_text_delta("Test")
-    display.handle_citation(1, Mock(spec=FileCitationAnnotation))
-    display.handle_stream_complete()
-    
-    # Verify JSON structure
-    assert display.state["text"] == "Test"
-    assert len(display.state["citations"]) == 1
-```
-
-## Configuration Options
-
-Displays respect these configuration options:
-
-```python
-class SearchConfig:
-    # Display selection
-    json_output: bool = False
-    no_color: bool = False
-    
-    # Display behavior
-    debug: bool = False
-    quiet: bool = False
-    throttle_ms: int = 0
-    
-    # Rich display options
-    show_reasoning: bool = True
-    show_citations: bool = True
-    markdown_rendering: bool = True
-```
-
-## Performance Considerations
-
-1. **Rich Display**:
-   - Higher CPU usage for rendering
-   - Best for interactive use
-   - Throttle updates for remote terminals
-
-2. **Plain Display**:
-   - Minimal overhead
-   - Best for logging/automation
-   - No buffering needed
-
-3. **JSON Display**:
-   - Memory usage grows with events
-   - Batch output at end
-   - Consider streaming JSON for large responses
-
-The display module provides flexible output options while maintaining a consistent interface, allowing users to choose the most appropriate format for their use case without changing the underlying functionality.
+3. **Testing**:
+   - Test renderers independently
+   - Create mock events for testing rendering logic
+   - Validate backward compatibility with v1 interfaces

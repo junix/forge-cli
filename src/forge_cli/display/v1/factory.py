@@ -2,13 +2,13 @@
 
 import sys
 
-from ..config import SearchConfig
+from ...config import SearchConfig
 from .base import BaseDisplay  # v1 interface
-from .v2.adapter import V1ToV2Adapter
-from .v2.base import Display as DisplayV2  # v2 interface
-from .v2.renderers.json import JsonRenderer
-from .v2.renderers.plain import PlainRenderer
-from .v2.renderers.rich import RichRenderer
+from ..v2.adapter import V1ToV2Adapter
+from ..v2.base import Display as DisplayV2  # v2 interface
+from ..v2.renderers.json import JsonRenderer
+from ..v2.renderers.plain import PlainRenderer
+from ..v2.renderers.rich import RichRenderer
 
 
 def create_display(config: SearchConfig) -> BaseDisplay | DisplayV2:

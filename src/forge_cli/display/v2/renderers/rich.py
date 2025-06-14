@@ -301,15 +301,31 @@ class RichRenderer(BaseRenderer):
                 self._live = None
 
                 # Print final response outside of Live context for persistence
-                if self._response_text and not self._in_chat_mode:
-                    self._console.print()
-                    # Just print a separator line like v1
-                    self._console.print("=" * 80, style="blue")
-                    
-                    # Print completion info like v1
-                    completion_text = Text()
-                    completion_text.append("\n✅ Response completed successfully!\n", style="green bold")
-                    self._console.print(completion_text)
+                if self._response_text:
+                    if self._in_chat_mode:
+                        # In chat mode, preserve the assistant's response by printing it
+                        self._console.print()
+                        try:
+                            self._console.print(Markdown(self._response_text))
+                        except Exception:
+                            # Fallback to plain text if Markdown fails
+                            self._console.print(self._response_text)
+                        self._console.print()  # Add blank line after response
+                        
+                        # Reset state for next message in chat mode
+                        self._response_text = ""
+                        self._reasoning_text = ""
+                        self._finalized = False  # Allow renderer to be used again
+                    else:
+                        # Non-chat mode - print separator and completion message
+                        self._console.print()
+                        # Just print a separator line like v1
+                        self._console.print("=" * 80, style="blue")
+                        
+                        # Print completion info like v1
+                        completion_text = Text()
+                        completion_text.append("\n✅ Response completed successfully!\n", style="green bold")
+                        self._console.print(completion_text)
 
                 # Print citations summary if any
                 if self._citations and not self._in_chat_mode:
