@@ -16,14 +16,20 @@ class FileSearchProcessor(BaseToolCallProcessor):
         "results_text": "个相关内容块",
     }
 
-    def _add_tool_specific_data(self, item: Dict[str, Union[str, int, float, bool, List, Dict]], processed: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
+    def _add_tool_specific_data(
+        self,
+        item: Dict[str, Union[str, int, float, bool, List, Dict]],
+        processed: Dict[str, Union[str, int, float, bool, List, Dict]],
+    ) -> None:
         """Add file search specific data."""
         # Add file_id if searching specific file
         file_id = item.get("file_id")
         if file_id:
             processed["file_id"] = file_id
 
-    def _add_tool_specific_formatting(self, processed: Dict[str, Any], parts: list) -> None:
+    def _add_tool_specific_formatting(
+        self, processed: Dict[str, Union[str, int, float, bool, List, Dict]], parts: List[str]
+    ) -> None:
         """Add file search specific formatting."""
         # Add file ID if searching specific file
         file_id = processed.get("file_id")

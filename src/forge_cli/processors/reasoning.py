@@ -1,6 +1,5 @@
 """Processor for reasoning output items."""
 
-from typing import Dict, Union, List, Optional
 from .base import OutputProcessor
 
 
@@ -11,7 +10,9 @@ class ReasoningProcessor(OutputProcessor):
         """Check if this processor can handle the item type."""
         return item_type == "reasoning"
 
-    def process(self, item: Dict[str, Union[str, int, float, bool, List, Dict]]) -> Optional[Dict[str, Union[str, int, float, bool, List, Dict]]]:
+    def process(
+        self, item: dict[str, str | int | float | bool | list | dict]
+    ) -> dict[str, str | int | float | bool | list | dict] | None:
         """Extract reasoning text from summary items."""
         reasoning_texts = []
 
@@ -29,7 +30,7 @@ class ReasoningProcessor(OutputProcessor):
             "id": item.get("id", ""),
         }
 
-    def format(self, processed: Dict[str, Union[str, int, float, bool, List, Dict]]) -> str:
+    def format(self, processed: dict[str, str | int | float | bool | list | dict]) -> str:
         """Format reasoning for display as quoted text."""
         content = processed.get("content", "")
         if not content:

@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-from typing import Dict, Union, List
 
 from ..config import SearchConfig
 from ..display.v2.base import Display
@@ -313,7 +312,7 @@ class ChatController:
             if hasattr(self.display, "_in_chat_mode"):
                 delattr(self.display, "_in_chat_mode")
 
-    def prepare_request(self) -> Dict[str, Union[str, int, float, bool, List]]:
+    def prepare_request(self) -> dict[str, str | int | float | bool | list]:
         """Prepare API request with conversation history."""
         # Update tools in case they changed
         self.conversation.tools = self.prepare_tools()
@@ -333,7 +332,7 @@ class ChatController:
 
         return request
 
-    def extract_text_from_message(self, message_item: Dict[str, Union[str, int, float, bool, List, Dict]]) -> str | None:
+    def extract_text_from_message(self, message_item: dict[str, str | int | float | bool | list | dict]) -> str | None:
         """Extract text content from a message item."""
         # Handle different content formats
         content = message_item.get("content", [])

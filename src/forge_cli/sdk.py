@@ -18,7 +18,6 @@ import json
 import mimetypes
 import os
 from pathlib import Path
-from typing import Any
 
 import aiohttp
 from loguru import logger
@@ -32,7 +31,7 @@ async def async_upload_file(
     purpose: str = "general",
     custom_id: str = None,
     skip_exists: bool = False,
-) -> dict[str, Any]:
+) -> dict[str, str | int | float | bool | list | dict]:
     """
     Asynchronously upload a file to the Knowledge Forge API and return the file details.
 
@@ -83,7 +82,7 @@ async def async_upload_file(
             return result
 
 
-async def async_check_task_status(task_id: str) -> dict[str, Any]:
+async def async_check_task_status(task_id: str) -> dict[str, str | int | float | bool | list | dict]:
     """
     Check the status of a task by its ID.
 
@@ -107,7 +106,7 @@ async def async_check_task_status(task_id: str) -> dict[str, Any]:
 
 async def async_wait_for_task_completion(
     task_id: str, poll_interval: int = 2, max_attempts: int = 60
-) -> dict[str, Any]:
+) -> dict[str, str | int | float | bool | list | dict]:
     """
     Wait for a task to complete by polling its status.
 
@@ -136,7 +135,7 @@ async def async_wait_for_task_completion(
     raise TimeoutError(f"Task {task_id} did not complete within the allowed time")
 
 
-async def async_fetch_file(file_id: str) -> dict[str, Any] | None:
+async def async_fetch_file(file_id: str) -> dict[str, str | int | float | bool | list | dict] | None:
     """
     Asynchronously fetch file information by its ID.
 
@@ -171,8 +170,8 @@ async def async_create_vectorstore(
     description: str = None,
     file_ids: list[str] = None,
     custom_id: str = None,
-    metadata: dict[str, Any] = None,
-) -> dict[str, Any] | None:
+    metadata: dict[str, str | int | float | bool | list | dict] = None,
+) -> dict[str, str | int | float | bool | list | dict] | None:
     """
     Asynchronously create a new vector store.
 
@@ -224,8 +223,8 @@ async def async_query_vectorstore(
     vector_store_id: str,
     query: str,
     top_k: int = 10,
-    filters: dict[str, Any] = None,
-) -> dict[str, Any] | None:
+    filters: dict[str, str | int | float | bool | list | dict] = None,
+) -> dict[str, str | int | float | bool | list | dict] | None:
     """
     Asynchronously query a vector store.
 
@@ -347,7 +346,7 @@ async def astream_response(
     store: bool = True,
     temperature: float = 0.7,
     max_output_tokens: int = 1000,
-    tools: list[dict[str, Any]] = None,
+    tools: list[dict[str, str | int | float | bool | list | dict]] = None,
     debug: bool = False,
 ):
     """
@@ -454,10 +453,10 @@ async def async_create_response(
     store: bool = True,
     temperature: float = 0.7,
     max_output_tokens: int = 1000,
-    tools: list[dict[str, Any]] = None,
+    tools: list[dict[str, str | int | float | bool | list | dict]] = None,
     callback=None,
     debug: bool = False,
-) -> dict[str, Any]:
+) -> dict[str, str | int | float | bool | list | dict]:
     """
     Asynchronously create a response using the Knowledge Forge API with SSE streaming.
 
@@ -590,7 +589,7 @@ async def async_delete_file(file_id: str) -> bool:
         return False
 
 
-async def async_get_vectorstore(vector_store_id: str) -> dict[str, Any] | None:
+async def async_get_vectorstore(vector_store_id: str) -> dict[str, str | int | float | bool | list | dict] | None:
     """
     Asynchronously get vector store information by its ID.
 
@@ -650,7 +649,9 @@ async def async_delete_vectorstore(vector_store_id: str) -> bool:
         return False
 
 
-async def async_join_files_to_vectorstore(vector_store_id: str, file_ids: list[str]) -> dict[str, Any] | None:
+async def async_join_files_to_vectorstore(
+    vector_store_id: str, file_ids: list[str]
+) -> dict[str, str | int | float | bool | list | dict] | None:
     """
     Asynchronously join files to an existing vector store.
 
@@ -682,7 +683,7 @@ async def async_join_files_to_vectorstore(vector_store_id: str, file_ids: list[s
 
 async def async_get_vectorstore_summary(
     vector_store_id: str, model: str = "qwen-max", max_tokens: int = 1000
-) -> dict[str, Any] | None:
+) -> dict[str, str | int | float | bool | list | dict] | None:
     """
     Asynchronously get vector store summary.
 
@@ -717,7 +718,7 @@ async def async_get_vectorstore_summary(
         return None
 
 
-async def async_fetch_response(response_id: str) -> dict[str, Any] | None:
+async def async_fetch_response(response_id: str) -> dict[str, str | int | float | bool | list | dict] | None:
     """
     Asynchronously fetch a response by its ID.
 
@@ -750,7 +751,7 @@ async def async_fetch_response(response_id: str) -> dict[str, Any] | None:
 # Utility functions for result handling
 
 
-def print_file_results(upload_result: dict[str, Any]) -> None:
+def print_file_results(upload_result: dict[str, str | int | float | bool | list | dict]) -> None:
     """Print formatted file upload results."""
     if upload_result:
         print(f"File uploaded: {upload_result.get('filename')}")
@@ -760,7 +761,7 @@ def print_file_results(upload_result: dict[str, Any]) -> None:
             print(f"Processing task: {upload_result.get('task_id')}")
 
 
-def print_vectorstore_results(result: dict[str, Any], query: str) -> None:
+def print_vectorstore_results(result: dict[str, str | int | float | bool | list | dict], query: str) -> None:
     """Print formatted vector store query results."""
     if result:
         print(f"Found {len(result['data'])} results for query: '{query}'")
@@ -776,7 +777,7 @@ def print_vectorstore_results(result: dict[str, Any], query: str) -> None:
                     print(f"  Content: {content_text}")
 
 
-def print_response_results(result: dict[str, Any]) -> None:
+def print_response_results(result: dict[str, str | int | float | bool | list | dict]) -> None:
     """Print formatted response results."""
     if result and "output" in result:
         for msg in result["output"]:

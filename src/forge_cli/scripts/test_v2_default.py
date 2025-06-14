@@ -2,16 +2,16 @@
 
 import asyncio
 import json
-import sys
 import os
+import sys
 from io import StringIO
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from forge_cli.config import SearchConfig
-from forge_cli.main import create_display
 from forge_cli.display.v2.base import Display
+from forge_cli.main import create_display
 
 
 async def test_default_displays():
@@ -79,7 +79,7 @@ async def test_functionality():
         data = json.loads(json_str)
 
         sys.stdout = old_stdout  # Restore stdout before printing
-        print(f"✅ JSON output valid!")
+        print("✅ JSON output valid!")
         print(f"   Query: {data['response']['query']}")
         print(f"   Response: {data['response']['response_text']}")
         print(f"   API Version: {data['meta']['api_version']}")
@@ -89,6 +89,7 @@ async def test_functionality():
         sys.stdout = old_stdout  # Restore stdout before printing error
         print(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
 
 

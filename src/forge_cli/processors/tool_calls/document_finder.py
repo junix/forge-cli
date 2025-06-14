@@ -1,6 +1,5 @@
 """Document finder tool call processor."""
 
-from typing import Dict, Union, List
 from .base import BaseToolCallProcessor
 
 
@@ -16,7 +15,11 @@ class DocumentFinderProcessor(BaseToolCallProcessor):
         "results_text": "个文档",
     }
 
-    def _add_tool_specific_data(self, item: Dict[str, Any], processed: Dict[str, Any]) -> None:
+    def _add_tool_specific_data(
+        self,
+        item: dict[str, str | int | float | bool | list | dict],
+        processed: dict[str, str | int | float | bool | list | dict],
+    ) -> None:
         """Add document finder specific data."""
         # Add count parameter
         count = item.get("count")

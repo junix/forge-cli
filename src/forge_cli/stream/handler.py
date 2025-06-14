@@ -1,12 +1,11 @@
 """Main stream handler for processing API responses."""
 
-from typing import AsyncIterator, Tuple, Dict, Union, List, Optional
 import time
+from collections.abc import AsyncIterator
 
-from ..models.state import StreamState, ToolStatus
-from ..models.events import EventType
-from ..processors.registry import default_registry
 from ..display.v2.base import Display
+from ..models.state import StreamState, ToolStatus
+from ..processors.registry import default_registry
 
 
 class StreamHandler:
@@ -20,12 +19,14 @@ class StreamHandler:
 
         # Timing variables
         self.start_time = time.time()
-        self.search_start_time: Optional[float] = None
-        self.search_completed_time: Optional[float] = None
+        self.search_start_time: float | None = None
+        self.search_completed_time: float | None = None
 
     async def handle_stream(
-        self, event_stream: AsyncIterator[Tuple[str, Dict[str, Union[str, int, float, bool, List, Dict]]]], question: str
-    ) -> Optional[Dict[str, Union[str, int, float, bool, List, Dict]]]:
+        self,
+        event_stream: AsyncIterator[tuple[str, dict[str, str | int | float | bool | list | dict]]],
+        question: str,
+    ) -> dict[str, str | int | float | bool | list | dict] | None:
         """
         Process event stream and return final response.
 
@@ -142,7 +143,9 @@ class StreamHandler:
         tool_patterns = ["_call.searching", "_call.in_progress", "_call.completed"]
         return any(pattern in event_type for pattern in tool_patterns)
 
-    async def _handle_tool_event(self, event_type: str, event_data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
+    async def _handle_tool_event(
+        self, event_type: str, event_data: dict[str, str | int | float | bool | list | dict]
+    ) -> None:
         """Handle tool-specific events."""
         # Extract tool type from event
         tool_type = event_type
@@ -181,7 +184,7 @@ class StreamHandler:
             if self.search_start_time and self.search_completed_time:
                 tool_state.retrieval_time = (self.search_completed_time - self.search_start_time) * 1000
 
-    def _extract_queries(self, event_data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> List[str]:
+    def _extract_queries(self, event_data: dict[str, str | int | float | bool | list | dict]) -> list[str]:
         """Extract queries from various event data structures."""
         if not isinstance(event_data, dict):
             return []
@@ -197,7 +200,11 @@ class StreamHandler:
 
         return []
 
-    async def _log_debug_info(self, event_type: str, event_data: Union[Dict[str, Union[str, int, float, bool, List, Dict]], str, int, float, bool]) -> None:
+    async def _log_debug_info(
+        self,
+        event_type: str,
+        event_data: dict[str, str | int | float | bool | list | dict] | str | int | float | bool,
+    ) -> None:
         """Log debug information for events."""
         print(f"\nDEBUG: Event: {event_type}")
 

@@ -1,6 +1,5 @@
 """Base class for tool call processors."""
 
-from typing import Dict, Union, List, Optional, Tuple
 from ..base import OutputProcessor
 
 
@@ -9,7 +8,7 @@ class BaseToolCallProcessor(OutputProcessor):
 
     # Override these in subclasses
     TOOL_TYPE: str = ""
-    TOOL_CONFIG: Dict[str, str] = {
+    TOOL_CONFIG: dict[str, str] = {
         "emoji": "🔧",
         "action": "执行工具",
         "status_searching": "正在执行...",
@@ -21,7 +20,9 @@ class BaseToolCallProcessor(OutputProcessor):
         """Check if this processor can handle the item type."""
         return item_type == f"{self.TOOL_TYPE}_call"
 
-    def process(self, item: Dict[str, Union[str, int, float, bool, List, Dict]]) -> Optional[Dict[str, Union[str, int, float, bool, List, Dict]]]:
+    def process(
+        self, item: dict[str, str | int | float | bool | list | dict]
+    ) -> dict[str, str | int | float | bool | list | dict] | None:
         """Process tool call output item."""
         processed = {
             "type": self.TOOL_TYPE,
@@ -42,11 +43,15 @@ class BaseToolCallProcessor(OutputProcessor):
 
         return processed
 
-    def _add_tool_specific_data(self, item: Dict[str, Union[str, int, float, bool, List, Dict]], processed: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
+    def _add_tool_specific_data(
+        self,
+        item: dict[str, str | int | float | bool | list | dict],
+        processed: dict[str, str | int | float | bool | list | dict],
+    ) -> None:
         """Override in subclasses to add tool-specific data."""
         pass
 
-    def format(self, processed: Dict[str, Union[str, int, float, bool, List, Dict]]) -> str:
+    def format(self, processed: dict[str, str | int | float | bool | list | dict]) -> str:
         """Format processed item for display."""
         parts = []
 
@@ -72,6 +77,8 @@ class BaseToolCallProcessor(OutputProcessor):
 
         return "\n".join(parts)
 
-    def _add_tool_specific_formatting(self, processed: Dict[str, Union[str, int, float, bool, List, Dict]], parts: List[str]) -> None:
+    def _add_tool_specific_formatting(
+        self, processed: dict[str, str | int | float | bool | list | dict], parts: list[str]
+    ) -> None:
         """Override in subclasses to add tool-specific formatting."""
         pass

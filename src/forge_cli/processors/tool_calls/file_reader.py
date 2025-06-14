@@ -1,7 +1,7 @@
 """File reader tool call processor."""
 
 import re
-from typing import Dict, Union, List
+
 from .base import BaseToolCallProcessor
 
 
@@ -17,7 +17,11 @@ class FileReaderProcessor(BaseToolCallProcessor):
         "results_text": "个内容块",
     }
 
-    def _add_tool_specific_data(self, item: Dict[str, Any], processed: Dict[str, Any]) -> None:
+    def _add_tool_specific_data(
+        self,
+        item: dict[str, str | int | float | bool | list | dict],
+        processed: dict[str, str | int | float | bool | list | dict],
+    ) -> None:
         """Add file reader specific data."""
         # Add query and doc_ids
         query = item.get("query")
@@ -37,7 +41,7 @@ class FileReaderProcessor(BaseToolCallProcessor):
         if progress is not None:
             processed["progress"] = progress
 
-    def format(self, processed: Dict[str, Any]) -> str:
+    def format(self, processed: dict[str, str | int | float | bool | list | dict]) -> str:
         """Custom formatting for file reader."""
         parts = []
 
