@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 from ..config import SearchConfig
-from ..display.base import BaseDisplay
+from ..display.v1.base import BaseDisplay
 from ..models.conversation import ConversationState
 from ..stream.handler import StreamHandler
 from .commands import CommandRegistry

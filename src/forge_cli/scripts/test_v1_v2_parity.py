@@ -5,7 +5,7 @@ import asyncio
 from rich.console import Console
 from rich.table import Table
 
-from forge_cli.display.rich_display import RichDisplay  # v1
+from forge_cli.display.v1.rich_display import RichDisplay  # v1
 from forge_cli.display.v2.renderers.rich import RichRenderer  # v2
 from forge_cli.display.v2.base import Display
 from forge_cli.display.v2.adapter import V1ToV2Adapter

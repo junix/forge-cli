@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Use absolute imports from top-level directory
 from forge_cli.chat.controller import ChatController
 from forge_cli.config import SearchConfig
-from forge_cli.display.base import BaseDisplay
+from forge_cli.display.v1.base import BaseDisplay
 from forge_cli.display.registry import DisplayRegistry, initialize_default_displays
 from forge_cli.processors.registry import initialize_default_registry
 from forge_cli.sdk import astream_response, async_get_vectorstore

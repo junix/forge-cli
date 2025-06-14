@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from .base import BaseDisplay
+from .v1.base import BaseDisplay
 
 
 class DisplayRegistry:
@@ -90,10 +90,10 @@ def initialize_default_displays():
     from .v2.renderers.rich import RichRenderer
 
     # Import v1 displays for fallback
-    from .json_chat_display import JsonChatDisplay
-    from .json_display import JsonDisplay
-    from .plain_display import PlainDisplay
-    from .rich_display import RichDisplay
+    from .v1.json_chat_display import JsonChatDisplay
+    from .v1.json_display import JsonDisplay
+    from .v1.plain_display import PlainDisplay
+    from .v1.rich_display import RichDisplay
 
     # Helper function to create v2 display wrapped in v1 adapter
     def create_v2_json_display(**kwargs):

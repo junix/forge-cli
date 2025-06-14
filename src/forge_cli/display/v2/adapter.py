@@ -4,7 +4,7 @@ import asyncio
 import time
 from typing import Any, Dict, Optional
 
-from ..base import BaseDisplay  # v1 interface
+from ..v1.base import BaseDisplay  # v1 interface
 from .base import Display, Renderer  # v2 interfaces
 from .events import EventType
 

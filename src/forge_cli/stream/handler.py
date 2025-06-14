@@ -6,7 +6,7 @@ import time
 from ..models.state import StreamState, ToolStatus
 from ..models.events import EventType
 from ..processors.registry import default_registry
-from ..display.base import BaseDisplay
+from ..display.v1.base import BaseDisplay
 
 
 class StreamHandler:
