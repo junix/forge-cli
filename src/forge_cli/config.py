@@ -46,6 +46,10 @@ class SearchConfig:
     web_country: Optional[str] = None
     web_city: Optional[str] = None
 
+    # Display API version (for migration)
+    use_new_display_api: bool = False  # Feature flag for v2 display system
+    display_api_debug: bool = False  # Debug logging for display API migration
+
     @classmethod
     def from_args(cls, args) -> "SearchConfig":
         """Create config from command line arguments."""

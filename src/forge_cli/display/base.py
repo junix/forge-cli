@@ -1,14 +1,14 @@
 """Base display interface for all output formats."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 class BaseDisplay(ABC):
     """Abstract base class for all display implementations."""
 
     @abstractmethod
-    async def show_request_info(self, info: Dict[str, Any]) -> None:
+    async def show_request_info(self, info: dict[str, Any]) -> None:
         """
         Display request information at the start.
 
@@ -18,7 +18,7 @@ class BaseDisplay(ABC):
         pass
 
     @abstractmethod
-    async def update_content(self, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    async def update_content(self, content: str, metadata: dict[str, Any] | None = None) -> None:
         """
         Update the main content display.
 
@@ -49,7 +49,7 @@ class BaseDisplay(ABC):
         pass
 
     @abstractmethod
-    async def finalize(self, response: Dict[str, Any], state: Any) -> None:
+    async def finalize(self, response: dict[str, Any], state: Any) -> None:
         """
         Finalize the display with response data.
 
@@ -72,7 +72,7 @@ class BaseDisplay(ABC):
         """Show an assistant message in chat mode."""
         await self.show_status(f"Assistant: {message}")
 
-    async def prompt_for_input(self) -> Optional[str]:
+    async def prompt_for_input(self) -> str | None:
         """Prompt for user input in chat mode."""
         # Default implementation using standard input
         try:
