@@ -16,27 +16,24 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from forge_cli.chat.controller import ChatController
 from forge_cli.config import SearchConfig
 from forge_cli.display.base import BaseDisplay
-from forge_cli.display.json_display import JsonDisplay
-from forge_cli.display.plain_display import PlainDisplay
-from forge_cli.display.rich_display import RichDisplay
+from forge_cli.display.registry import DisplayRegistry, initialize_default_displays
 from forge_cli.processors.registry import initialize_default_registry
 from forge_cli.sdk import astream_response, async_get_vectorstore
 from forge_cli.stream.handler import StreamHandler
 
 
 def create_display(config: SearchConfig) -> BaseDisplay:
-    """Create appropriate display based on configuration."""
-    if config.json_output:
-        return JsonDisplay()
-    elif config.use_rich and not config.quiet:
-        try:
-            from rich.console import Console
+    """Create appropriate display based on configuration using the display registry."""
+    # Initialize default displays if not already done
+    initialize_default_displays()
 
-            return RichDisplay(Console())
-        except ImportError:
-            # Fallback to plain if Rich not available
-            return PlainDisplay()
-    else:
+    # Get the appropriate display from the registry based on config
+    try:
+        return DisplayRegistry.get_display_for_config(config)
+    except (ValueError, ImportError) as e:
+        # Fallback to plain display if there's an error
+        from forge_cli.display.plain_display import PlainDisplay
+
         return PlainDisplay()
 
 

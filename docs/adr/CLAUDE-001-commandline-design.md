@@ -23,12 +23,20 @@ All tools use Python's async/await pattern for API operations:
 - Supports streaming responses naturally
 - Better performance for I/O-bound operations
 
-### 3. Module Execution Pattern
-Commands are executed as Python modules using:
+### 3. Command-Line Interface Pattern
+The system provides a unified CLI tool executed as:
 ```bash
-uv run -m commands.<command_name>
+# Primary CLI tool (via pyproject.toml console script)
+forge-cli
+
+# Module execution
+python -m forge_cli
+
+# Development execution
+uv run forge-cli
 ```
 This approach:
+- Provides user-friendly command-line interface
 - Ensures proper Python path resolution
 - Works consistently across different environments
 - Integrates well with the uv package manager
