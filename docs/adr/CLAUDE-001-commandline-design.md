@@ -41,26 +41,30 @@ This approach:
 - Works consistently across different environments
 - Integrates well with the uv package manager
 
-### 4. Configuration via Environment Variables
-Primary configuration through environment variables:
-- `KNOWLEDGE_FORGE_URL`: API server URL (default: http://localhost:9999)
-- `OPENAI_API_KEY`: Optional API key for authentication
-- `PYTHONPATH`: Set to knowledge_forge directory
+### 4. Unified Configuration System
+Configuration is handled through a centralized `SearchConfig` dataclass:
+- Command-line arguments (primary)
+- Environment variables: `KNOWLEDGE_FORGE_URL`
+- Sensible defaults for all options
+- Support for multiple tools, vector stores, and display modes
 
-### 5. Subcommand Pattern for Complex Tools
-Tools with multiple operations use argparse subcommands:
+### 5. Modular Architecture Pattern
+The system uses a modular design with registries:
 ```python
-parser = argparse.ArgumentParser()
-subparsers = parser.add_subparsers(dest='command')
-upload_parser = subparsers.add_parser('upload')
-delete_parser = subparsers.add_parser('delete')
+# Processor registry for event handling
+ProcessorRegistry.register("file_search_call", FileSearchProcessor())
+
+# Display registry for output strategies
+DisplayRegistry.register("rich", RichDisplay)
+DisplayRegistry.register("plain", PlainDisplay)
 ```
 
-### 6. Consistent Output Formatting
-- Use `rich` library for enhanced terminal output
-- JSON output option for machine parsing
-- Progress indicators for long-running operations
-- Clear error messages with actionable information
+### 6. Multi-Modal Output System
+- Strategy pattern for display implementations
+- Rich terminal UI with live updates and markdown rendering
+- Plain text output for basic terminals and automation
+- JSON output for machine parsing and integration
+- Interactive chat mode with conversation management
 
 ## Consequences
 
@@ -78,28 +82,40 @@ delete_parser = subparsers.add_parser('delete')
 
 ## Examples
 
-### Basic Command Structure
+### Current CLI Usage Examples
+```bash
+# Basic file search
+forge-cli -q "What information is in these documents?" --vec-id vs_123
+
+# Multiple tools with web search
+forge-cli -t file-search -t web-search -q "Compare internal docs with latest trends"
+
+# Interactive chat mode
+forge-cli --chat
+
+# JSON output for automation
+forge-cli -q "search query" --json --vec-id vs_123
+```
+
+### SDK Integration Pattern
 ```python
 #!/usr/bin/env python3
 import asyncio
-from commands.sdk import async_create_response
+from forge_cli.sdk import async_create_response, astream_response
 
 async def main():
-    response = await async_create_response(
+    # Streaming response with event processing
+    async for event_type, event_data in astream_response(
         input_messages="Hello, Knowledge Forge!",
         model="qwen-max-latest"
-    )
-    print(response)
+    ):
+        if event_type == "response.output_text.delta":
+            print(event_data["text"], end="", flush=True)
+        elif event_type == "done":
+            break
 
 if __name__ == "__main__":
     asyncio.run(main())
-```
-
-### Streaming Response Pattern
-```python
-async for event_type, event_data in astream_response(messages):
-    if event_type == "response.output_text.delta":
-        print(event_data["text"], end="", flush=True)
 ```
 
 ## Alternatives Considered

@@ -134,28 +134,56 @@ Each streaming event contains the complete response state:
 }
 ```
 
-### Client Processing Pattern
+### Current Implementation Pattern
 
 ```python
-def process_snapshot_with_annotations(event_data: Dict[str, Any], ...):
-    """
-    Process a complete snapshot response with annotations.
-    Since each event is a full snapshot, we can process it completely.
-    """
-    # Extract everything from this single event
-    # No need to maintain state between events
-    full_text = extract_text(event_data)
-    citations = extract_citations(event_data)
-    return full_text, citations
+class StreamHandler:
+    async def handle_stream(self, stream, initial_request: str) -> StreamState:
+        """Handle streaming events using snapshot-based processing."""
+        state = StreamState()
+        
+        async for event_type, event_data in stream:
+            # Route to appropriate processor based on event type
+            self.processor_registry.process(
+                event_type, event_data, state, self.display
+            )
+            
+            # Each processor handles complete snapshots
+            # No complex state synchronization needed
+        
+        return state
+
+class MessageProcessor(OutputProcessor):
+    def process(self, event_data: dict, state: StreamState, display: BaseDisplay):
+        """Process complete message snapshots."""
+        # Extract full content from snapshot
+        content = self._extract_complete_content(event_data)
+        annotations = self._extract_all_annotations(event_data)
+        # Process complete state, not deltas
 ```
 
-### Handling Different Display Modes
+### Display Strategy Integration
 
 ```python
-# Skip text delta events in Rich mode since we're using snapshots
-if event_type == "response.output_text.delta" and use_rich:
-    # In Rich mode, we handle everything through snapshots
-    pass
+# Each display handles snapshots according to its capabilities
+class RichDisplay(BaseDisplay):
+    def handle_message_update(self, content: str, citations: List[Citation]):
+        """Rich display processes complete snapshots for live updates."""
+        # Update live panel with complete content
+        self._update_response_panel(content)
+        self._update_citation_table(citations)
+
+class PlainDisplay(BaseDisplay):
+    def handle_message_update(self, content: str, citations: List[Citation]):
+        """Plain display can use deltas or snapshots."""
+        # Can handle both incremental and complete updates
+        print(content)
+
+class JsonDisplay(BaseDisplay):
+    def handle_message_update(self, content: str, citations: List[Citation]):
+        """JSON accumulates complete state for final output."""
+        self.state["text"] = content
+        self.state["citations"] = [c.to_dict() for c in citations]
 ```
 
 ## Consequences
@@ -207,7 +235,8 @@ The design allows for future addition of delta events without breaking existing 
 
 ## Related Code
 
-- `/commands/hello-file-search.py` - Snapshot processing implementation
-- `/commands/hello-sse.py` - SSE client implementation
-- `/knowledge_forge/apis/api_response.py` - Server-side streaming
-- `/knowledge_forge/service/response_service/` - Response generation logic
+- `src/forge_cli/stream/handler.py` - Main streaming handler implementation
+- `src/forge_cli/processors/` - Event processor implementations using snapshots
+- `src/forge_cli/display/` - Display strategies that handle snapshot updates
+- `src/forge_cli/models/state.py` - State management for snapshot processing
+- `src/forge_cli/sdk.py` - SDK streaming implementation with SSE

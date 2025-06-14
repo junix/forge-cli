@@ -6,9 +6,11 @@
 
 ## Context
 
-The hello-file-search.py script needed to properly display file citations/annotations from the Knowledge Forge API response. The OpenAI-style Response API returns annotations with file search results, but the original implementation wasn't displaying these citations, making it difficult for users to verify the source of information.
+The Forge CLI needed to properly display file citations/annotations from the Knowledge Forge API response. The OpenAI-style Response API returns annotations with file search results, but the system required sophisticated citation processing and display across multiple output formats.
 
 A key architectural insight is that the streaming response events are **complete snapshots**, not deltas. Each event contains the full response state up to that point, which simplifies citation processing since we can extract all annotations from any single event without maintaining complex state.
+
+The implementation uses a modular processor architecture where citation handling is separated from display logic, enabling consistent citation formatting across Rich, Plain, and JSON output modes.
 
 ### Problem Statement
 
@@ -56,11 +58,11 @@ We chose **Option 3: Tabular Reference Display** with the following implementati
    - Markdown table format for Rich display mode
 
 3. **Architecture**:
-   - Modular `FileSearchEventHandler` class for event processing
-   - `process_snapshot_with_annotations()` function processes complete snapshots
-   - `format_annotated_display()` function for unified display formatting
-   - Text delta events are ignored in Rich mode since snapshots contain full content
-   - Support for Rich, color, and plain text modes
+   - `MessageProcessor` class handles citation extraction and processing
+   - `FileSearchProcessor` class manages file search tool execution
+   - `StreamHandler` coordinates between processors and display strategies
+   - Citation processing integrated into the processor registry system
+   - Support for Rich, Plain, and JSON display modes through strategy pattern
 
 ## Consequences
 
@@ -82,15 +84,28 @@ We chose **Option 3: Tabular Reference Display** with the following implementati
 
 ## Implementation Notes
 
-### Snapshot-based Processing
+### Current Implementation Architecture
 ```python
-def process_snapshot_with_annotations(event_data: Dict[str, Any], ...):
-    """
-    Process a complete snapshot response with annotations.
-    Since each event is a full snapshot, we can process it completely.
-    """
-    # Extract full text and all annotations from the snapshot
-    # No need to maintain state between events
+class MessageProcessor(OutputProcessor):
+    def process(self, event_data: dict, state: StreamState, display: BaseDisplay):
+        """Process message items with citation handling."""
+        # Extract content and annotations from snapshot
+        content = self._extract_content(event_data)
+        annotations = self._extract_annotations(event_data)
+        
+        # Process citations
+        for annotation in annotations:
+            citation_num = state.add_citation(annotation)
+            # Update content with citation markers
+        
+        # Update display with processed content
+        display.handle_message_update(content, state.citations)
+
+class FileSearchProcessor(BaseToolProcessor):
+    def process(self, event_data: dict, state: StreamState, display: BaseDisplay):
+        """Handle file search tool execution."""
+        # Process tool status and results
+        # Build file ID to filename mappings for citations
 ```
 
 ### Key Data Structures
@@ -126,6 +141,8 @@ if event_type == "response.output_text.delta" and use_rich:
 
 ## Related Components
 
-- `/commands/hello-file-search.py` - Main implementation
-- `/knowledge_forge/response/_types/response_output_text.py` - Server-side annotation model
-- `/knowledge_forge/service/response_service/low_effort.py` - Server-side citation processing
+- `src/forge_cli/main.py` - Main CLI implementation with citation display
+- `src/forge_cli/processors/message.py` - Citation processing implementation
+- `src/forge_cli/processors/tool_calls/file_search.py` - File search tool processor
+- `src/forge_cli/display/` - Display strategy implementations for citation formatting
+- `src/forge_cli/models/state.py` - Citation state management
