@@ -2,13 +2,152 @@
 
 import time
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, Literal
+from dataclasses import dataclass, field
 
 from ..display.v2.base import Display
-from ..models.state import StreamState, ToolStatus
+from ..response._types import ResponseStatus
 from ..processors.registry import default_registry
 
 # Removed ResponseStreamEvent import to avoid isinstance issues with generics
+
+# Tool status type alias using response types
+ToolStatusType = Literal["idle", "searching", "in_progress", "completed", "failed"]
+
+
+@dataclass
+class ToolState:
+    """State for a specific tool execution using response types."""
+
+    tool_type: str = ""
+    query: str = ""
+    queries: list[str] = field(default_factory=list)
+    results_count: int | None = None
+    status: ToolStatusType = "idle"
+    query_time: float | None = None
+    retrieval_time: float | None = None
+
+    def to_display_info(self) -> dict[str, str | int | float]:
+        """Convert to display information dictionary."""
+        info = {"tool_type": self.tool_type}
+
+        if self.query:
+            info["query"] = self.query
+            if self.query_time:
+                info["query_time"] = self.query_time
+
+        if self.status == "completed":
+            info["results_count"] = self.results_count
+            if self.retrieval_time:
+                info["retrieval_time"] = self.retrieval_time
+
+        return info
+
+
+@dataclass
+class StreamState:
+    """Manages complete state during streaming using response types."""
+
+    # Current output items from latest snapshot
+    output_items: list[dict[str, str | int | float | bool | list | dict]] = field(default_factory=list)
+
+    # Tool states by tool type
+    tool_states: dict[str, ToolState] = field(default_factory=dict)
+
+    # File ID to filename mapping
+    file_id_to_name: dict[str, str] = field(default_factory=dict)
+
+    # Extracted citations
+    citations: list[dict[str, str | int]] = field(default_factory=list)
+
+    # Current reasoning text
+    current_reasoning: str = ""
+
+    # Usage statistics
+    usage: dict[str, int] = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
+
+    # Event counters
+    event_count: int = 0
+    response_event_count: int = 0
+
+    # Response metadata
+    response_id: str | None = None
+    model: str | None = None
+
+    def update_from_snapshot(self, snapshot: dict[str, str | int | float | list | dict]) -> None:
+        """Update state from response snapshot."""
+        if "output" in snapshot:
+            self.output_items = snapshot["output"]
+            self._extract_file_mappings()
+            self._extract_reasoning()
+
+        if "usage" in snapshot:
+            self.usage.update(snapshot["usage"])
+
+        if "id" in snapshot:
+            self.response_id = snapshot["id"]
+
+        if "model" in snapshot:
+            self.model = snapshot["model"]
+
+    def _extract_file_mappings(self) -> None:
+        """Extract file ID to name mappings from output items."""
+        for item in self.output_items:
+            item_type = item.get("type", "")
+
+            # Extract from file search results
+            if item_type == "file_search_call" and item.get("results"):
+                for result in item["results"]:
+                    if isinstance(result, dict):
+                        file_id = result.get("file_id", "")
+                        filename = result.get("filename", "")
+                        if file_id and filename:
+                            self.file_id_to_name[file_id] = filename
+
+            # Extract from document finder results
+            elif item_type == "document_finder_call" and item.get("results"):
+                for result in item["results"]:
+                    if isinstance(result, dict):
+                        doc_id = result.get("doc_id", "")
+                        title = result.get("title", "")
+                        if doc_id and title:
+                            self.file_id_to_name[doc_id] = title
+
+    def _extract_reasoning(self) -> None:
+        """Extract reasoning text from output items."""
+        reasoning_texts = []
+
+        for item in self.output_items:
+            if item.get("type") == "reasoning":
+                for summary in item.get("summary", []):
+                    if summary.get("type") == "summary_text":
+                        text = summary.get("text", "")
+                        if text:
+                            reasoning_texts.append(text)
+
+        self.current_reasoning = "\n\n".join(reasoning_texts)
+
+    def get_tool_state(self, tool_type: str) -> ToolState:
+        """Get or create tool state for a specific tool type."""
+        # Normalize tool type
+        base_tool_type = tool_type
+        for pattern in ["response.", "_call", ".searching", ".completed", ".in_progress"]:
+            base_tool_type = base_tool_type.replace(pattern, "")
+
+        if base_tool_type not in self.tool_states:
+            self.tool_states[base_tool_type] = ToolState(tool_type=base_tool_type)
+
+        return self.tool_states[base_tool_type]
+
+    def get_completed_tools(self) -> list[dict[str, str | int | float]]:
+        """Get display info for all completed tools."""
+        completed: list[dict[str, str | int | float]] = []
+
+        for tool_state in self.tool_states.values():
+            if tool_state.status == "completed":
+                completed.append(tool_state.to_display_info())
+
+        return completed
 
 
 class StreamHandler:
@@ -166,7 +305,7 @@ class StreamHandler:
         tool_state = self.state.get_tool_state(tool_type)
 
         if ".searching" in event_type or ".in_progress" in event_type:
-            tool_state.status = ToolStatus.SEARCHING
+            tool_state.status = "searching"
 
             # Extract queries if present and event_data is valid
             if isinstance(event_data, dict):
@@ -180,7 +319,7 @@ class StreamHandler:
                 tool_state.query_time = (time.time() - self.start_time) * 1000
 
         elif ".completed" in event_type:
-            tool_state.status = ToolStatus.COMPLETED
+            tool_state.status = "completed"
 
             # Extract results count if event_data is valid
             if isinstance(event_data, dict):

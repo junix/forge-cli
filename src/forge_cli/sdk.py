@@ -519,7 +519,7 @@ async def async_create_response(
     tools: list[dict[str, str | int | float | bool | list | dict]] = None,
     callback=None,
     debug: bool = False,
-) -> dict[str, str | int | float | bool | list | dict]:
+) -> Response | None:
     """
     Asynchronously create a response using the Knowledge Forge API with SSE streaming.
 
@@ -534,7 +534,15 @@ async def async_create_response(
         callback: Optional callback function to process SSE events
 
     Returns:
-        Dict containing the final response data
+        Response object with methods for citation management, tool call analysis,
+        text extraction, and content compression. Returns None on error.
+
+    Example:
+        >>> response = await async_create_response("What is machine learning?")
+        >>> if response:
+        ...     print(response.output_text)  # Get formatted text
+        ...     citations = response.install_citation_id()  # Add citation IDs
+        ...     print(f"Citations: {len(citations)}")
     """
     url = f"{BASE_URL}/v1/responses"
 
@@ -616,7 +624,14 @@ async def async_create_response(
         print(f"Error creating response: {str(e)}")
         return None
 
-    return final_response
+    # Convert to Response object if we have data
+    if final_response:
+        try:
+            return Response.model_validate(final_response)
+        except Exception as e:
+            logger.error(f"Failed to parse response data: {e}")
+            return None
+    return None
 
 
 # Additional API functions that were missing
@@ -781,7 +796,7 @@ async def async_get_vectorstore_summary(
         return None
 
 
-async def async_fetch_response(response_id: str) -> dict[str, str | int | float | bool | list | dict] | None:
+async def async_fetch_response(response_id: str) -> Response | None:
     """
     Asynchronously fetch a response by its ID.
 
@@ -789,7 +804,7 @@ async def async_fetch_response(response_id: str) -> dict[str, str | int | float 
         response_id: The ID of the response to fetch
 
     Returns:
-        Dict containing the response data or None if not found/error
+        Response object containing the response data or None if not found/error
     """
     url = f"{BASE_URL}/v1/responses/{response_id}"
 
@@ -805,7 +820,12 @@ async def async_fetch_response(response_id: str) -> dict[str, str | int | float 
                     return None
 
                 result = await response.json()
-                return result
+                # Convert to Response object
+                try:
+                    return Response.model_validate(result)
+                except Exception as e:
+                    logger.error(f"Failed to parse response data: {e}")
+                    return None
     except Exception as e:
         logger.error(f"Error fetching response: {str(e)}")
         return None
@@ -840,9 +860,16 @@ def print_vectorstore_results(result: dict[str, str | int | float | bool | list 
                     print(f"  Content: {content_text}")
 
 
-def print_response_results(result: dict[str, str | int | float | bool | list | dict]) -> None:
+def print_response_results(result: Response | dict[str, str | int | float | bool | list | dict]) -> None:
     """Print formatted response results."""
-    if result and "output" in result:
+    if isinstance(result, Response):
+        # Use the output_text property for Response objects
+        if result.output_text:
+            print(f"Assistant: {result.output_text}")
+        else:
+            print("Assistant: [No text output]")
+    elif result and "output" in result:
+        # Fallback for dict format
         for msg in result["output"]:
             if msg.get("role") == "assistant" and "content" in msg:
                 content = msg["content"]
@@ -852,6 +879,107 @@ def print_response_results(result: dict[str, str | int | float | bool | list | d
                             print(f"Assistant: {item.get('text', '')}")
                 else:
                     print(f"Assistant: {content}")
+
+
+# Response object utility functions
+
+
+def get_response_text(response: Response) -> str:
+    """Extract text content from a Response object."""
+    return response.output_text if response.output_text else ""
+
+
+def has_tool_calls(response: Response) -> bool:
+    """Check if the response contains any tool calls."""
+    return any(
+        hasattr(item, "type") and ("tool_call" in item.type or item.type == "function_call") for item in response.output
+    )
+
+
+def get_tool_call_results(response: Response) -> list[dict[str, Any]]:
+    """Extract tool call results from a Response object."""
+    results = []
+    for item in response.output:
+        if hasattr(item, "type") and ("tool_call" in item.type or item.type == "function_call"):
+            if hasattr(item, "results") and item.results:
+                results.extend(item.results)
+    return results
+
+
+def get_citation_count(response: Response) -> int:
+    """Count the number of citations in a Response object."""
+    citation_items = response.collect_citable_items()
+    return len(citation_items)
+
+
+def has_uncompleted_tool_calls(response: Response) -> bool:
+    """Check if the response has any uncompleted tool calls."""
+    return len(response.uncompleted_tool_calls) > 0
+
+
+async def example_response_usage() -> None:
+    """
+    Example function demonstrating Response object features.
+
+    This function shows how to:
+    - Create a response with tools
+    - Extract text content
+    - Work with citations
+    - Analyze tool calls
+    - Use compression features
+    """
+    # Create a response with file search
+    response = await async_create_response(
+        input_messages="What information is available about machine learning?",
+        model="qwen-max-latest",
+        tools=[{"type": "file_search", "vector_store_ids": ["vs_example"], "max_num_results": 10}],
+    )
+
+    if not response:
+        print("Failed to create response")
+        return
+
+    # Basic text extraction
+    print(f"Response text: {response.output_text}")
+    print(f"Status: {response.status}")
+    print(f"Model: {response.model}")
+
+    # Tool call analysis
+    print(f"Has tool calls: {has_tool_calls(response)}")
+    print(f"Has uncompleted tool calls: {has_uncompleted_tool_calls(response)}")
+    print(f"Contains non-internal tools: {response.contain_non_internal_tool_call()}")
+
+    # Citation management
+    citable_items = response.collect_citable_items()
+    print(f"Found {len(citable_items)} citable items")
+
+    # Install citation IDs for display
+    citations_with_ids = response.install_citation_id()
+    print(f"Assigned citation IDs to {len(citations_with_ids)} items")
+
+    # Get actual citations used in the response
+    referenced_citations = response.get_cited_annotations()
+    print(f"Actually referenced: {len(referenced_citations)} citations")
+
+    # Content compression examples
+    if len(citable_items) > 0:
+        # Remove duplicates
+        deduplicated = response.deduplicate()
+        print(f"After deduplication: {len(deduplicated.collect_citable_items())} items")
+
+        # Remove unreferenced chunks
+        compact_response = response.compact_retrieve_chunks("nonrefed")
+        print(f"After removing unreferenced: {len(compact_response.collect_citable_items())} items")
+
+    # Usage statistics
+    if response.usage:
+        print(f"Token usage: {response.usage.total_tokens} total")
+        print(f"Input tokens: {response.usage.input_tokens}")
+        print(f"Output tokens: {response.usage.output_tokens}")
+
+    # Brief representation for debugging
+    brief = response.brief_repr("smart")
+    print(f"Brief representation created with {len(brief.output)} output items")
 
 
 # Note: In production code, consider implementing these print functions as async functions
@@ -939,22 +1067,9 @@ async def astream_typed_response(
         Tuples of (event_type, typed_event) where typed_event is a ResponseStreamEvent
     """
     # Use the existing streaming function with typed=True
-    messages = request.input_as_typed_messages()
-    dict_messages = [{"role": msg.role, "content": msg.content} for msg in messages]
-
-    tools = []
-    if request.tools:
-        for tool in request.tools:
-            tools.append(tool)
 
     async for event_type, event_data in astream_response(
-        input_messages=dict_messages,
-        model=request.model,
-        effort=request.effort or "low",
-        store=request.store if request.store is not None else True,
-        temperature=request.temperature or 0.7,
-        max_output_tokens=request.max_output_tokens or 1000,
-        tools=tools if tools else None,
+        **request.model_dump(),
         debug=debug,
         typed=True,
     ):
