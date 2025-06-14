@@ -53,6 +53,10 @@ class RichRenderer(BaseRenderer):
         self._errors: list[str] = []
         self._start_time = time.time()
         self._live_started = False
+        
+        # Track previous snapshot lengths for delta detection
+        self._last_response_length = 0
+        self._last_reasoning_length = 0
 
         # Progress tracking
         self._progress = Progress(
@@ -128,15 +132,27 @@ class RichRenderer(BaseRenderer):
         self._query = data.get("query", "")
         self._start_time = time.time()
 
-        # Update header
-        header_text = Text(f"🔍 {self._query}", style="bold cyan")
-        self._layout["header"].update(Panel(header_text, title="Knowledge Forge"))
-
-        # Update footer
+        # Print request info like v1 before starting live display
+        request_text = Text()
+        request_text.append("\n📄 Request Information:\n", style="blue bold")
+        
+        if self._query:
+            request_text.append("  💬 Question: ", style="green")
+            request_text.append(f"{self._query}\n")
+            
         model = data.get("model", "")
+        if model:
+            request_text.append("  🤖 Model: ", style="green")
+            request_text.append(f"{model}\n")
+            
         effort = data.get("effort", "")
-        footer_text = f"Model: {model} | Effort: {effort}"
-        self._layout["footer"].update(Text(footer_text, style="dim"))
+        if effort:
+            request_text.append("  ⚙️ Effort Level: ", style="green")
+            request_text.append(f"{effort}\n")
+            
+        self._console.print(request_text)
+        self._console.print(Text("\n🔄 Streaming response (please wait):", style="yellow bold"))
+        self._console.print("=" * 80, style="blue")
 
     def _handle_stream_end(self, data: dict[str, Any]) -> None:
         """Handle stream end event."""
@@ -158,9 +174,10 @@ class RichRenderer(BaseRenderer):
         self._layout["response"].update(error_panel)
 
     def _handle_text_delta(self, data: dict[str, Any]) -> None:
-        """Handle text delta event."""
+        """Handle text delta event - actually a snapshot."""
         text = data.get("text", "")
-        self._response_text += text
+        # Since this is a snapshot, replace the entire text
+        self._response_text = text
 
     def _handle_reasoning_start(self, data: dict[str, Any]) -> None:
         """Handle reasoning start event."""
@@ -169,10 +186,11 @@ class RichRenderer(BaseRenderer):
             self._layout["reasoning"].visible = True
 
     def _handle_reasoning_delta(self, data: dict[str, Any]) -> None:
-        """Handle reasoning delta event."""
+        """Handle reasoning delta event - actually a snapshot."""
         if self._show_reasoning:
             text = data.get("text", "")
-            self._reasoning_text += text
+            # Since this is a snapshot, replace the entire text
+            self._reasoning_text = text
 
     def _handle_reasoning_complete(self, data: dict[str, Any]) -> None:
         """Handle reasoning complete event."""
@@ -325,9 +343,13 @@ class RichRenderer(BaseRenderer):
                 # Print final response outside of Live context for persistence
                 if self._response_text:
                     self._console.print()
-                    self._console.print(
-                        Panel(Markdown(self._response_text), title="Final Response", border_style="green")
-                    )
+                    # Just print a separator line like v1
+                    self._console.print("=" * 80, style="blue")
+                    
+                    # Print completion info like v1
+                    completion_text = Text()
+                    completion_text.append("\n✅ Response completed successfully!\n", style="green bold")
+                    self._console.print(completion_text)
 
                 # Print citations summary if any
                 if self._citations:

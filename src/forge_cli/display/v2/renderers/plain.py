@@ -21,6 +21,7 @@ class PlainRenderer(BaseRenderer):
         self._content_started = False
         self._in_reasoning = False
         self._active_tools = {}
+        self._accumulated_text = ""  # Store text like v1
 
     def render_stream_event(self, event_type: str, data: Dict[str, Any]) -> None:
         """Render a stream event as plain text."""
@@ -59,19 +60,29 @@ class PlainRenderer(BaseRenderer):
 
     def _handle_stream_start(self, data: Dict[str, Any]) -> None:
         """Handle stream start event."""
+        # Match v1 style with emojis and formatting
+        print("\n📄 Request Information:", file=self._file)
+        
         query = data.get("query", "")
         if query:
-            print(f"Query: {query}", file=self._file)
-            print("-" * 40, file=self._file)
+            print(f"  💬 Question: {query}", file=self._file)
+            
+        model = data.get("model", "")
+        if model:
+            print(f"  🤖 Model: {model}", file=self._file)
+            
+        effort = data.get("effort", "")
+        if effort:
+            print(f"  ⚙️ Effort Level: {effort}", file=self._file)
+            
+        print("\n🔄 Streaming response (please wait):", file=self._file)
+        print("=" * 80, file=self._file)
 
     def _handle_text_delta(self, data: Dict[str, Any]) -> None:
-        """Handle text delta event."""
+        """Handle text delta event - actually a snapshot."""
+        # Since the API sends snapshots, just replace the entire text
         text = data.get("text", "")
-        if text:
-            if not self._content_started:
-                print("\nResponse:", file=self._file)
-                self._content_started = True
-            print(text, end="", flush=True, file=self._file)
+        self._accumulated_text = text
 
     def _handle_tool_start(self, data: Dict[str, Any]) -> None:
         """Handle tool start event."""
@@ -79,7 +90,8 @@ class PlainRenderer(BaseRenderer):
         tool_type = data.get("tool_type", "unknown")
 
         self._active_tools[tool_id] = tool_type
-        print(f"\n[{tool_type.upper()}] Starting...", file=self._file)
+        # Match v1 style with emoji
+        print(f"\n⏳ Starting {tool_type}...", file=self._file)
 
     def _handle_tool_complete(self, data: Dict[str, Any]) -> None:
         """Handle tool complete event."""
@@ -126,12 +138,20 @@ class PlainRenderer(BaseRenderer):
     def _handle_error(self, data: Dict[str, Any]) -> None:
         """Handle error event."""
         error = data.get("error", "Unknown error")
-        print(f"\nError: {error}", file=self._file, flush=True)
+        print(f"\n❌ Error: {error}", file=self._file, flush=True)
 
     def finalize(self) -> None:
         """Complete rendering and ensure final newline."""
         if not self._finalized:
-            if self._content_started:
-                print("\n", file=self._file)  # Ensure final newline
+            print("=" * 80, file=self._file)
+            
+            # Show final content like v1
+            if hasattr(self, '_accumulated_text') and self._accumulated_text:
+                print("\n📃 Response Content:", file=self._file)
+                print(self._accumulated_text, file=self._file)
+            
+            # Show completion info
+            print("\n✅ Response completed successfully!", file=self._file)
+            
             self._file.flush()
             self._finalized = True

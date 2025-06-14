@@ -81,23 +81,58 @@ class DisplayRegistry:
 
 
 def initialize_default_displays():
-    """Initialize the default display implementations."""
+    """Initialize the default display implementations using v2 renderers by default."""
+    # Import v2 components
+    from .v2.adapter import V1ToV2Adapter
+    from .v2.base import Display as DisplayV2
+    from .v2.renderers.json import JsonRenderer
+    from .v2.renderers.plain import PlainRenderer
+    from .v2.renderers.rich import RichRenderer
+
+    # Import v1 displays for fallback
     from .json_chat_display import JsonChatDisplay
     from .json_display import JsonDisplay
     from .plain_display import PlainDisplay
     from .rich_display import RichDisplay
 
-    # Register JSON display with condition and factory to handle extra kwargs
+    # Helper function to create v2 display wrapped in v1 adapter
+    def create_v2_json_display(**kwargs):
+        renderer = JsonRenderer(
+            include_events=kwargs.get("config", {}).debug if hasattr(kwargs.get("config", {}), "debug") else False,
+            pretty=True
+        )
+        display_v2 = DisplayV2(renderer)
+        return V1ToV2Adapter(display_v2)
+
+    def create_v2_rich_display(**kwargs):
+        config = kwargs.get("config", {})
+        try:
+            renderer = RichRenderer(
+                show_reasoning=config.show_reasoning if hasattr(config, "show_reasoning") else True
+            )
+            display_v2 = DisplayV2(renderer)
+            return V1ToV2Adapter(display_v2)
+        except ImportError:
+            # Fallback to plain if rich not available
+            renderer = PlainRenderer()
+            display_v2 = DisplayV2(renderer)
+            return V1ToV2Adapter(display_v2)
+
+    def create_v2_plain_display(**kwargs):
+        renderer = PlainRenderer()
+        display_v2 = DisplayV2(renderer)
+        return V1ToV2Adapter(display_v2)
+
+    # Register JSON display using v2
     DisplayRegistry.register_display(
         "json",
-        JsonDisplay,
-        # Factory to handle extra kwargs that JsonDisplay.__init__ doesn't accept
-        factory=lambda **kwargs: JsonDisplay(),
+        V1ToV2Adapter,  # The class type for registry
+        factory=create_v2_json_display,
         condition=lambda config: getattr(config, "json_output", False) is True
         and getattr(config, "chat", False) is False,
     )
 
-    # Register JSON Chat display with condition
+    # Register JSON Chat display - still using v1 for now (complex chat integration)
     DisplayRegistry.register_display(
         "json_chat",
         JsonChatDisplay,
@@ -106,19 +141,20 @@ def initialize_default_displays():
         and getattr(config, "chat", False) is True,
     )
 
-    # Register Rich display with condition and factory
+    # Register Rich display using v2
     DisplayRegistry.register_display(
         "rich",
-        RichDisplay,
-        factory=lambda **kwargs: RichDisplay(console=kwargs.get("console", None)),
+        V1ToV2Adapter,  # The class type for registry
+        factory=create_v2_rich_display,
         condition=lambda config: (
             getattr(config, "use_rich", False) is True and getattr(config, "quiet", False) is False
         ),
     )
 
-    # Register Plain display as default
+    # Register Plain display as default using v2
     DisplayRegistry.register_display(
         "plain",
-        PlainDisplay,
+        V1ToV2Adapter,  # The class type for registry
+        factory=create_v2_plain_display,
         condition=lambda config: True,  # Will be used as fallback
     )

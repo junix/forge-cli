@@ -116,9 +116,10 @@ class JsonRenderer(BaseRenderer):
         )
 
     def _handle_text_delta(self, data: dict[str, Any]) -> None:
-        """Handle text delta event."""
+        """Handle text delta event - actually a snapshot."""
         text = data.get("text", "")
-        self._state["response_text"] += text
+        # Since this is a snapshot, replace the entire text
+        self._state["response_text"] = text
 
     def _handle_text_complete(self, data: dict[str, Any]) -> None:
         """Handle text complete event."""
@@ -131,13 +132,14 @@ class JsonRenderer(BaseRenderer):
             self._state["reasoning"] = {"status": "active", "text": "", "started_at": time.time()}
 
     def _handle_reasoning_delta(self, data: dict[str, Any]) -> None:
-        """Handle reasoning delta event."""
+        """Handle reasoning delta event - actually a snapshot."""
         text = data.get("text", "")
         if isinstance(self._state.get("reasoning"), dict):
-            self._state["reasoning"]["text"] += text
+            # Since this is a snapshot, replace the entire text
+            self._state["reasoning"]["text"] = text
         else:
             # Legacy compatibility
-            self._state["reasoning_text"] += text
+            self._state["reasoning_text"] = text
 
     def _handle_reasoning_complete(self, data: dict[str, Any]) -> None:
         """Handle reasoning complete event."""
@@ -229,22 +231,37 @@ class JsonRenderer(BaseRenderer):
                 self._state["metadata"]["end_time"] = time.time()
                 self._state["metadata"]["duration"] = time.time() - self._start_time
 
-            # Build output structure
-            output = {"response": self._state, "meta": {"api_version": "v2", "renderer": "JsonRenderer"}}
-
-            # Add events if requested
-            if self._include_events:
-                output["events"] = self._events
-                output["meta"]["event_count"] = len(self._events)
-            else:
-                output["meta"]["event_count"] = 0
-
-            # Output JSON
-            if self._pretty:
-                json.dump(output, self._file, indent=2, ensure_ascii=False)
-                self._file.write("\n")
-            else:
-                json.dump(output, self._file, ensure_ascii=False)
-
+            # Build v1-compatible output structure
+            output = {}
+            
+            # Add request info
+            if self._state["query"]:
+                output["request"] = {
+                    "question": self._state["query"],
+                    "model": self._state["metadata"].get("model", ""),
+                    "effort": self._state["metadata"].get("effort", ""),
+                }
+            
+            # Add response
+            output["response"] = {
+                "id": self._state["metadata"].get("response_id", ""),
+                "model": self._state["metadata"].get("model", ""),
+                "content": self._state["response_text"],
+                "usage": self._state["metadata"].get("usage", {}),
+            }
+            
+            # Add error if any
+            if self._state["errors"]:
+                output["error"] = self._state["errors"][-1]["error"] if self._state["errors"] else None
+            
+            # Add citations summary if any
+            if self._state["citations"]:
+                output["citations_summary"] = {
+                    "total_citations": len(self._state["citations"]),
+                    "citations": self._state["citations"],
+                }
+                
+            # Output JSON in v1 format
+            json.dump(output, self._file, indent=2, ensure_ascii=False)
             self._file.flush()
             self._finalized = True
