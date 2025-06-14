@@ -1,13 +1,14 @@
 """Rich library display implementation."""
 
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Any
+
 from rich.console import Console
 from rich.live import Live
-from rich.panel import Panel
 from rich.markdown import Markdown
-from rich.text import Text
+from rich.panel import Panel
 from rich.prompt import Prompt
+from rich.text import Text
 
 from .base import BaseDisplay
 
@@ -15,13 +16,13 @@ from .base import BaseDisplay
 class RichDisplay(BaseDisplay):
     """Rich library display with live updates."""
 
-    def __init__(self, console: Optional[Console] = None):
+    def __init__(self, console: Console | None = None):
         self.console = console or Console()
-        self.live: Optional[Live] = None
+        self.live: Live | None = None
         self.current_content = ""
-        self.current_metadata: Dict[str, Any] = {}
+        self.current_metadata: dict[str, Any] = {}
 
-    async def show_request_info(self, info: Dict[str, Any]) -> None:
+    async def show_request_info(self, info: dict[str, Any]) -> None:
         """Display request information using Rich formatting."""
         request_text = Text()
         request_text.append("\n📄 Request Information:\n", style="cyan bold")
@@ -59,7 +60,7 @@ class RichDisplay(BaseDisplay):
         self.live = Live(Panel(""), refresh_per_second=10, console=self.console, transient=False)
         self.live.start()
 
-    async def update_content(self, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    async def update_content(self, content: str, metadata: dict[str, Any] | None = None) -> None:
         """Update the live display with new content."""
         # In chat mode, if Live display isn't started, start it now
         if hasattr(self, "_in_chat_mode") and self._in_chat_mode and not self.live:
@@ -107,7 +108,7 @@ class RichDisplay(BaseDisplay):
         else:
             self.console.print(Text(f"\n❌ Error: {error}", style="red bold"))
 
-    async def finalize(self, response: Dict[str, Any], state: Any) -> None:
+    async def finalize(self, response: dict[str, Any], state: Any) -> None:
         """Finalize the display."""
         # In chat mode, just stop the live display without re-displaying content
         if hasattr(self, "_in_chat_mode") and self.live:
@@ -139,7 +140,7 @@ class RichDisplay(BaseDisplay):
 
             self.console.print(completion_text)
 
-    def _format_status_info(self, metadata: Optional[Dict[str, Any]]) -> Text:
+    def _format_status_info(self, metadata: dict[str, Any] | None) -> Text:
         """Format status information with usage statistics."""
         if not metadata:
             return Text("")
@@ -177,7 +178,18 @@ class RichDisplay(BaseDisplay):
         if isinstance(config, SearchConfig):
             # Create a beautiful welcome panel
             welcome_text = Text()
-            welcome_text.append("Welcome to ", style="bold")
+
+            # ASCII art logo - using raw string to avoid escape sequence issues
+            ascii_art = r"""
+ _  __                    _          _              _____
+| |/ /_ __   _____      _| | ___  __| | __ _  ___  |  ___|__  _ __ __ _  ___
+| ' /| '_ \ / _ \ \ /\ / / |/ _ \/ _` |/ _` |/ _ \ | |_ / _ \| '__/ _` |/ _ \
+| . \| | | | (_) \ V  V /| |  __/ (_| | (_| |  __/ |  _| (_) | | | (_| |  __/
+|_|\_\_| |_|\___/ \_/\_/ |_|\___|\__,_|\__, |\___| |_|  \___/|_|  \__, |\___|
+                                       |___/                      |___/
+"""
+            welcome_text.append(ascii_art, style="cyan")
+            welcome_text.append("\nWelcome to ", style="bold")
             welcome_text.append("Knowledge Forge Chat", style="bold cyan")
             welcome_text.append("!\n\n", style="bold")
 
@@ -212,7 +224,7 @@ class RichDisplay(BaseDisplay):
         # The assistant message is shown through update_content during streaming
         pass
 
-    async def prompt_for_input(self) -> Optional[str]:
+    async def prompt_for_input(self) -> str | None:
         """Prompt for user input - let the controller handle prompt_toolkit."""
         # Don't use prompt_toolkit here to avoid conflicts
         # The controller will handle it if available
