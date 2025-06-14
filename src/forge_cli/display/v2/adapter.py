@@ -27,16 +27,20 @@ class V1ToV2Adapter(BaseDisplay):
 
     async def show_request_info(self, info: Dict[str, Any]) -> None:
         """Convert v1 request info to v2 stream start event."""
-        self._display.handle_event(
-            EventType.STREAM_START.value,
-            {
-                "query": info.get("question", ""),
-                "model": info.get("model", ""),
-                "effort": info.get("effort", ""),
-                "temperature": info.get("temperature", 0.7),
-                "timestamp": time.time(),
-            },
-        )
+        # Use the display's show_request_info method if available
+        if hasattr(self._display, 'show_request_info'):
+            self._display.show_request_info(info)
+        else:
+            self._display.handle_event(
+                EventType.STREAM_START.value,
+                {
+                    "query": info.get("question", ""),
+                    "model": info.get("model", ""),
+                    "effort": info.get("effort", ""),
+                    "temperature": info.get("temperature", 0.7),
+                    "timestamp": time.time(),
+                },
+            )
 
     async def update_content(self, content: str, metadata: Dict[str, Any] | None = None) -> None:
         """Convert v1 content update to v2 text delta event."""
@@ -52,28 +56,45 @@ class V1ToV2Adapter(BaseDisplay):
         This method attempts to intelligently map status messages to
         appropriate v2 events based on the status content.
         """
-        status_lower = status.lower()
-
-        # Try to detect tool-related statuses
-        if "search" in status_lower and "file" in status_lower:
-            self._display.handle_event(
-                EventType.TOOL_START.value,
-                {"tool_type": "file_search", "tool_id": f"status_tool_{time.time()}", "status": status},
-            )
-        elif "search" in status_lower and "web" in status_lower:
-            self._display.handle_event(
-                EventType.TOOL_START.value,
-                {"tool_type": "web_search", "tool_id": f"status_tool_{time.time()}", "status": status},
-            )
-        elif "thinking" in status_lower or "reasoning" in status_lower:
-            self._display.handle_event(EventType.REASONING_START.value, {"status": status})
+        # Use the display's show_status method if available
+        if hasattr(self._display, 'show_status'):
+            self._display.show_status(status)
         else:
-            # Default: treat as text content with newlines
-            self._display.handle_event(EventType.TEXT_DELTA.value, {"text": f"\n{status}\n"})
+            status_lower = status.lower()
+
+            # Try to detect tool-related statuses
+            if "search" in status_lower and "file" in status_lower:
+                self._display.handle_event(
+                    EventType.TOOL_START.value,
+                    {"tool_type": "file_search", "tool_id": f"status_tool_{time.time()}", "status": status},
+                )
+            elif "search" in status_lower and "web" in status_lower:
+                self._display.handle_event(
+                    EventType.TOOL_START.value,
+                    {"tool_type": "web_search", "tool_id": f"status_tool_{time.time()}", "status": status},
+                )
+            elif "thinking" in status_lower or "reasoning" in status_lower:
+                self._display.handle_event(EventType.REASONING_START.value, {"status": status})
+            else:
+                # Default: treat as text content with newlines
+                self._display.handle_event(EventType.TEXT_DELTA.value, {"text": f"\n{status}\n"})
+
+    async def show_status_rich(self, rich_content: Any) -> None:
+        """Show rich content like tables - v1 compatibility."""
+        # Use the display's show_status_rich method if available
+        if hasattr(self._display, 'show_status_rich'):
+            self._display.show_status_rich(rich_content)
+        else:
+            # Fallback: convert to text if possible
+            self._display.handle_event(EventType.TEXT_DELTA.value, {"text": str(rich_content)})
 
     async def show_error(self, error: str) -> None:
         """Convert v1 error to v2 error event."""
-        self._display.handle_event(EventType.STREAM_ERROR.value, {"error": error, "timestamp": time.time()})
+        # Use the display's show_error method if available
+        if hasattr(self._display, 'show_error'):
+            self._display.show_error(error)
+        else:
+            self._display.handle_event(EventType.STREAM_ERROR.value, {"error": error, "timestamp": time.time()})
 
     async def finalize(self, response: Dict[str, Any], state: Any) -> None:
         """Complete the v2 display with final response data."""
@@ -87,16 +108,25 @@ class V1ToV2Adapter(BaseDisplay):
             },
         )
 
-        # Complete the display
-        self._display.complete()
+        # If renderer has render_finalize, call it before completing
+        renderer = getattr(self._display, '_renderer', None)
+        if renderer and hasattr(renderer, 'render_finalize'):
+            renderer.render_finalize(response, state)
+        else:
+            # Complete the display normally
+            self._display.complete()
 
     # Chat-specific methods with default implementations
     async def show_welcome(self, config: Any) -> None:
         """Show welcome message for chat mode."""
-        self._display.handle_event(
-            EventType.STREAM_START.value,
-            {"query": "Welcome to Knowledge Forge Chat!", "type": "welcome", "timestamp": time.time()},
-        )
+        # Use the display's show_welcome method if available
+        if hasattr(self._display, 'show_welcome'):
+            self._display.show_welcome(config)
+        else:
+            self._display.handle_event(
+                EventType.STREAM_START.value,
+                {"query": "Welcome to Knowledge Forge Chat!", "type": "welcome", "timestamp": time.time()},
+            )
 
     async def show_user_message(self, message: str) -> None:
         """Show a user message in chat mode."""

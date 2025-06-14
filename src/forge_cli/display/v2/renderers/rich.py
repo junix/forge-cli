@@ -25,12 +25,13 @@ from ..events import EventType
 class RichRenderer(BaseRenderer):
     """Rich terminal UI renderer with live updates."""
 
-    def __init__(self, console: Optional["Console"] = None, show_reasoning: bool = True):
+    def __init__(self, console: Optional["Console"] = None, show_reasoning: bool = True, in_chat_mode: bool = False):
         """Initialize Rich renderer.
 
         Args:
             console: Rich console instance (creates new if not provided)
             show_reasoning: Whether to show reasoning/thinking content
+            in_chat_mode: Whether we're in chat mode (affects display behavior)
         """
         if not RICH_AVAILABLE:
             raise ImportError("rich library required for RichRenderer")
@@ -38,11 +39,11 @@ class RichRenderer(BaseRenderer):
         super().__init__()
         self._console = console or Console()
         self._show_reasoning = show_reasoning
+        self._in_chat_mode = in_chat_mode
 
-        # Create layout
-        self._layout = self._create_layout()
-        self._live = Live(self._layout, console=self._console, refresh_per_second=10, vertical_overflow="visible")
-
+        # Live display will be created when needed
+        self._live = None
+        
         # State tracking
         self._query = ""
         self._response_text = ""
@@ -53,6 +54,9 @@ class RichRenderer(BaseRenderer):
         self._errors: list[str] = []
         self._start_time = time.time()
         self._live_started = False
+        self._event_count = 0
+        self._current_event_type = ""
+        self._usage = {}
         
         # Track previous snapshot lengths for delta detection
         self._last_response_length = 0
@@ -67,30 +71,17 @@ class RichRenderer(BaseRenderer):
             transient=True,
         )
 
-    def _create_layout(self) -> Layout:
-        """Create the Rich layout structure."""
-        layout = Layout()
-
-        # Main vertical split
-        layout.split_column(Layout(name="header", size=3), Layout(name="body"), Layout(name="footer", size=1))
-
-        # Body split into main content and sidebar
-        layout["body"].split_row(Layout(name="main", ratio=3), Layout(name="sidebar", ratio=1))
-
-        # Main content areas
-        layout["main"].split_column(Layout(name="reasoning", size=6, visible=False), Layout(name="response"))
-
-        # Sidebar areas
-        layout["sidebar"].split_column(Layout(name="tools", size=10), Layout(name="citations"))
-
-        return layout
 
     def render_stream_event(self, event_type: str, data: dict[str, Any]) -> None:
         """Render a stream event with Rich UI."""
         self._ensure_not_finalized()
+        
+        # Update event tracking
+        self._event_count += 1
+        self._current_event_type = event_type
 
-        # Start live display on first event
-        if not self._live_started:
+        # Start live display on first event (unless already started by show_request_info)
+        if not self._live_started and self._live:
             self._live.start()
             self._live_started = True
 
@@ -131,38 +122,15 @@ class RichRenderer(BaseRenderer):
         """Handle stream start event."""
         self._query = data.get("query", "")
         self._start_time = time.time()
-
-        # Print request info like v1 before starting live display
-        request_text = Text()
-        request_text.append("\n📄 Request Information:\n", style="blue bold")
         
-        if self._query:
-            request_text.append("  💬 Question: ", style="green")
-            request_text.append(f"{self._query}\n")
-            
-        model = data.get("model", "")
-        if model:
-            request_text.append("  🤖 Model: ", style="green")
-            request_text.append(f"{model}\n")
-            
-        effort = data.get("effort", "")
-        if effort:
-            request_text.append("  ⚙️ Effort Level: ", style="green")
-            request_text.append(f"{effort}\n")
-            
-        self._console.print(request_text)
-        self._console.print(Text("\n🔄 Streaming response (please wait):", style="yellow bold"))
-        self._console.print("=" * 80, style="blue")
+        # Only start live if not already started by render_request_info
+        if not self._live:
+            self._live = Live(Panel(""), refresh_per_second=10, console=self._console, transient=False)
 
     def _handle_stream_end(self, data: dict[str, Any]) -> None:
         """Handle stream end event."""
         duration = time.time() - self._start_time
-        usage = data.get("usage", {})
-
-        # Update footer with completion info
-        tokens = usage.get("total_tokens", 0)
-        footer_text = f"✅ Completed in {duration:.1f}s | Tokens: {tokens}"
-        self._layout["footer"].update(Text(footer_text, style="green"))
+        self._usage = data.get("usage", {})
 
     def _handle_stream_error(self, data: dict[str, Any]) -> None:
         """Handle stream error event."""
@@ -170,14 +138,25 @@ class RichRenderer(BaseRenderer):
         self._errors.append(error)
 
         # Show error panel
-        error_panel = Panel(Text(f"❌ {error}", style="red"), title="Error", border_style="red")
-        self._layout["response"].update(error_panel)
+        if self._live and self._live_started:
+            error_panel = Panel(Text(f"❌ {error}", style="red"), title="Error", border_style="red")
+            self._live.update(error_panel)
 
     def _handle_text_delta(self, data: dict[str, Any]) -> None:
         """Handle text delta event - actually a snapshot."""
         text = data.get("text", "")
         # Since this is a snapshot, replace the entire text
         self._response_text = text
+        
+        # Update metadata if provided
+        metadata = data.get("metadata", {})
+        if metadata:
+            if "event_count" in metadata:
+                self._event_count = metadata["event_count"]
+            if "event_type" in metadata:
+                self._current_event_type = metadata["event_type"]
+            if "usage" in metadata:
+                self._usage = metadata["usage"]
 
     def _handle_reasoning_start(self, data: dict[str, Any]) -> None:
         """Handle reasoning start event."""
@@ -254,94 +233,75 @@ class RichRenderer(BaseRenderer):
             "url": data.get("url", ""),
         }
         self._citations.append(citation)
+    
+    def _format_status_info(self, metadata: dict[str, Any] | None = None) -> Text:
+        """Format status information with usage statistics - matches v1 exactly."""
+        status_info = Text()
+
+        # Event count
+        status_info.append(f"{self._event_count:05d}", style="cyan bold")
+        status_info.append(" / ", style="white")
+
+        # Event type
+        if self._current_event_type:
+            status_info.append(self._current_event_type, style="green")
+            status_info.append(" / ", style="white")
+
+        # Usage stats
+        if self._usage:
+            status_info.append("  ↑ ", style="blue")
+            status_info.append(str(self._usage.get("input_tokens", 0)), style="blue bold")
+            status_info.append("  ↓ ", style="magenta")
+            status_info.append(str(self._usage.get("output_tokens", 0)), style="magenta bold")
+            status_info.append("  ∑ ", style="yellow")
+            status_info.append(str(self._usage.get("total_tokens", 0)), style="yellow bold")
+
+        return status_info
 
     def _update_display(self) -> None:
-        """Update all display components."""
-        # Update reasoning panel
-        if self._show_reasoning and self._reasoning_text:
-            reasoning_content = Panel(
-                Markdown(self._reasoning_text),
-                title="🤔 Thinking",
-                border_style="yellow" if self._reasoning_active else "dim",
-            )
-            self._layout["reasoning"].update(reasoning_content)
-
-        # Update response panel
+        """Update display - simple panel mode for v1 compatibility."""
+        if not self._live or not self._live_started:
+            return
+            
+        # For v1 compatibility, use simple panels with status info in title
+        status_info = self._format_status_info()
+        
+        # Combine content appropriately
         if self._response_text:
-            response_content = Panel(Markdown(self._response_text), title="💬 Response", border_style="green")
-            self._layout["response"].update(response_content)
+            try:
+                panel = Panel(
+                    Markdown(self._response_text),
+                    title=status_info if status_info else "🔄 Streaming response...",
+                    border_style="green"
+                )
+            except Exception:
+                # Fallback to plain text if Markdown fails
+                panel = Panel(
+                    Text(self._response_text),
+                    title=status_info if status_info else "🔄 Streaming response...",
+                    border_style="green"
+                )
+            self._live.update(panel)
         else:
-            # Show waiting message
-            waiting = Panel(Text("Waiting for response...", style="dim italic"), title="💬 Response")
-            self._layout["response"].update(waiting)
+            # Show waiting panel
+            panel = Panel(
+                Text("Waiting for response...", style="dim italic"),
+                title=status_info if status_info else "🔄 Streaming response...",
+                border_style="blue"
+            )
+            self._live.update(panel)
 
-        # Update tools panel
-        if self._active_tools:
-            tools_table = Table(title="🔧 Tools", show_header=True, header_style="bold")
-            tools_table.add_column("Tool", style="cyan")
-            tools_table.add_column("Status", style="green")
-            tools_table.add_column("Results")
-
-            for tool_id, tool_info in self._active_tools.items():
-                status = tool_info["status"]
-
-                if status == "running":
-                    status_text = Text("⏳ Running", style="yellow")
-                    results_text = "-"
-                elif status == "completed":
-                    status_text = Text("✅ Done", style="green")
-                    results_text = str(tool_info.get("results_count", 0))
-                else:
-                    status_text = Text("❌ Error", style="red")
-                    results_text = "-"
-
-                tools_table.add_row(tool_info["type"], status_text, results_text)
-
-            self._layout["tools"].update(Panel(tools_table))
-        else:
-            self._layout["tools"].update(Panel(Text("No tools active", style="dim")))
-
-        # Update citations panel
-        if self._citations:
-            citations_table = Table(title="📚 Citations", show_header=True, header_style="bold")
-            citations_table.add_column("#", width=3)
-            citations_table.add_column("Source", style="blue", no_wrap=True)
-            citations_table.add_column("Page", width=6)
-
-            for citation in self._citations[-10:]:  # Show last 10
-                page = str(citation.get("page_number", "")) if citation.get("page_number") else "-"
-                source = citation.get("file_name") or citation.get("source", "Unknown")
-
-                # Truncate source if too long
-                if len(source) > 25:
-                    source = source[:22] + "..."
-
-                citations_table.add_row(f"[{citation['number']}]", source, page)
-
-            self._layout["citations"].update(Panel(citations_table))
-        else:
-            self._layout["citations"].update(Panel(Text("No citations yet", style="dim")))
 
     def finalize(self) -> None:
         """Complete rendering and stop live display."""
         if not self._finalized:
-            if self._live_started:
-                # Final update
-                self._update_display()
-
-                # Show completion in footer
-                duration = time.time() - self._start_time
-                footer_text = f"✨ Response ready ({duration:.1f}s)"
-                self._layout["footer"].update(Text(footer_text, style="bold green"))
-
-                # Keep display for a moment
-                time.sleep(0.5)
-
+            if self._live_started and self._live:
                 # Stop live display
                 self._live.stop()
+                self._live = None
 
                 # Print final response outside of Live context for persistence
-                if self._response_text:
+                if self._response_text and not self._in_chat_mode:
                     self._console.print()
                     # Just print a separator line like v1
                     self._console.print("=" * 80, style="blue")
@@ -352,7 +312,7 @@ class RichRenderer(BaseRenderer):
                     self._console.print(completion_text)
 
                 # Print citations summary if any
-                if self._citations:
+                if self._citations and not self._in_chat_mode:
                     self._console.print()
                     self._print_citations_summary()
 
@@ -379,3 +339,142 @@ class RichRenderer(BaseRenderer):
             citations_table.add_row(cite_num, doc, page, quote)
 
         self._console.print(citations_table)
+    
+    def render_request_info(self, info: dict[str, Any]) -> None:
+        """Render request information like v1 show_request_info."""
+        request_text = Text()
+        request_text.append("\n📄 Request Information:\n", style="cyan bold")
+        
+        if info.get("question"):
+            request_text.append("  💬 Question: ", style="green")
+            request_text.append(f"{info['question']}\n")
+            
+        if info.get("vec_ids"):
+            request_text.append("  🔍 Vector Store IDs: ", style="green")
+            request_text.append(f"{', '.join(info['vec_ids'])}\n")
+            
+        if info.get("model"):
+            request_text.append("  🤖 Model: ", style="green")
+            request_text.append(f"{info['model']}\n")
+            
+        if info.get("effort"):
+            request_text.append("  ⚙️ Effort Level: ", style="green")
+            request_text.append(f"{info['effort']}\n")
+            
+        if info.get("tools"):
+            request_text.append("  🛠️ Enabled Tools: ", style="green")
+            request_text.append(f"{', '.join(info['tools'])}\n")
+            
+        self._console.print(request_text)
+        self._console.print(Text("\n🔄 Streaming response (please wait):", style="yellow bold"))
+        self._console.print("=" * 80, style="blue")
+        
+        # Start live display - use simple panel like v1
+        if not self._live:
+            self._live = Live(Panel(""), refresh_per_second=10, console=self._console, transient=False)
+            self._live.start()
+            self._live_started = True
+    
+    def render_status(self, message: str) -> None:
+        """Render a status message like v1 show_status."""
+        if self._live and self._live_started:
+            panel = Panel(Text(message, style="yellow"), title="Status", border_style="yellow")
+            self._live.update(panel)
+        else:
+            # Print directly if live not started
+            self._console.print(Panel(Text(message, style="yellow"), title="Status", border_style="yellow"))
+    
+    def render_status_rich(self, rich_content: Any) -> None:
+        """Render rich content like v1 show_status_rich."""
+        if self._live and self._live_started:
+            self._live.update(rich_content)
+        else:
+            self._console.print(rich_content)
+    
+    def render_error(self, error: str) -> None:
+        """Render error like v1 show_error."""
+        if self._live and self._live_started:
+            error_panel = Panel(Text(f"Error: {error}", style="red bold"), title="Error", border_style="red")
+            self._live.update(error_panel)
+        else:
+            self._console.print(Text(f"\n❌ Error: {error}", style="red bold"))
+    
+    def render_finalize(self, response: dict[str, Any], state: Any) -> None:
+        """Finalize rendering like v1 finalize method."""
+        # In chat mode, just stop the live display without re-displaying content
+        if self._in_chat_mode and self._live:
+            # Stop live display - the content is already visible
+            self._live.stop()
+            self._live = None
+            # Add a small spacing for better readability
+            self._console.print()
+            return
+            
+        # Non-chat mode finalization
+        if self._live and self._live_started:
+            self._live.stop()
+            self._live = None
+            
+            # Print separator line like v1
+            self._console.print()
+            self._console.print("=" * 80, style="blue")
+            
+            # Print completion info like v1
+            completion_text = Text()
+            completion_text.append("\n✅ Response completed successfully!\n", style="green bold")
+            
+            if response:
+                if response.get("id"):
+                    completion_text.append("  🆔 Response ID: ", style="yellow")
+                    completion_text.append(f"{response['id']}\n")
+                    
+                if response.get("model"):
+                    completion_text.append("  🤖 Model used: ", style="yellow")
+                    completion_text.append(f"{response['model']}\n")
+                    
+            self._console.print(completion_text)
+            
+            # Print citations summary if any
+            if self._citations:
+                self._console.print()
+                self._print_citations_summary()
+    
+    # Chat mode specific methods
+    def render_welcome(self, config: Any) -> None:
+        """Show welcome message for chat mode - matches v1."""
+        # Create a beautiful welcome panel
+        welcome_text = Text()
+
+        # ASCII art logo - using raw string to avoid escape sequence issues
+        ascii_art = r"""
+ _  __                    _          _              _____
+| |/ /_ __   _____      _| | ___  __| | __ _  ___  |  ___|__  _ __ __ _  ___
+| ' /| '_ \ / _ \ \ /\ / / |/ _ \/ _` |/ _` |/ _ \ | |_ / _ \| '__/ _` |/ _ \
+| . \| | | | (_) \ V  V /| |  __/ (_| | (_| |  __/ |  _| (_) | | | (_| |  __/
+|_|\_\_| |_|\___/ \_/\_/ |_|\___|\__,_|\__, |\___| |_|  \___/|_|  \__, |\___|
+                                       |___/                      |___/
+"""
+        welcome_text.append(ascii_art, style="cyan")
+        welcome_text.append("\nWelcome to ", style="bold")
+        welcome_text.append("Knowledge Forge Chat", style="bold cyan")
+        welcome_text.append("!\n\n", style="bold")
+
+        if hasattr(config, 'model'):
+            welcome_text.append("Model: ", style="yellow")
+            welcome_text.append(f"{config.model}\n", style="white")
+
+        if hasattr(config, 'enabled_tools') and config.enabled_tools:
+            welcome_text.append("Tools: ", style="yellow")
+            welcome_text.append(f"{', '.join(config.enabled_tools)}\n", style="white")
+
+        welcome_text.append("\nType ", style="dim")
+        welcome_text.append("/help", style="bold green")
+        welcome_text.append(" for available commands", style="dim")
+
+        panel = Panel(
+            welcome_text,
+            title="[bold cyan]Knowledge Forge Chat[/bold cyan]",
+            border_style="cyan",
+            padding=(1, 2),
+        )
+        self._console.print(panel)
