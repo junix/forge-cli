@@ -67,6 +67,7 @@ class HelpCommand(ChatCommand):
     async def execute(self, args: str, controller: "ChatController") -> bool:
         """Show help message."""
         from rich.table import Table
+        from rich.align import Align
 
         registry = controller.commands
 
@@ -83,8 +84,11 @@ class HelpCommand(ChatCommand):
             description = cmd.description
             table.add_row(command, aliases, description)
 
-        # Display the table
-        await controller.display.show_status_rich(table)
+        # Center-align the table
+        aligned_table = Align.center(table)
+
+        # Display the centered table
+        await controller.display.show_status_rich(aligned_table)
         return True
 
 
