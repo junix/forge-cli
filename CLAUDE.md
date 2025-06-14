@@ -11,13 +11,17 @@ forge-cli/
 ├── src/forge_cli/              # Top-level package (use absolute imports)
 │   ├── main.py                 # Main CLI entry point with rich UI
 │   ├── sdk.py                  # Official Python SDK for Knowledge Forge API
-│   ├── config.py               # Configuration management
+│   ├── config.py               # Configuration management with Pydantic models
 │   ├── chat.py                 # Interactive chat mode
-│   ├── models/                 # Data models and types (use relative imports)
-│   │   ├── conversation.py     # Chat conversation management
-│   │   ├── events.py           # Event type definitions
-│   │   ├── output_types.py     # Response output types
-│   │   └── state.py            # Stream state management
+│   ├── models/                 # Pydantic data models and types (use relative imports)
+│   │   ├── __init__.py         # Model exports
+│   │   ├── api.py              # API request/response models with validation
+│   │   ├── conversation.py     # Chat conversation models with validation
+│   │   ├── events.py           # Event type definitions with Pydantic
+│   │   ├── output_types.py     # Response output types with validation
+│   │   ├── state.py            # Stream state management models
+│   │   ├── config.py           # Configuration models with validation
+│   │   └── files.py            # File and vector store models
 │   ├── processors/             # Event processors (use relative imports)
 │   │   ├── base.py             # Base processor interface
 │   │   ├── registry.py         # Processor registry
@@ -29,10 +33,14 @@ forge-cli/
 │   │       ├── file_reader.py  # File reader tool processor
 │   │       └── document_finder.py # Document finder processor
 │   ├── display/                # Display strategies (use relative imports)
-│   │   ├── base.py             # Base display interface
-│   │   ├── rich_display.py     # Rich terminal UI
-│   │   ├── plain_display.py    # Plain text output
-│   │   └── json_display.py     # JSON format output
+│   │   ├── registry.py         # Display factory with v2 architecture
+│   │   └── v2/                 # V2 event-based display architecture
+│   │       ├── base.py         # Base display interface
+│   │       ├── events.py       # Display event definitions
+│   │       └── renderers/      # Pluggable renderers
+│   │           ├── rich.py     # Rich terminal UI
+│   │           ├── plain.py    # Plain text output
+│   │           └── json.py     # JSON format output
 │   ├── stream/                 # Stream handling (use relative imports)
 │   │   └── handler.py          # Main stream processor
 │   ├── chat/                   # Chat mode functionality (use relative imports)
@@ -48,6 +56,83 @@ forge-cli/
 ├── pyproject.toml              # Python project configuration
 └── README.md                   # Project documentation
 ```
+
+## Pydantic Models and Validation
+
+This project extensively uses **Pydantic v2** for data validation, serialization, and type safety. All API interactions, configuration management, and internal data structures use Pydantic models to ensure data integrity and provide excellent developer experience with automatic validation and clear error messages.
+
+### Model Organization and Benefits
+
+All Pydantic models are organized in the `models/` directory with specific purposes:
+
+- **models/api.py** - API request/response models with validation rules
+- **models/config.py** - Configuration models using pydantic-settings for environment management  
+- **models/files.py** - File upload and vector store models with format validation
+- **models/conversation.py** - Chat conversation models with message validation
+- **models/events.py** - Event type definitions for stream processing
+- **models/state.py** - Stream state management with type safety
+
+### Key Validation Features
+
+1. **Automatic Type Conversion** - Input data is automatically converted to correct types
+2. **Field Validation** - Custom validators ensure data integrity (e.g., vector store ID format)
+3. **Environment Integration** - Configuration automatically loads from environment variables
+4. **Error Messages** - Clear, descriptive error messages for debugging
+5. **Serialization** - Automatic JSON serialization for API communication
+6. **Documentation** - Self-documenting models with field descriptions
+
+### Type Safety Best Practices
+
+**IMPORTANT**: Avoid using `Any` as type hints - it defeats the purpose of type safety and validation. Instead:
+
+- Use specific types: `str`, `int`, `float`, `bool`, `datetime`
+- Use generic types: `List[str]`, `Dict[str, int]`, `Optional[str]`
+- Use Literal types: `Literal["low", "medium", "high"]` for enums
+- Use Union types: `Union[str, int]` for multiple allowed types
+- Create custom models: Define Pydantic models for complex nested data
+- Use TypedDict: For dictionary structures with known keys
+
+The `Any` type provides no validation, no IDE support, and no runtime type checking. It should only be used as a last resort when dealing with truly unknown external data that will be validated elsewhere.
+
+### Error Handling Philosophy
+
+**IMPORTANT**: Avoid defensive programming patterns that silently ignore or mask errors. This project follows a "fail-fast" approach:
+
+- **Don't catch and ignore exceptions** - Let errors bubble up to reveal real issues
+- **Don't use default fallbacks** for critical data - Invalid data should cause immediate failure
+- **Don't suppress validation errors** - Pydantic validation failures indicate real problems
+- **Don't use try/except blocks** to hide configuration or data issues
+- **Prefer explicit validation** over implicit assumptions about data correctness
+
+**Examples of what NOT to do:**
+```python
+# BAD: Defensive programming that hides errors
+try:
+    config = SearchConfig(**user_data)
+except ValidationError:
+    config = SearchConfig()  # Silent fallback masks the real issue
+
+# BAD: Ignoring validation failures
+def process_file(file_data):
+    try:
+        file_info = FileInfo(**file_data)
+    except:
+        return None  # Swallows all errors, including real bugs
+```
+
+**Examples of preferred approach:**
+```python
+# GOOD: Let validation errors bubble up
+config = SearchConfig(**user_data)  # Will raise ValidationError if invalid
+
+# GOOD: Explicit error handling with user feedback
+try:
+    file_info = FileInfo(**file_data)
+except ValidationError as e:
+    raise ValueError(f"Invalid file data: {e}") from e
+```
+
+Fast failure reveals problems early in development and prevents silent corruption of program state. Use Pydantic's validation to catch issues immediately rather than masking them with defensive code.
 
 ## Import Conventions
 

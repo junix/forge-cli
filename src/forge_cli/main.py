@@ -27,14 +27,9 @@ def create_display(config: SearchConfig) -> Display:
     # Initialize default displays if not already done
     initialize_default_displays()
 
-    # Get the appropriate display from the registry based on config
+    # Get the v2 display directly from registry
     try:
-        # Get v2 display directly from registry
-        display = DisplayRegistry.get_display_for_config(config)
-        # If registry returns v1 display (with adapter), extract the v2 display
-        if hasattr(display, "_display_v2"):
-            return display._display_v2
-        return display
+        return DisplayRegistry.get_display_for_config(config)
     except (ValueError, ImportError) as e:
         # Fallback to v2 plain renderer if there's an error
         from forge_cli.display.v2.renderers.plain import PlainRenderer

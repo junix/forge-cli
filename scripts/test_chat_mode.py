@@ -11,7 +11,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from forge_cli.config import SearchConfig
 from forge_cli.display.v2.renderers.plain import PlainRenderer
 from forge_cli.display.v2.base import Display
-from forge_cli.display.v2.adapter import V1ToV2Adapter
 from forge_cli.chat.controller import ChatController
 from forge_cli.processors.registry import initialize_default_registry
 
@@ -28,10 +27,9 @@ async def test_basic_chat():
     config.enabled_tools = ["web-search"]
     config.model = "qwen-max-latest"
 
-    # Create display using v2 renderer
+    # Create display using v2 renderer directly
     renderer = PlainRenderer()
-    display_v2 = Display(renderer)
-    display = V1ToV2Adapter(display_v2)
+    display = Display(renderer, mode="chat")
 
     # Create controller
     controller = ChatController(config, display)

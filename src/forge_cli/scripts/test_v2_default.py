@@ -11,50 +11,53 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from forge_cli.config import SearchConfig
 from forge_cli.main import create_display
-from forge_cli.display.v2.adapter import V1ToV2Adapter
+from forge_cli.display.v2.base import Display
 
 
 async def test_default_displays():
-    """Test that default displays are now v2 with adapters."""
+    """Test that default displays are now pure v2."""
     print("=== Testing Default Display Creation ===\n")
 
     # Test 1: Plain display (default)
     config = SearchConfig()
     display = create_display(config)
     print(f"Default display: {type(display).__name__}")
-    print(f"Is V1ToV2Adapter: {isinstance(display, V1ToV2Adapter)}")
-    if isinstance(display, V1ToV2Adapter):
-        print(f"  Renderer: {display._display._renderer.__class__.__name__}")
+    print(f"Is v2 Display: {isinstance(display, Display)}")
+    if isinstance(display, Display):
+        print(f"  Renderer: {display._renderer.__class__.__name__}")
 
     # Test 2: Rich display
     print("\n--- Rich Display ---")
     config = SearchConfig(use_rich=True)
     display = create_display(config)
     print(f"Rich display: {type(display).__name__}")
-    print(f"Is V1ToV2Adapter: {isinstance(display, V1ToV2Adapter)}")
-    if isinstance(display, V1ToV2Adapter):
-        print(f"  Renderer: {display._display._renderer.__class__.__name__}")
+    print(f"Is v2 Display: {isinstance(display, Display)}")
+    if isinstance(display, Display):
+        print(f"  Renderer: {display._renderer.__class__.__name__}")
 
     # Test 3: JSON display
     print("\n--- JSON Display ---")
     config = SearchConfig(json_output=True)
     display = create_display(config)
     print(f"JSON display: {type(display).__name__}")
-    print(f"Is V1ToV2Adapter: {isinstance(display, V1ToV2Adapter)}")
-    if isinstance(display, V1ToV2Adapter):
-        print(f"  Renderer: {display._display._renderer.__class__.__name__}")
+    print(f"Is v2 Display: {isinstance(display, Display)}")
+    if isinstance(display, Display):
+        print(f"  Renderer: {display._renderer.__class__.__name__}")
 
-    # Test 4: Chat mode still uses v1
-    print("\n--- Chat JSON Display (v1) ---")
-    config = SearchConfig(json_output=True, chat_mode=True)
+    # Test 4: Chat mode
+    print("\n--- Chat Display ---")
+    config = SearchConfig(chat_mode=True)
     config.chat = True  # Set the chat attribute
     display = create_display(config)
-    print(f"Chat JSON display: {type(display).__name__}")
-    print(f"Is V1ToV2Adapter: {isinstance(display, V1ToV2Adapter)}")
+    print(f"Chat display: {type(display).__name__}")
+    print(f"Is v2 Display: {isinstance(display, Display)}")
+    if isinstance(display, Display):
+        print(f"  Mode: {display.mode}")
+        print(f"  Renderer: {display._renderer.__class__.__name__}")
 
 
 async def test_functionality():
-    """Test that v2 displays work correctly through the main flow."""
+    """Test that v2 displays work correctly through event handling."""
     print("\n\n=== Testing V2 Display Functionality ===\n")
 
     # Test JSON output
@@ -66,12 +69,10 @@ async def test_functionality():
         config = SearchConfig(json_output=True, debug=False)
         display = create_display(config)
 
-        # Simulate usage
-        await display.show_request_info({"question": "What is Python?", "model": "qwen-max-latest"})
-
-        await display.update_content("Python is a programming language.")
-
-        await display.finalize({}, None)
+        # Simulate v2 event-based usage
+        display.handle_event("request_info", {"question": "What is Python?", "model": "qwen-max-latest"})
+        display.handle_event("text_delta", {"text": "Python is a programming language."})
+        display.complete()
 
         # Parse JSON output
         json_str = output.getvalue()
@@ -85,13 +86,10 @@ async def test_functionality():
         print(f"   Renderer: {data['meta']['renderer']}")
 
     except Exception as e:
+        sys.stdout = old_stdout  # Restore stdout before printing error
         print(f"❌ Error: {e}")
         import traceback
-
         traceback.print_exc()
-
-    finally:
-        sys.stdout = old_stdout
 
 
 async def test_plain_output():
@@ -104,22 +102,20 @@ async def test_plain_output():
     display = create_display(config)
 
     # Check it's using v2
-    if isinstance(display, V1ToV2Adapter):
+    if isinstance(display, Display):
         # Monkey patch the renderer's output file
-        display._display._renderer._file = output
+        display._renderer._file = output
 
-        await display.show_request_info({"question": "Test query", "model": "test-model"})
-
-        await display.update_content("Test response")
-
-        await display.finalize({}, None)
+        display.handle_event("request_info", {"question": "Test query", "model": "test-model"})
+        display.handle_event("text_delta", {"text": "Test response"})
+        display.complete()
 
         plain_output = output.getvalue()
         print("Plain output sample:")
         print(plain_output[:200] + "..." if len(plain_output) > 200 else plain_output)
         print("✅ Plain renderer working!")
     else:
-        print("❌ Not using v2 adapter!")
+        print("❌ Not using v2 display!")
 
 
 async def main():
