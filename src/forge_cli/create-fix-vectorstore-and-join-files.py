@@ -6,7 +6,6 @@ import os
 import time
 
 import requests
-
 from dataset import load_test_dataset
 
 # Use environment variable for server URL if available, otherwise default to localhost

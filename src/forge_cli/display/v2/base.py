@@ -1,13 +1,13 @@
 """Base display interface for v2 - pure rendering without input handling."""
 
 from abc import ABC, abstractmethod
-from typing import Union, Dict, List, Protocol
+from typing import Protocol
 
 
 class Renderer(Protocol):
     """Pure renderer protocol - only handles output formatting."""
 
-    def render_stream_event(self, event_type: str, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
+    def render_stream_event(self, event_type: str, data: dict[str, str | int | float | bool | list | dict]) -> None:
         """Render a single stream event."""
         ...
 
@@ -23,7 +23,7 @@ class BaseRenderer(ABC):
         self._finalized = False
 
     @abstractmethod
-    def render_stream_event(self, event_type: str, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
+    def render_stream_event(self, event_type: str, data: dict[str, str | int | float | bool | list | dict]) -> None:
         """Render a single stream event.
 
         Args:
@@ -62,7 +62,7 @@ class Display:
         if hasattr(renderer, "_in_chat_mode"):
             renderer._in_chat_mode = mode == "chat"
 
-    def handle_event(self, event_type: str, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
+    def handle_event(self, event_type: str, data: dict[str, str | int | float | bool | list | dict]) -> None:
         """Route events to renderer.
 
         Args:
@@ -86,7 +86,7 @@ class Display:
             self._renderer.finalize()
             self._finalized = True
 
-    def show_request_info(self, info: Dict[str, Union[str, int, float, bool, List]]) -> None:
+    def show_request_info(self, info: dict[str, str | int | float | bool | list]) -> None:
         """Show request information if renderer supports it."""
         if hasattr(self._renderer, "render_request_info"):
             self._renderer.render_request_info(info)
@@ -96,7 +96,7 @@ class Display:
         if hasattr(self._renderer, "render_status"):
             self._renderer.render_status(message)
 
-    def show_status_rich(self, rich_content: Union[str, object]) -> None:
+    def show_status_rich(self, rich_content: str | object) -> None:
         """Show rich content if renderer supports it."""
         if hasattr(self._renderer, "render_status_rich"):
             self._renderer.render_status_rich(rich_content)

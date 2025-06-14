@@ -1,9 +1,8 @@
 """Display registry module for rendering implementations."""
 
 from collections.abc import Callable
-from typing import Union
 
-from .v2.base import Display, Renderer
+from .v2.base import Display
 
 
 class DisplayRegistry:

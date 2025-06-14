@@ -1,6 +1,6 @@
 """File search tool call processor."""
 
-from typing import Dict, Union, List
+
 from .base import BaseToolCallProcessor
 
 
@@ -18,8 +18,8 @@ class FileSearchProcessor(BaseToolCallProcessor):
 
     def _add_tool_specific_data(
         self,
-        item: Dict[str, Union[str, int, float, bool, List, Dict]],
-        processed: Dict[str, Union[str, int, float, bool, List, Dict]],
+        item: dict[str, str | int | float | bool | list | dict],
+        processed: dict[str, str | int | float | bool | list | dict],
     ) -> None:
         """Add file search specific data."""
         # Add file_id if searching specific file
@@ -28,7 +28,7 @@ class FileSearchProcessor(BaseToolCallProcessor):
             processed["file_id"] = file_id
 
     def _add_tool_specific_formatting(
-        self, processed: Dict[str, Union[str, int, float, bool, List, Dict]], parts: List[str]
+        self, processed: dict[str, str | int | float | bool | list | dict], parts: list[str]
     ) -> None:
         """Add file search specific formatting."""
         # Add file ID if searching specific file

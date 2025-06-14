@@ -1,9 +1,7 @@
 """Configuration and constants for the refactored file search module."""
 
-from dataclasses import dataclass, field
-from typing import List, Optional
 import os
-
+from dataclasses import dataclass, field
 
 # Default vectorstore IDs to use if none are provided
 DEFAULT_VEC_IDS = [
@@ -23,10 +21,10 @@ class SearchConfig:
 
     # Search settings
     max_results: int = 10
-    vec_ids: List[str] = field(default_factory=lambda: DEFAULT_VEC_IDS.copy())
+    vec_ids: list[str] = field(default_factory=lambda: DEFAULT_VEC_IDS.copy())
 
     # Tool settings
-    enabled_tools: List[str] = field(default_factory=list)
+    enabled_tools: list[str] = field(default_factory=list)
 
     # Server settings
     server_url: str = field(default_factory=lambda: os.environ.get("KNOWLEDGE_FORGE_URL", "http://localhost:9999"))
@@ -43,8 +41,8 @@ class SearchConfig:
     show_reasoning: bool = True  # Whether to show reasoning/thinking in output
 
     # Web search location
-    web_country: Optional[str] = None
-    web_city: Optional[str] = None
+    web_country: str | None = None
+    web_city: str | None = None
 
     # Display API version (for migration)
     use_new_display_api: bool = False  # Feature flag for v2 display system
@@ -97,7 +95,7 @@ class SearchConfig:
 
         return config
 
-    def get_web_location(self) -> Optional[dict]:
+    def get_web_location(self) -> dict | None:
         """Get web location configuration if set."""
         if self.web_country or self.web_city:
             location = {}

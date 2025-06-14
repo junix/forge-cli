@@ -1,6 +1,6 @@
 """Output type definitions matching the Knowledge Forge API response structure."""
 
-from typing import TypedDict, List, Optional, Literal, Dict, Union
+from typing import Literal, TypedDict, Union
 
 
 class SummaryItem(TypedDict):
@@ -14,9 +14,9 @@ class ReasoningItem(TypedDict):
     """Reasoning output item containing thinking/analysis."""
 
     id: str
-    summary: List[SummaryItem]
+    summary: list[SummaryItem]
     type: Literal["reasoning"]
-    encrypted_content: Optional[str]
+    encrypted_content: str | None
     status: str
 
 
@@ -24,18 +24,18 @@ class FileSearchCall(TypedDict):
     """File search tool call output item."""
 
     id: str
-    queries: List[str]
+    queries: list[str]
     status: str
     type: Literal["file_search_call"]
-    file_id: Optional[str]
-    public_results: Optional[List[Dict[str, Union[str, int, float]]]]
+    file_id: str | None
+    public_results: list[dict[str, str | int | float]] | None
 
 
 class DocumentFinderCall(TypedDict):
     """Document finder tool call output item."""
 
     id: str
-    queries: List[str]
+    queries: list[str]
     count: int
     status: str
     type: Literal["document_finder_call"]
@@ -45,41 +45,41 @@ class WebSearchCall(TypedDict):
     """Web search tool call output item."""
 
     id: str
-    queries: List[str]
+    queries: list[str]
     status: str
     type: Literal["web_search_call"]
-    results: Optional[List[Dict[str, Union[str, int, float]]]]
+    results: list[dict[str, str | int | float]] | None
 
 
 class FileReaderCall(TypedDict):
     """File reader tool call output item."""
 
     id: str
-    query: Optional[str]
-    doc_ids: List[str]
+    query: str | None
+    doc_ids: list[str]
     status: str
     type: Literal["file_reader_call"]
-    execution_trace: Optional[str]
-    progress: Optional[float]
+    execution_trace: str | None
+    progress: float | None
 
 
 class Annotation(TypedDict):
     """Citation annotation within message content."""
 
-    file_id: Optional[str]
+    file_id: str | None
     index: int
     type: Literal["file_citation", "url_citation"]
-    snippet: Optional[str]
-    filename: Optional[str]
-    url: Optional[str]
-    title: Optional[str]
-    file: Optional[dict]  # Can contain nested file info
+    snippet: str | None
+    filename: str | None
+    url: str | None
+    title: str | None
+    file: dict | None  # Can contain nested file info
 
 
 class MessageContent(TypedDict):
     """Content within a message item."""
 
-    annotations: List[Annotation]
+    annotations: list[Annotation]
     text: str
     type: Literal["output_text"]
 
@@ -88,7 +88,7 @@ class MessageItem(TypedDict):
     """Message output item containing the final response."""
 
     id: str
-    content: List[MessageContent]
+    content: list[MessageContent]
     role: Literal["assistant"]
     status: str
     type: Literal["message"]

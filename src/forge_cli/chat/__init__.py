@@ -1,7 +1,7 @@
 """Chat mode components for interactive multi-turn conversations."""
 
-from .controller import ChatController
 from .commands import ChatCommand, CommandRegistry
+from .controller import ChatController
 
 __all__ = [
     "ChatController",

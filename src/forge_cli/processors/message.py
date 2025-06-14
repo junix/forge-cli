@@ -1,6 +1,5 @@
 """Processor for message output items."""
 
-from typing import Dict, Union, List
 
 from .base import OutputProcessor
 
@@ -57,7 +56,7 @@ class MessageProcessor(OutputProcessor):
 
         return "\n".join(parts)
 
-    def _process_annotations(self, annotations: List[Dict[str, Union[str, int]]]) -> List[Dict[str, Union[str, int]]]:
+    def _process_annotations(self, annotations: list[dict[str, str | int]]) -> list[dict[str, str | int]]:
         """Process annotations into citation format."""
         citations = []
 
@@ -126,7 +125,7 @@ class MessageProcessor(OutputProcessor):
 
         return citations
 
-    def _format_citations_table(self, citations: List[Dict[str, Union[str, int]]]) -> str:
+    def _format_citations_table(self, citations: list[dict[str, str | int]]) -> str:
         """Format citations as a markdown table."""
         if not citations:
             return ""

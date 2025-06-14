@@ -1,6 +1,6 @@
 """Central registry for output processors."""
 
-from typing import Dict, Optional, Union, List
+
 from .base import OutputProcessor
 
 
@@ -8,7 +8,7 @@ class ProcessorRegistry:
     """Central registry for output processors."""
 
     def __init__(self):
-        self._processors: Dict[str, OutputProcessor] = {}
+        self._processors: dict[str, OutputProcessor] = {}
 
     def register(self, output_type: str, processor: OutputProcessor) -> None:
         """
@@ -20,7 +20,7 @@ class ProcessorRegistry:
         """
         self._processors[output_type] = processor
 
-    def get_processor(self, output_type: str) -> Optional[OutputProcessor]:
+    def get_processor(self, output_type: str) -> OutputProcessor | None:
         """
         Get processor for output type.
 
@@ -33,8 +33,8 @@ class ProcessorRegistry:
         return self._processors.get(output_type)
 
     def process_item(
-        self, item: Dict[str, Union[str, int, float, bool, List, Dict]]
-    ) -> Optional[Dict[str, Union[str, int, float, bool, List, Dict]]]:
+        self, item: dict[str, str | int | float | bool | list | dict]
+    ) -> dict[str, str | int | float | bool | list | dict] | None:
         """
         Process an output item using appropriate processor.
 
@@ -51,7 +51,7 @@ class ProcessorRegistry:
             return processor.process(item)
         return None
 
-    def format_item(self, item: Dict[str, Union[str, int, float, bool, List, Dict]]) -> Optional[str]:
+    def format_item(self, item: dict[str, str | int | float | bool | list | dict]) -> str | None:
         """
         Format an output item for display.
 
@@ -78,12 +78,12 @@ default_registry = ProcessorRegistry()
 def initialize_default_registry():
     """Initialize the default registry with all processors."""
     # Import here to avoid circular imports
-    from .reasoning import ReasoningProcessor
     from .message import MessageProcessor
-    from .tool_calls.file_search import FileSearchProcessor
+    from .reasoning import ReasoningProcessor
     from .tool_calls.document_finder import DocumentFinderProcessor
-    from .tool_calls.web_search import WebSearchProcessor
     from .tool_calls.file_reader import FileReaderProcessor
+    from .tool_calls.file_search import FileSearchProcessor
+    from .tool_calls.web_search import WebSearchProcessor
 
     # Register all processors
     default_registry.register("reasoning", ReasoningProcessor())

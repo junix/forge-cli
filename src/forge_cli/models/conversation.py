@@ -5,7 +5,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Union, List, Optional, Literal
+from typing import Literal
 
 
 @dataclass
@@ -14,9 +14,9 @@ class Message:
 
     role: Literal["user", "assistant", "system"]
     content: str
-    id: Optional[str] = None
-    timestamp: Optional[float] = None
-    metadata: Optional[Dict[str, Union[str, int, float, bool]]] = None
+    id: str | None = None
+    timestamp: float | None = None
+    metadata: dict[str, str | int | float | bool] | None = None
 
     def __post_init__(self):
         """Initialize defaults after dataclass init."""
@@ -27,7 +27,7 @@ class Message:
         if self.metadata is None:
             self.metadata = {}
 
-    def to_dict(self) -> Dict[str, Union[str, float, Dict]]:
+    def to_dict(self) -> dict[str, str | float | dict]:
         """Convert to dictionary for serialization."""
         return {
             "role": self.role,
@@ -38,7 +38,7 @@ class Message:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Union[str, float, Dict]]) -> "Message":
+    def from_dict(cls, data: dict[str, str | float | dict]) -> "Message":
         """Create from dictionary."""
         return cls(
             role=data["role"],
@@ -53,12 +53,12 @@ class Message:
 class ConversationState:
     """Manages the state of a multi-turn conversation."""
 
-    messages: List[Message] = field(default_factory=list)
+    messages: list[Message] = field(default_factory=list)
     session_id: str = field(default_factory=lambda: f"session_{uuid.uuid4().hex[:12]}")
     created_at: float = field(default_factory=time.time)
     model: str = "qwen-max-latest"
-    tools: List[Dict[str, Union[str, bool, List]]] = field(default_factory=list)
-    metadata: Dict[str, Union[str, int, float, bool]] = field(default_factory=dict)
+    tools: list[dict[str, str | bool | list]] = field(default_factory=list)
+    metadata: dict[str, str | int | float | bool] = field(default_factory=dict)
 
     def add_message(self, message: Message) -> None:
         """Add a message to the conversation."""
@@ -76,7 +76,7 @@ class ConversationState:
         self.add_message(message)
         return message
 
-    def to_api_format(self) -> List[Dict[str, Union[str, float]]]:
+    def to_api_format(self) -> list[dict[str, str | float]]:
         """Convert messages to API format."""
         return [{"role": msg.role, "content": msg.content, "id": msg.id} for msg in self.messages]
 
@@ -88,7 +88,7 @@ class ConversationState:
         """Get the number of messages in the conversation."""
         return len(self.messages)
 
-    def get_last_n_messages(self, n: int) -> List[Message]:
+    def get_last_n_messages(self, n: int) -> list[Message]:
         """Get the last n messages."""
         return self.messages[-n:] if n > 0 else []
 
@@ -110,7 +110,7 @@ class ConversationState:
     @classmethod
     def load(cls, path: Path) -> "ConversationState":
         """Load conversation from a JSON file."""
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
 
         conversation = cls(

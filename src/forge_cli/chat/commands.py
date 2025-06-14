@@ -1,7 +1,7 @@
 """Command system for chat mode."""
 
 from abc import ABC, abstractmethod
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .controller import ChatController
@@ -66,8 +66,8 @@ class HelpCommand(ChatCommand):
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
         """Show help message."""
-        from rich.table import Table
         from rich.align import Align
+        from rich.table import Table
 
         registry = controller.commands
 
@@ -418,7 +418,7 @@ class CommandRegistry:
         for alias in command.aliases:
             self.aliases[alias] = command.name
 
-    def get_command(self, name: str) -> Optional[ChatCommand]:
+    def get_command(self, name: str) -> ChatCommand | None:
         """Get command by name or alias."""
         # Direct lookup
         if name in self.commands:
@@ -430,7 +430,7 @@ class CommandRegistry:
 
         return None
 
-    def parse_command(self, input_text: str) -> tuple[Optional[str], str]:
+    def parse_command(self, input_text: str) -> tuple[str | None, str]:
         """
         Parse command and arguments from user input.
 

@@ -3,7 +3,6 @@
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, Union, List
 
 
 class EventType(Enum):
@@ -51,15 +50,15 @@ class Event:
     """Standardized event structure."""
 
     type: EventType
-    data: Dict[str, Union[str, int, float, bool, List, Dict]]
+    data: dict[str, str | int | float | bool | list | dict]
     timestamp: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Union[str, float, Dict]]:
+    def to_dict(self) -> dict[str, str | float | dict]:
         """Convert event to dictionary."""
         return {"type": self.type.value, "data": self.data, "timestamp": self.timestamp}
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Union[str, float, Dict]]) -> "Event":
+    def from_dict(cls, data: dict[str, str | float | dict]) -> "Event":
         """Create event from dictionary."""
         return cls(
             type=EventType(data["type"]), data=data.get("data", {}), timestamp=data.get("timestamp", time.time())

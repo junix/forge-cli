@@ -5,7 +5,6 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Dict, Union, List
 
 # Import the TestDataset loader
 from forge_cli.dataset import TestDataset
@@ -15,8 +14,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Use absolute imports from top-level directory
 from forge_cli.chat.controller import ChatController
 from forge_cli.config import SearchConfig
-from forge_cli.display.v2.base import Display, Renderer
 from forge_cli.display.registry import DisplayRegistry, initialize_default_displays
+from forge_cli.display.v2.base import Display
 from forge_cli.processors.registry import initialize_default_registry
 from forge_cli.sdk import astream_response, async_get_vectorstore
 from forge_cli.stream.handler import StreamHandler
@@ -30,7 +29,7 @@ def create_display(config: SearchConfig) -> Display:
     # Get the v2 display directly from registry
     try:
         return DisplayRegistry.get_display_for_config(config)
-    except (ValueError, ImportError) as e:
+    except (ValueError, ImportError):
         # Fallback to v2 plain renderer if there's an error
         from forge_cli.display.v2.renderers.plain import PlainRenderer
 
@@ -38,7 +37,7 @@ def create_display(config: SearchConfig) -> Display:
         return Display(renderer)
 
 
-def prepare_request(config: SearchConfig, question: str) -> Dict[str, Union[str, int, float, bool, List]]:
+def prepare_request(config: SearchConfig, question: str) -> dict[str, str | int | float | bool | list]:
     """Prepare request parameters for the API."""
     # Base request
     request = {
@@ -86,7 +85,7 @@ def prepare_request(config: SearchConfig, question: str) -> Dict[str, Union[str,
     return request
 
 
-async def process_search(config: SearchConfig, question: str) -> Dict[str, Union[str, int, float, bool, List]] | None:
+async def process_search(config: SearchConfig, question: str) -> dict[str, str | int | float | bool | list] | None:
     """Process search with the given configuration."""
     # Initialize processor registry
     initialize_default_registry()

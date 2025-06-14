@@ -1,6 +1,5 @@
 """Web search tool call processor."""
 
-from typing import Dict, Union, List
 from .base import BaseToolCallProcessor
 
 
