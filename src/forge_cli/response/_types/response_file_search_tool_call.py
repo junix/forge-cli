@@ -265,54 +265,6 @@ class ResponseFileSearchToolCall(BaseModel):
     """Private attribute that won't be included in serialization."""
 
     @classmethod
-    def from_chat_tool_call(
-        cls,
-        chat_tool_call: "ToolCall",
-        status: Literal["in_progress", "searching", "completed", "incomplete", "failed"] = "in_progress",
-    ) -> "ResponseFileSearchToolCall":
-        """Convert a ToolCall to a ResponseFileSearchToolCall.
-
-        Args:
-            chat_tool_call (ToolCall): A tool call object from our internal message types.
-            status (Literal): The status to set for the file search tool call. Defaults to "in_progress".
-
-        Returns:
-            ResponseFileSearchToolCall: A file search tool call object compatible with the response style API.
-        """
-        import json
-
-        # Extract queries and doc_id from the arguments
-        queries = []
-        file_id = None
-        try:
-            arguments = json.loads(chat_tool_call.function.arguments)
-            if arguments:
-                queries = arguments.get("queries", [])
-                # Convert doc_id to file_id
-                file_id = arguments.get("doc_id")
-        except (json.JSONDecodeError, AttributeError):
-            # Continue with empty queries if parsing fails
-            pass
-
-        # Create the ResponseFileSearchToolCall instance
-        instance = cls(
-            id=chat_tool_call.id,
-            queries=queries,
-            status=status,
-            type="file_search_call",
-            file_id=file_id,
-        )
-
-        # Store the original function tool call
-        function_tool_call = ResponseFunctionToolCall.from_chat_tool_call(
-            chat_tool_call=chat_tool_call,
-            status="in_progress" if status in ["in_progress", "searching"] else status,
-        )
-        instance._native_tool_call = function_tool_call
-
-        return instance
-
-    @classmethod
     def from_general_function_tool_call(
         cls,
         function_tool_call: ResponseFunctionToolCall,
@@ -384,46 +336,6 @@ class ResponseFileSearchToolCall(BaseModel):
             status="completed" if self.status == "completed" else "in_progress",
         )
 
-    def to_chat_tool_call(self) -> "ToolCall":
-        """Convert to internal ToolCall type.
-        
-        Returns:
-            ToolCall: Internal ToolCall object for use throughout Knowledge Forge.
-        """
-        # Import ToolCall here to avoid circular imports
-        from message._types.tool_call import ToolCall, FunctionCall
-        
-        if self._native_tool_call is not None:
-            # If we have a native tool call, extract its properties
-            native = self._native_tool_call.to_chat_tool_call()
-            return ToolCall(
-                id=native.id,
-                type="function",
-                function=FunctionCall(
-                    name=native.function.name,
-                    arguments=native.function.arguments
-                )
-            )
-
-        # Create a JSON string of the queries and doc_id
-        import json
-
-        arguments_dict = {"queries": self.queries}
-        if self.file_id is not None:
-            # Convert file_id back to doc_id
-            arguments_dict["doc_id"] = self.file_id
-        
-        arguments = json.dumps(arguments_dict)
-
-        # Create and return internal ToolCall
-        return ToolCall(
-            id=self.id,
-            type="function",
-            function=FunctionCall(
-                name="file_search", 
-                arguments=arguments
-            ),
-        )
     
 
     def as_chat_toolcall_result(self, **kwargs) -> Union[str, List["Chunk"]]:

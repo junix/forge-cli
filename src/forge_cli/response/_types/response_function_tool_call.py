@@ -5,9 +5,7 @@ from typing import Optional, TYPE_CHECKING
 from typing_extensions import Literal
 
 if TYPE_CHECKING:
-    from message._types.tool_call import ToolCall
-
-from ._models import BaseModel
+    from ._models import BaseModel
 
 __all__ = ["ResponseFunctionToolCall"]
 
@@ -35,44 +33,3 @@ class ResponseFunctionToolCall(BaseModel):
     returned via API.
     """
 
-    @classmethod
-    def from_chat_tool_call(
-        cls,
-        chat_tool_call: "ToolCall",
-        status: Literal["in_progress", "completed", "incomplete"] = "in_progress",
-    ) -> "ResponseFunctionToolCall":
-        """Convert a ToolCall to a ResponseFunctionToolCall.
-
-        Args:
-            chat_tool_call (ToolCall): A tool call object from our internal message types.
-
-        Returns:
-            ResponseFunctionToolCall: A function tool call object compatible with the response style API.
-        """
-        return cls(
-            arguments=chat_tool_call.function.arguments,
-            call_id=chat_tool_call.id,
-            name=chat_tool_call.function.name,
-            type="function_call",
-            id=chat_tool_call.id,
-            status=status,
-        )
-
-    def to_chat_tool_call(self) -> "ToolCall":
-        """Convert to internal ToolCall type.
-
-        Returns:
-            ToolCall: Internal ToolCall object for use throughout Knowledge Forge.
-        """
-        # Import ToolCall here to avoid circular imports
-        from message._types.tool_call import ToolCall, FunctionCall
-        
-        return ToolCall(
-            id=self.call_id,
-            type="function",
-            function=FunctionCall(
-                name=self.name, 
-                arguments=self.arguments
-            ),
-        )
-    

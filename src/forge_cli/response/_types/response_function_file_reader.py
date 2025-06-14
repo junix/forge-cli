@@ -1,13 +1,13 @@
 import uuid
 from typing import Any, Literal
 
+from pydantic import Field, PrivateAttr
+
+from forge_cli.common.logger import logger
 from forge_cli.constants.metadata_keys import (
     DOC_ID_KEY,
     FILE_ID_KEY,
 )
-from pydantic import Field, PrivateAttr
-
-from forge_cli.common.logger import logger
 
 from .chunk import Chunk
 
@@ -75,44 +75,6 @@ class ResponseFunctionFileReader(TraceableToolCall):
         if "_navigator" in data:
             del data["_navigator"]
         return data
-
-    def to_chat_tool_call(self) -> "ToolCall":
-        """Convert to internal ToolCall type.
-
-        Returns:
-            ToolCall: Internal ToolCall object for use throughout Knowledge Forge.
-        """
-        import json
-
-        # Import ToolCall here to avoid circular imports
-        from message._types.tool_call import FunctionCall, ToolCall
-
-        if self._native_tool_call is not None:
-            # If we have a native tool call, extract its properties
-            native = self._native_tool_call.to_chat_tool_call()
-            return ToolCall(
-                id=native.id,
-                type="function",
-                function=FunctionCall(name=native.function.name, arguments=native.function.arguments),
-            )
-
-        # Create a JSON string of the arguments
-        arguments = json.dumps(
-            {
-                "doc_ids": self.doc_ids,
-                "query": self.query,
-            }
-        )
-
-        # Generate a fallback ID if no native tool call
-        tool_id = f"file_reader_{hash(str(self.doc_ids))}"
-
-        # Create and return internal ToolCall
-        return ToolCall(
-            id=tool_id,
-            type="function",
-            function=FunctionCall(name="file_reader", arguments=arguments),
-        )
 
     def as_chat_toolcall_result(self, **kwargs) -> str | list["Chunk"]:
         """Convert the file reader tool call results to either a string or list of Chunks.

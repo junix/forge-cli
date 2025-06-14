@@ -1,13 +1,10 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Dict, List, Optional, Union, TYPE_CHECKING
+from typing import Dict, List, Optional, Union
 import xml.etree.ElementTree as ET
 
 from pydantic import PrivateAttr
 from typing_extensions import Literal
-
-if TYPE_CHECKING:
-    from message._types.tool_call import ToolCall
 
 from ._models import BaseModel
 from .response_function_tool_call import ResponseFunctionToolCall
@@ -98,55 +95,6 @@ class ResponseDocumentFinderToolCall(BaseModel):
         return "".join(xml_parts)
 
     @classmethod
-    def from_chat_tool_call(
-        cls,
-        chat_tool_call: "ToolCall",
-        status: Literal["in_progress", "searching", "completed", "incomplete"] = "in_progress",
-    ) -> "ResponseDocumentFinderToolCall":
-        """Convert a ToolCall to a ResponseDocumentFinderToolCall.
-
-        Args:
-            chat_tool_call (ToolCall): A tool call object from our internal message types.
-            status (Literal): The status to set for the document finder tool call. Defaults to "in_progress".
-
-        Returns:
-            ResponseDocumentFinderToolCall: A document finder tool call object compatible with the response style API.
-        """
-        import json
-        # Import ToolCall here to avoid circular imports (not needed since it's passed as param)
-        # from message._types.tool_call import ToolCall
-
-        # Extract queries and count from the arguments
-        queries = []
-        count = 10  # Default value
-        try:
-            arguments = json.loads(chat_tool_call.function.arguments)
-            if arguments:
-                queries = arguments.get("queries", [])
-                count = arguments.get("count", 10)
-        except (json.JSONDecodeError, AttributeError):
-            # Continue with defaults if parsing fails
-            pass
-
-        # Create the ResponseDocumentFinderToolCall instance
-        instance = cls(
-            id=chat_tool_call.id,
-            queries=queries,
-            count=count,
-            status=status,
-            type="document_finder_call",
-        )
-
-        # Store the original function tool call
-        function_tool_call = ResponseFunctionToolCall.from_chat_tool_call(
-            chat_tool_call=chat_tool_call,
-            status="in_progress" if status in ["in_progress", "searching"] else status,
-        )
-        instance._native_tool_call = function_tool_call
-
-        return instance
-
-    @classmethod
     def from_general_function_tool_call(
         cls,
         function_tool_call: ResponseFunctionToolCall,
@@ -217,43 +165,5 @@ class ResponseDocumentFinderToolCall(BaseModel):
             status="completed" if self.status == "completed" else "in_progress",
         )
 
-    def to_chat_tool_call(self) -> "ToolCall":
-        """Convert to internal ToolCall type.
-        
-        Returns:
-            ToolCall: Internal ToolCall object for use throughout Knowledge Forge.
-        """
-        # Import ToolCall here to avoid circular imports
-        from message._types.tool_call import ToolCall, FunctionCall
-        
-        if self._native_tool_call is not None:
-            # If we have a native tool call, extract its properties
-            native = self._native_tool_call.to_chat_tool_call()
-            return ToolCall(
-                id=native.id,
-                type="function",
-                function=FunctionCall(
-                    name=native.function.name,
-                    arguments=native.function.arguments
-                )
-            )
-
-        # Create a JSON string of the queries and count
-        import json
-
-        arguments = json.dumps({
-            "queries": self.queries,
-            "count": self.count
-        })
-
-        # Create and return internal ToolCall
-        return ToolCall(
-            id=self.id,
-            type="function",
-            function=FunctionCall(
-                name="document_finder", 
-                arguments=arguments
-            ),
-        )
     
 
