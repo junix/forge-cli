@@ -246,6 +246,11 @@ class ChatController:
 
         # Prepare request with conversation history
         request = self.prepare_request()
+        
+        # Start the display for this message (creates Live display if needed)
+        if hasattr(self.display, 'show_request_info'):
+            # Don't show full request info in chat mode, just ensure display is ready
+            self.display.handle_event("stream_start", {"query": content})
 
         if self.config.debug:
             print(f"\nDEBUG: Conversation has {self.conversation.get_message_count()} messages")
