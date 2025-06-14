@@ -1,57 +1,154 @@
-# Knowledge Forge Commands - SDK and Command Line Tools
+# Forge CLI - Modern Command Line Tools for Knowledge Forge API
 
 ## Overview
 
-This directory contains the official command-line tools and SDK for interacting with the Knowledge Forge API. These tools provide a comprehensive interface for file uploads, vector store management, AI-powered question answering, and streaming responses.
+This project provides modern, modular command-line tools and SDK for interacting with the Knowledge Forge API. Built with Python 3.8+ and structured as a proper Python package, it offers comprehensive functionality for file uploads, vector store management, AI-powered question answering, and streaming responses.
+
+## Project Structure
+
+```
+forge-cli/
+├── src/forge_cli/              # Top-level package (use absolute imports)
+│   ├── main.py                 # Main CLI entry point with rich UI
+│   ├── sdk.py                  # Official Python SDK for Knowledge Forge API
+│   ├── config.py               # Configuration management
+│   ├── chat.py                 # Interactive chat mode
+│   ├── models/                 # Data models and types (use relative imports)
+│   │   ├── conversation.py     # Chat conversation management
+│   │   ├── events.py           # Event type definitions
+│   │   ├── output_types.py     # Response output types
+│   │   └── state.py            # Stream state management
+│   ├── processors/             # Event processors (use relative imports)
+│   │   ├── base.py             # Base processor interface
+│   │   ├── registry.py         # Processor registry
+│   │   ├── reasoning.py        # Reasoning/thinking processor
+│   │   ├── message.py          # Message processor with citations
+│   │   └── tool_calls/         # Tool-specific processors (use relative imports)
+│   │       ├── file_search.py  # File search tool processor
+│   │       ├── web_search.py   # Web search tool processor
+│   │       ├── file_reader.py  # File reader tool processor
+│   │       └── document_finder.py # Document finder processor
+│   ├── display/                # Display strategies (use relative imports)
+│   │   ├── base.py             # Base display interface
+│   │   ├── rich_display.py     # Rich terminal UI
+│   │   ├── plain_display.py    # Plain text output
+│   │   └── json_display.py     # JSON format output
+│   ├── stream/                 # Stream handling (use relative imports)
+│   │   └── handler.py          # Main stream processor
+│   ├── chat/                   # Chat mode functionality (use relative imports)
+│   │   ├── controller.py       # Chat session controller
+│   │   └── commands.py         # Chat command system
+│   └── scripts/                # Example scripts (use absolute imports)
+│       ├── hello-async.py      # Basic async SDK usage
+│       ├── hello-file-search.py # File search examples
+│       ├── hello-web-search.py # Web search examples
+│       ├── simple-flow.py      # End-to-end workflows
+│       └── ...                 # Additional utility scripts
+├── docs/adr/                   # Architecture Decision Records
+├── pyproject.toml              # Python project configuration
+└── README.md                   # Project documentation
+```
 
 ## Import Conventions
 
-**IMPORTANT: All scripts in this directory should use relative imports to import the local `sdk.py` module.**
+**IMPORTANT: Follow these import patterns based on directory level:**
+
+### Top-Level Directory (`src/forge_cli/`)
+Files at the top level use **absolute imports**:
 
 ```python
-# Correct - relative import from local directory
-from sdk import async_create_response, astream_response
-
-# WRONG - absolute imports (causes import conflicts)  
-from commands.sdk import async_create_response
+# In src/forge_cli/main.py
+from forge_cli.sdk import astream_response, async_get_vectorstore
+from forge_cli.config import SearchConfig
+from forge_cli.display.base import BaseDisplay
+from forge_cli.display.rich_display import RichDisplay
+from forge_cli.stream.handler import StreamHandler
+from forge_cli.processors.registry import initialize_default_registry
 ```
 
-## Architecture
+### Subdirectories (`models/`, `processors/`, `display/`, etc.)
+Files in subdirectories use **relative imports**:
 
-### SDK-First Design (ADR-001)
+```python
+# In src/forge_cli/processors/registry.py
+from .base import BaseProcessor
+from .reasoning import ReasoningProcessor
+from .tool_calls.file_search import FileSearchProcessor
 
-All command-line tools follow a **SDK-first approach**:
+# In src/forge_cli/display/rich_display.py
+from .base import BaseDisplay
 
-- **No Direct API Calls**: All tools MUST use the centralized SDK (`sdk.py`) 
-- **Async/Await Pattern**: All API operations use Python's async/await for optimal performance
-- **Module Execution**: Commands run as `uv run -m commands.<command_name>`
-- **Environment Variables**: Configuration via `KNOWLEDGE_FORGE_URL` and `OPENAI_API_KEY`
-
-### Core Components
-
-```
-commands/
-├── sdk.py                      # Official Python SDK for Knowledge Forge API
-├── cli.py                      # Simple CLI with rich formatting  
-├── cli_refactored.py           # Refactored CLI with markdown support
-├── hello-async.py              # Basic async SDK usage example
-├── hello-file-search.py        # Advanced file search with citations
-├── hello-web-search.py         # Web search capabilities
-├── hello-file-reader.py        # File reading and analysis
-├── simple-flow.py              # End-to-end workflow demonstration
-├── create-vectorstore.py       # Vector store management
-├── create-files.py             # File upload and management
-└── ADR-*.md                    # Architecture Decision Records
+# In src/forge_cli/processors/tool_calls/file_search.py
+from ..base import BaseProcessor
+from ...models.state import StreamState
 ```
 
-## SDK API Reference
+### Scripts Directory (`scripts/`)
+Scripts use **absolute imports** since they are standalone utilities:
+
+```python
+# In src/forge_cli/scripts/hello-async.py
+from forge_cli.sdk import async_create_response, astream_response
+from forge_cli.config import SearchConfig
+```
+
+## Installation & Setup
+
+### Prerequisites
+- Python 3.8+
+- `uv` package manager (recommended) or `pip`
+
+### Installation
+```bash
+# Clone the repository
+git clone <repository-url>
+cd forge-cli
+
+# Install dependencies with uv
+uv sync
+
+# Or with pip
+pip install -e .
+```
+
+### Environment Configuration
+```bash
+export KNOWLEDGE_FORGE_URL=http://localhost:9999  # Default server URL
+export OPENAI_API_KEY=your-api-key                # Optional, for some features
+```
+
+## Usage
+
+### Command Line Interface
+
+The main CLI provides a rich, interactive interface with multiple tools:
+
+```bash
+# Run the main CLI
+forge-cli
+
+# Or using Python module
+python -m forge_cli
+
+# Basic file search
+forge-cli -q "What information is in these documents?" --vec-id your-vector-store-id
+
+# Web search
+forge-cli -t web-search -q "Latest AI news"
+
+# Interactive chat mode
+forge-cli --chat
+
+# Multiple tools with location context
+forge-cli -t file-search -t web-search --vec-id vs_123 --country US --city "San Francisco"
+```
+
+### SDK API Reference
 
 The `sdk.py` module provides a comprehensive async API for all Knowledge Forge operations:
 
-### Response API
-
 ```python
-from sdk import async_create_response, astream_response, async_fetch_response
+from forge_cli.sdk import async_create_response, astream_response, async_fetch_response
 
 # Create a response
 response = await async_create_response(
@@ -76,10 +173,10 @@ async for event_type, event_data in astream_response(
 response = await async_fetch_response(response_id)
 ```
 
-### File API
+#### File API
 
 ```python
-from sdk import async_upload_file, async_fetch_file, async_delete_file
+from forge_cli.sdk import async_upload_file, async_fetch_file, async_delete_file
 
 # Upload file
 result = await async_upload_file(
@@ -104,10 +201,10 @@ document = await async_fetch_file(file_id)
 success = await async_delete_file(file_id)
 ```
 
-### Vector Store API
+#### Vector Store API
 
 ```python
-from sdk import (
+from forge_cli.sdk import (
     async_create_vectorstore, 
     async_query_vectorstore,
     async_join_files_to_vectorstore
@@ -137,64 +234,118 @@ result = await async_join_files_to_vectorstore(
 )
 ```
 
-## Command Line Tools
+## Architecture
 
-### Basic Usage Examples
+### Modular Design Philosophy
+
+The project follows modern software engineering principles:
+
+1. **Single Responsibility**: Each module has one clear purpose
+2. **Strategy Pattern**: Multiple display and processing strategies
+3. **Registry Pattern**: Dynamic processor selection
+4. **Stream Processing**: Event-driven architecture for real-time responses
+5. **Type Safety**: Comprehensive type annotations throughout
+
+### Key Components
+
+#### Stream Processing
+Events from the Knowledge Forge API are processed through a modular pipeline:
+```
+API Event Stream → StreamHandler → Event Router → Processor Registry → Display Strategy
+```
+
+#### Processor System
+Each output type has a dedicated processor:
+- `ReasoningProcessor`: Handles thinking/analysis blocks
+- `FileSearchProcessor`: Processes file search tool calls
+- `WebSearchProcessor`: Handles web search operations
+- `MessageProcessor`: Manages final responses with citations
+
+#### Display Strategies
+Multiple output formats are supported:
+- `RichDisplay`: Rich terminal UI with live updates
+- `PlainDisplay`: Simple text output
+- `JsonDisplay`: Machine-readable JSON format
+
+## Example Scripts
+
+The `scripts/` directory contains practical examples:
 
 ```bash
-# Set environment
-export KNOWLEDGE_FORGE_URL=http://localhost:9999
-export PYTHONPATH=/path/to/knowledge-forge-office/knowledge_forge
+# Basic async SDK usage
+python -m forge_cli.scripts.hello-async
 
-# Basic async example
-uv run -m commands.hello-async
+# File search with citations
+python -m forge_cli.scripts.hello-file-search -q "What information is in these documents?"
 
-# File search with citations (ADR-003)
-uv run -m commands.hello-file-search -q "What information is in these documents?"
-uv run -m commands.hello-file-search --vec-id vec_123 vec_456 -q "Your question"
+# Web search capabilities
+python -m forge_cli.scripts.hello-web-search -q "Latest AI developments"
 
-# Web search
-uv run -m commands.hello-web-search -q "What was positive news today?"
-uv run -m commands.hello-web-search --country US --city "San Francisco" -q "local weather"
+# File reading and analysis
+python -m forge_cli.scripts.hello-file-reader --file-id file_123 -q "Summarize this document"
 
-# File analysis
-uv run -m commands.hello-file-reader --file-id file_123 -q "Summarize this document"
-
-# End-to-end workflow  
-uv run -m commands.simple-flow -f document.pdf -n "My Collection" -q "What is this about?"
+# End-to-end workflow
+python -m forge_cli.scripts.simple-flow -f document.pdf -n "My Collection" -q "What is this about?"
 ```
 
 ### Advanced Features
 
-#### File Search with Citations (ADR-003)
-
-The file search tool implements a sophisticated citation system:
+#### Interactive Chat Mode
+The CLI supports full conversational mode with context preservation:
 
 ```bash
-# Rich mode with live display
-uv run -m commands.hello-file-search --vec-id vs_123 -q "云学堂的报销流程是什么？"
+# Start interactive chat
+forge-cli --chat
+
+# Chat with specific tools enabled
+forge-cli --chat -t file-search --vec-id vs_123
+
+# Available chat commands:
+# /help - Show available commands
+# /save - Save conversation to file
+# /load - Load previous conversation
+# /tools - Manage enabled tools
+# /model - Change AI model
+# /clear - Clear conversation history
+```
+
+#### File Search with Citations
+Advanced file search with sophisticated citation tracking:
+
+```bash
+# File search with rich UI
+forge-cli --vec-id vs_123 -q "What information is in these documents?"
+
+# Multiple vector stores
+forge-cli --vec-id vs_123 vs_456 -q "Your question"
 
 # Debug mode for troubleshooting
-uv run -m commands.hello-file-search --debug -q "search query"
-
-# JSON output for programmatic use
-uv run -m commands.hello-file-search --json -q "query" --vec-id vs_123
+forge-cli --debug -q "search query"
 ```
 
 **Features:**
-- **Real-time citation display**: Shows source references as [1], [2], etc.
-- **Tabular reference format**: Markdown table with Citation | Document | Page | File ID
-- **Snapshot-based processing**: Handles complete response snapshots efficiently
-- **Rich terminal support**: Live updating display with progress indicators
+- Real-time citation display as [1], [2], etc.
+- Markdown table format: Citation | Document | Page | File ID
+- Live updating display with progress indicators
+- Support for multiple vector stores
 
-#### Reasoning Display (ADR-002)
+#### Web Search Integration
+Location-aware web search capabilities:
 
-All tools support reasoning/thinking display:
+```bash
+# Basic web search
+forge-cli -t web-search -q "Latest AI news"
 
-```python
-# Reasoning events are handled automatically
-# Shows "🤔 Thinking:" process in real-time
-# Supports multiple event formats for compatibility
+# Location-specific search
+forge-cli -t web-search --country US --city "San Francisco" -q "local weather"
+```
+
+#### Multi-Tool Support
+Combine multiple tools in a single query:
+
+```bash
+# File search + Web search
+forge-cli -t file-search -t web-search --vec-id vs_123 -q "Compare internal docs with latest industry trends"
 ```
 
 ### Configuration Options
@@ -203,107 +354,74 @@ All commands support these common options:
 
 ```bash
 --debug, -d          # Show detailed event information  
---no-color          # Disable colored output
---json              # JSON output for machine parsing
---quiet, -Q         # Minimal output
---throttle N        # Add N ms delay between tokens
---server URL        # Override server URL
+--no-color           # Disable colored output
+--json               # JSON output for machine parsing
+--quiet, -Q          # Minimal output
+--throttle N         # Add N ms delay between tokens
+--server URL         # Override server URL
+--chat, -i           # Start interactive chat mode
+--effort LEVEL       # Set effort level (low/medium/high)
+--model MODEL        # Specify AI model to use
 ```
 
-## Environment Setup
+## Development
 
-### Prerequisites
+### Creating New Tools
+
+When extending the CLI with new functionality:
+
+1. **Add processors** for new output types in `processors/` (use relative imports)
+2. **Register processors** in `processors/registry.py` (use relative imports within processors)
+3. **Add display methods** if needed in `display/` modules (use relative imports)
+4. **Update configuration** in `config.py` for new options (use absolute imports from top-level)
+5. **Create example scripts** in `scripts/` directory (use absolute imports)
+
+### Import Guidelines for Development
+
+- **Top-level files** (`main.py`, `sdk.py`, `config.py`): Use absolute imports (`from forge_cli.module import ...`)
+- **Subdirectory files** (`processors/`, `display/`, `models/`): Use relative imports (`.module`, `..parent.module`)
+- **Scripts**: Use absolute imports since they're standalone utilities
+- **Cross-package imports**: Always use absolute imports when importing from other top-level modules
+
+### Testing
 
 ```bash
-# Install dependencies
-pip install aiohttp rich loguru colorama
+# Run example scripts
+python -m forge_cli.scripts.hello-async
 
-# Set required environment variables
-export PYTHONPATH=/path/to/knowledge-forge-office/knowledge_forge
-export KNOWLEDGE_FORGE_URL=http://localhost:9999  # optional, defaults to localhost
-export OPENAI_API_KEY=your-api-key  # optional, for some functionalities
+# Test with debug mode
+forge-cli --debug -t file-search --vec-id vs_123 -q "test query"
+
+# Test chat mode
+forge-cli --chat --debug
 ```
 
-### Running Commands
+### Extending the SDK
 
-Two execution patterns are supported:
+The SDK is designed for extension. Add new API endpoints by:
 
-```bash
-# Method 1: Module execution (recommended)
-cd /path/to/knowledge-forge-office/knowledge_forge
-uv run -m commands.hello-async
+1. Adding async functions following the `async_<action>_<resource>` pattern
+2. Using consistent error handling and return types
+3. Adding comprehensive docstrings and type annotations
 
-# Method 2: Direct execution
-cd /path/to/knowledge-forge-office/commands  
-./hello-async.py
-```
+## Dependencies
 
-## Development Guidelines
+Core dependencies (automatically managed by `uv` or `pip`):
 
-### Creating New Commands
+- `aiohttp>=3.8.0` - Async HTTP client for API communication
+- `rich>=12.0.0` - Rich terminal UI components
+- `loguru>=0.6.0` - Advanced logging capabilities
+- `prompt-toolkit>=3.0.0` - Interactive command line features
 
-When creating new command-line tools:
-
-1. **Always use the SDK** for all API interactions
-2. **Follow async patterns** for all I/O operations
-3. **Use consistent error handling** via SDK functions
-4. **Include comprehensive argument parsing** with help text
-5. **Support common options** (--debug, --json, --no-color)
-6. **Provide usage examples** in docstrings
-7. **Add proper shebang** lines for direct execution
-
-### Example Command Template
-
-```python
-#!/usr/bin/env python3
-"""
-Example command demonstrating best practices.
-"""
-
-import argparse
-import asyncio
-import sys
-from pathlib import Path
-
-# Add current directory to path for relative imports
-sys.path.insert(0, str(Path(__file__).parent))
-
-from sdk import async_create_response
-
-async def main():
-    parser = argparse.ArgumentParser(description="Example command")
-    parser.add_argument("--query", "-q", required=True, help="Query to process")
-    parser.add_argument("--debug", action="store_true", help="Enable debug output")
-    
-    args = parser.parse_args()
-    
-    try:
-        response = await async_create_response(
-            input_messages=args.query,
-            model="qwen-max-latest"
-        )
-        
-        if response:
-            print(f"Response: {response.get('id')}")
-        else:
-            print("No response received")
-            
-    except Exception as e:
-        if args.debug:
-            import traceback
-            traceback.print_exc()
-        else:
-            print(f"Error: {e}")
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
+Optional dependencies for enhanced functionality:
+- `requests>=2.25.0` - Fallback HTTP client
+- Development tools: `pytest`, `black`, `flake8`, `mypy`
 
 ## Streaming and Event Handling
 
-### Event Types
+The system processes real-time events from the Knowledge Forge API:
 
-Common event types in the streaming API:
+### Key Event Types
 
 ```python
 # Response lifecycle
@@ -314,96 +432,86 @@ Common event types in the streaming API:
 "response.completed"            # Response finished
 "done"                          # Stream closed
 
-# File search events  
-"response.file_search_call.searching"    # Search started
-"response.file_search_call.completed"    # Search finished
+# Tool execution events  
+"response.file_search_call.searching"    # File search started
+"response.file_search_call.completed"    # File search finished
+"response.web_search_call.searching"     # Web search started
+"response.web_search_call.completed"     # Web search finished
 
-# Reasoning events (ADR-002)
-"response.output_item.added"             # Reasoning/thinking content
+# Reasoning/thinking events
+"response.output_item.added"             # Reasoning content
 ```
 
-### Streaming Patterns
-
-Two streaming approaches are supported:
+### Streaming Implementation
 
 ```python
-# Method 1: Async iterator (recommended)
-async for event_type, event_data in astream_response(messages):
+# Async iterator pattern (recommended)
+async for event_type, event_data in astream_response(
+    input_messages="Your query",
+    model="qwen-max-latest"
+):
     if event_type == "response.output_text.delta":
         print(event_data["text"], end="", flush=True)
+    elif event_type == "done":
+        break
 
-# Method 2: Callback-based
-async def stream_callback(event):
-    if event["type"] == "response.output_text.delta":
-        print(event["data"]["text"], end="", flush=True)
-
-response = await async_create_response(
-    input_messages=messages,
-    callback=stream_callback
-)
+# The stream handler automatically routes events to appropriate processors
 ```
 
-## Testing and Debugging
+## Troubleshooting
 
-### Debug Tools
+### Debug Mode
+
+Enable comprehensive debugging:
 
 ```bash
-# Event debugging
-uv run -m commands.debug-event-logger  # Log all events with timestamps
+# CLI debug mode
+forge-cli --debug -q "test query"
 
-# Multi-tool testing  
-uv run -m commands.demo-multi-tools-concept  # Test multiple tools
-
-# API debugging
-uv run -m commands.hello-async --debug  # Show detailed API calls
+# Script debug mode  
+python -m forge_cli.scripts.hello-async --debug
 ```
 
 ### Common Issues
 
-1. **Import Errors**: Ensure `PYTHONPATH` is set correctly
-2. **Connection Errors**: Verify `KNOWLEDGE_FORGE_URL` points to running server
-3. **Missing Dependencies**: Install required packages with `pip install`
-4. **API Key Issues**: Set `OPENAI_API_KEY` if required by specific models
+| Issue | Solution |
+|-------|----------|
+| Import errors | Ensure proper package installation with `uv sync` or `pip install -e .` |
+| Connection refused | Verify Knowledge Forge server is running at correct URL |
+| No response received | Check server logs and API endpoint accessibility |
+| JSON decode errors | Enable `--debug` to see raw API responses |
+| Missing API key | Set `OPENAI_API_KEY` environment variable if required |
+
+### Environment Verification
+
+```bash
+# Check installation
+forge-cli --version
+
+# Test basic functionality
+forge-cli -q "Hello, world!" --debug
+
+# Verify SDK import
+python -c "from forge_cli.sdk import async_create_response; print('SDK OK')"
+```
 
 ## Architecture Decision Records
 
-This directory includes comprehensive ADRs documenting design decisions:
+The project includes comprehensive ADRs documenting design decisions:
 
-- **[ADR-001](ADR-001-commandline-design.md)**: Command-line interface design principles
-- **[ADR-002](ADR-002-reasoning-event-handling.md)**: Reasoning event handling in streaming
-- **[ADR-003](ADR-003-file-search-annotation-display.md)**: File search citation display architecture
-- **[ADR-004](ADR-004-snapshot-based-streaming-design.md)**: Snapshot-based streaming approach
+- **[CLAUDE-001](docs/adr/CLAUDE-001-commandline-design.md)**: Command-line interface design principles
+- **[CLAUDE-002](docs/adr/CLAUDE-002-reasoning-event-handling.md)**: Reasoning event handling in streaming
+- **[CLAUDE-003](docs/adr/CLAUDE-003-file-search-annotation-display.md)**: File search citation display architecture
+- **[CLAUDE-004](docs/adr/CLAUDE-004-snapshot-based-streaming-design.md)**: Snapshot-based streaming approach
 
-## Integration with Knowledge Forge
+## Contributing
 
-These command-line tools serve as:
+This project serves as both a practical tool and reference implementation for the Knowledge Forge API. When contributing:
 
-1. **Reference Implementations**: Show best practices for using the Knowledge Forge API
-2. **Development Tools**: Enable rapid testing and prototyping
-3. **User Interface**: Provide accessible command-line access to Knowledge Forge features  
-4. **SDK Examples**: Demonstrate proper usage of the async SDK
+1. Follow the established modular architecture
+2. Maintain comprehensive type annotations
+3. Add tests for new functionality
+4. Update documentation and ADRs as needed
+5. Use the SDK for all API interactions
 
-The tools integrate seamlessly with the broader Knowledge Forge ecosystem while maintaining independence for standalone usage.
-
-## Support and Troubleshooting
-
-### Getting Help
-
-```bash
-# Command-specific help
-uv run -m commands.<command_name> --help
-
-# Version information
-uv run -m commands.hello-file-search --version
-```
-
-### Common Error Resolution
-
-| Error | Solution |
-|-------|----------|
-| `ModuleNotFoundError: No module named 'sdk'` | Set `PYTHONPATH` correctly and use relative imports |
-| `Connection refused` | Ensure Knowledge Forge server is running |
-| `No response received` | Check server logs and API endpoint |
-| `JSON decode error` | Enable `--debug` to see raw API responses |
-
-For additional support, refer to the Knowledge Forge documentation and the ADR files in this directory.
+The codebase demonstrates modern Python practices and can serve as a template for building applications with the Knowledge Forge API.
