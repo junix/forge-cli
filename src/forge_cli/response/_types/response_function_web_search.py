@@ -1,10 +1,10 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 from typing import TYPE_CHECKING, Any, Optional
+from typing_extensions import Literal
 
 if TYPE_CHECKING:
-    from message._types.tool_call import ToolCall
-from typing import Literal
+    pass
 
 from pydantic import PrivateAttr
 
