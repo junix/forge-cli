@@ -3,11 +3,6 @@ from typing import Any, Literal
 
 from pydantic import Field, PrivateAttr
 
-from forge_cli.common.logger import logger
-from forge_cli.constants.metadata_keys import (
-    DOC_ID_KEY,
-    FILE_ID_KEY,
-)
 
 from .chunk import Chunk
 
@@ -76,20 +71,6 @@ class ResponseFunctionFileReader(TraceableToolCall):
             del data["_navigator"]
         return data
 
-    def as_chat_toolcall_result(self, **kwargs) -> str | list["Chunk"]:
-        """Convert the file reader tool call results to either a string or list of Chunks.
-
-        This method is kept for backward compatibility. It delegates to chunkify().
-
-        Args:
-            **kwargs: Additional formatting options (currently unused)
-
-        Returns:
-            str | List[Chunk]: List of Chunk objects for completed calls with results,
-                              or string message for failed/incomplete calls
-        """
-        return self.chunkify()
-
     def detail_description(self, with_arguments: bool = True, **kwargs) -> str:
         """Returns a detailed description of the file reader tool.
 
@@ -132,54 +113,3 @@ Arguments:
 <id>doc_id_1</id>
 <id>doc_id_2</id>
 </document_ids>"""
-
-    def chunkify(self) -> str | list["Chunk"]:
-        """Convert this file reader tool call to chunks or return error message.
-
-        This method encapsulates the conversion logic for file reader results.
-        Returns a descriptive string if conversion isn't possible, otherwise
-        returns a list of Chunk objects for further processing.
-
-        Returns:
-            str | List[Chunk]: Error message string if conversion fails,
-                             or list of Chunk objects if successful
-        """
-
-        # Check status
-        if self.status == "incomplete":
-            return "File reading incomplete - partial or no results available."
-
-        if self.status != "completed":
-            logger.debug(f"ResponseFunctionFileReader.chunkify: Unexpected status '{self.status}'")
-            return f"File reading not completed - status: {self.status}"
-
-        # Must have results (chunks) or navigation info that can be converted
-        content_chunks = self.results or []
-
-        # Check if we have content chunks with actual content
-
-        chunks = []
-
-        # Process content chunks
-        for chunk in content_chunks:
-            # Skip chunks without content
-            if not hasattr(chunk, "content") or not chunk.content or not chunk.content.strip():
-                continue
-
-            # Clone the chunk to avoid modifying the original
-            chunk_copy = chunk.model_copy()
-
-            # Ensure metadata exists and add annotation type
-            if not chunk_copy.metadata:
-                chunk_copy.metadata = {}
-
-            chunk_copy.metadata["annotation_type"] = "file_citation"
-            chunk_copy.metadata["source_type"] = "file_reader_call"
-
-            # Ensure doc_id exists for citation creation
-            if DOC_ID_KEY not in chunk_copy.metadata:
-                chunk_copy.metadata[DOC_ID_KEY] = chunk_copy.metadata.get(FILE_ID_KEY, chunk_copy.id)
-
-            chunks.append(chunk_copy)
-
-        return chunks
