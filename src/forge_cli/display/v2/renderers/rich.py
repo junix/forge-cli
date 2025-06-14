@@ -167,7 +167,7 @@ class RichRenderer(BaseRenderer):
         """Handle reasoning start event."""
         if self._show_reasoning:
             self._reasoning_active = True
-            self._layout["reasoning"].visible = True
+            # Layout is handled in render method, not here
 
     def _handle_reasoning_delta(self, data: dict[str, str | int | float | bool | list | dict]) -> None:
         """Handle reasoning delta event - actually a snapshot."""
@@ -272,20 +272,44 @@ class RichRenderer(BaseRenderer):
         status_info = self._format_status_info()
 
         # Combine content appropriately
+        combined_content = []
+        
+        # Add reasoning if active and available
+        if self._show_reasoning and self._reasoning_text and self._reasoning_active:
+            combined_content.append(Text("🤔 Thinking...", style="yellow bold"))
+            combined_content.append(Text(self._reasoning_text, style="italic dim"))
+            if self._response_text:
+                combined_content.append(Text("\n", style=""))  # Add spacing
+        
+        # Add response text if available
         if self._response_text:
             try:
-                panel = Panel(
-                    Markdown(self._response_text),
-                    title=status_info if status_info else "🔄 Streaming response...",
-                    border_style="green",
-                )
+                # Convert markdown to rich format
+                from rich.markdown import Markdown
+                md = Markdown(self._response_text)
+                combined_content.append(md)
             except Exception:
                 # Fallback to plain text if Markdown fails
-                panel = Panel(
-                    Text(self._response_text),
-                    title=status_info if status_info else "🔄 Streaming response...",
-                    border_style="green",
-                )
+                combined_content.append(Text(self._response_text))
+        
+        # Create single panel with all content
+        if combined_content:
+            from rich.console import Group
+            content_group = Group(*combined_content)
+            
+            # Determine panel style and title based on state
+            if self._reasoning_active:
+                panel_title = status_info if status_info else "🤔 Thinking..."
+                border_style = "yellow"
+            else:
+                panel_title = status_info if status_info else "🔄 Streaming response..."
+                border_style = "green"
+            
+            panel = Panel(
+                content_group,
+                title=panel_title,
+                border_style=border_style,
+            )
             self._live.update(panel)
         else:
             # Show waiting panel

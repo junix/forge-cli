@@ -2,13 +2,13 @@
 
 import time
 from collections.abc import AsyncIterator
-from typing import Any, Literal, Union, Optional, Tuple
 from dataclasses import dataclass, field
+from typing import Any, Literal
 
 from ..display.v2.base import Display
-from ..response._types import Response, ResponseStatus
-from ..response.adapters import MigrationHelper
 from ..processors.registry_typed import default_typed_registry, initialize_typed_registry
+from ..response._types import Response
+from ..response.adapters import MigrationHelper
 
 # Tool status type alias
 ToolStatusType = Literal["idle", "searching", "in_progress", "completed", "failed"]
@@ -21,14 +21,14 @@ class ToolState:
     tool_type: str = ""
     query: str = ""
     queries: list[str] = field(default_factory=list)
-    results_count: Optional[int] = None
+    results_count: int | None = None
     status: ToolStatusType = "idle"
-    query_time: Optional[float] = None
-    retrieval_time: Optional[float] = None
+    query_time: float | None = None
+    retrieval_time: float | None = None
 
-    def to_display_info(self) -> dict[str, Union[str, int, float]]:
+    def to_display_info(self) -> dict[str, str | int | float]:
         """Convert to display information dictionary."""
-        info: dict[str, Union[str, int, float]] = {"tool_type": self.tool_type}
+        info: dict[str, str | int | float] = {"tool_type": self.tool_type}
 
         if self.query:
             info["query"] = self.query
@@ -70,10 +70,10 @@ class StreamState:
     response_event_count: int = 0
 
     # Response metadata
-    response_id: Optional[str] = None
-    model: Optional[str] = None
+    response_id: str | None = None
+    model: str | None = None
 
-    def update_from_snapshot(self, snapshot: Union[dict[str, Any], Response]) -> None:
+    def update_from_snapshot(self, snapshot: dict[str, Any] | Response) -> None:
         """Update state from response snapshot (dict or typed)."""
         if isinstance(snapshot, Response):
             # Typed Response
@@ -169,7 +169,7 @@ class TypedStreamHandler:
         self.processor_registry = default_typed_registry
 
     async def handle_stream(
-        self, stream: AsyncIterator[Tuple[str, Union[dict[str, Any], Response, None]]], initial_request: str
+        self, stream: AsyncIterator[tuple[str, dict[str, Any] | Response | None]], initial_request: str
     ) -> StreamState:
         """
         Handle streaming events from either dict or typed API.
@@ -219,7 +219,7 @@ class TypedStreamHandler:
                     if self.debug:
                         print(f"DEBUG: Reasoning event data: {event_data}")
                     # First delta indicates start
-                    if not getattr(state, 'reasoning_started', False):
+                    if not getattr(state, "reasoning_started", False):
                         self.display.handle_event("reasoning_start", {})
                         state.reasoning_started = True
                     # Extract reasoning text
@@ -253,7 +253,7 @@ class TypedStreamHandler:
 
         return state
 
-    def _handle_response_created(self, data: Union[dict[str, Any], Response, None], state: StreamState) -> None:
+    def _handle_response_created(self, data: dict[str, Any] | Response | None, state: StreamState) -> None:
         """Handle response created event."""
         if isinstance(data, Response):
             state.response_id = data.id
@@ -262,18 +262,29 @@ class TypedStreamHandler:
             state.response_id = data.get("id")
             state.model = data.get("model")
 
-    def _extract_text(self, data: Union[dict[str, Any], Response, None]) -> str:
+    def _extract_text(self, data: dict[str, Any] | Response | None) -> str:
         """Extract text from event data (works with both APIs)."""
         return MigrationHelper.safe_get_text(data)
 
-    def _extract_reasoning_text(self, data: Union[dict[str, Any], Response, None]) -> str:
+    def _extract_reasoning_text(self, data: dict[str, Any] | Response | None) -> str:
         """Extract reasoning text from event data."""
-        if isinstance(data, dict):
+        if isinstance(data, Response):
+            # Extract from typed Response object
+            for item in data.output:
+                if hasattr(item, "type") and item.type == "reasoning":
+                    if hasattr(item, "summary") and item.summary:
+                        # Concatenate all summary texts
+                        texts = []
+                        for summary in item.summary:
+                            if hasattr(summary, "text") and summary.text:
+                                texts.append(summary.text)
+                        return " ".join(texts)
+        elif isinstance(data, dict):
             # For reasoning delta events, the text might be directly in the data
             text = data.get("text", "")
             if text:
                 return text
-            
+
             # Or in a reasoning structure
             reasoning = data.get("reasoning", {})
             if isinstance(reasoning, dict):
@@ -285,7 +296,7 @@ class TypedStreamHandler:
                 summary_text = reasoning.get("summary_text", "")
                 if summary_text:
                     return summary_text
-            
+
             # Or check in output items for reasoning
             output = data.get("output", [])
             for item in output:
@@ -311,7 +322,7 @@ class TypedStreamHandler:
             self.processor_registry.process_item(item, state, self.display)
 
     def _handle_tool_search(
-        self, event_type: str, data: Union[dict[str, Any], Response, None], state: StreamState, query_time: float
+        self, event_type: str, data: dict[str, Any] | Response | None, state: StreamState, query_time: float
     ) -> None:
         """Handle tool search events."""
         # Extract tool type
@@ -341,13 +352,10 @@ class TypedStreamHandler:
                 tool_state.query = ", ".join(queries)
 
         # Update display
-        self.display.handle_event("tool_status", {
-            "tool_type": tool_type,
-            **tool_state.to_display_info()
-        })
+        self.display.handle_event("tool_status", {"tool_type": tool_type, **tool_state.to_display_info()})
 
     def _handle_tool_complete(
-        self, event_type: str, data: Union[dict[str, Any], Response, None], state: StreamState, retrieval_time: float
+        self, event_type: str, data: dict[str, Any] | Response | None, state: StreamState, retrieval_time: float
     ) -> None:
         """Handle tool completion events."""
         # Extract tool type
@@ -376,10 +384,7 @@ class TypedStreamHandler:
                         tool_state.results_count = len(results)
 
             # Update display
-            self.display.handle_event("tool_status", {
-                "tool_type": tool_type,
-                **tool_state.to_display_info()
-            })
+            self.display.handle_event("tool_status", {"tool_type": tool_type, **tool_state.to_display_info()})
 
     def _finalize_response(self, state: StreamState) -> None:
         """Finalize the response processing."""
@@ -389,9 +394,7 @@ class TypedStreamHandler:
             pass
 
         # Show final status
-        self.display.handle_event("status", {
-            "message": f"Completed with {state.event_count} events"
-        })
+        self.display.handle_event("status", {"message": f"Completed with {state.event_count} events"})
 
 
 # Export the typed handler as the default
