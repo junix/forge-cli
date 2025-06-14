@@ -1,0 +1,43 @@
+{
+    "files": [
+        {
+            "file_id": "f8e5d7c6-b9a8-4321-9876-543210abcdef",
+            "path": "/Users/junix/knowledge-forge-office/yxt.pdf",
+            "questions": [
+                "What is the main topic of this document?",
+                "What are the key findings?",
+                "What methodology was used?"
+            ]
+        },
+        {
+            "file_id": "c7d9e8f0-1a2b-3c4d-5e6f-789012345678",
+            "path": "/Users/junix/knowledge-forge-office/beisen.pdf",
+            "questions": [
+                "Summarize the main points",
+                "What are the recommendations?",
+                "Who is the target audience?"
+            ]
+        },
+        {
+            "file_id": "b0a9c8d7-6e5f-4d3c-2b1a-098765432109",
+            "path": "/Users/junix/knowledge-forge-office/vibe.pdf",
+            "questions": [
+                "What is the executive summary?",
+                "What are the financial implications?",
+                "What are the next steps?",
+                "What risks are identified?"
+            ]
+        },
+        {
+            "file_id": "b0a9c8d7-6e5f-4d3e-2b1a-098767432009",
+            "path": "/Users/junix/knowledge-forge-office/unix0.pdf",
+            "questions": [
+                "What is the executive summary?",
+                "What are the financial implications?",
+                "What are the next steps?",
+                "What risks are identified?"
+            ]
+        }
+    ],
+    "vectorstore_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}

@@ -1,0 +1,1 @@
+ uv run hello-file-search.py --model qwen3-235b-a22b -t file-search -t  web-search --model qwen-plus  -q 'ai product of beison vs yxt ai product compare, use file search and web search, try multi turn search util find the revelant information'
