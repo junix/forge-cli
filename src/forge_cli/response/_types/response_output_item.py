@@ -1,0 +1,31 @@
+# File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
+
+from typing import Union
+
+from openai._utils import PropertyInfo
+from typing_extensions import Annotated, TypeAlias
+
+from .response_computer_tool_call import ResponseComputerToolCall
+from .response_document_finder_tool_call import ResponseDocumentFinderToolCall
+from .response_file_search_tool_call import ResponseFileSearchToolCall
+from .response_function_file_reader import ResponseFunctionFileReader
+from .response_function_tool_call import ResponseFunctionToolCall
+from .response_function_web_search import ResponseFunctionWebSearch
+from .response_output_message import ResponseOutputMessage
+from .response_reasoning_item import ResponseReasoningItem
+
+__all__ = ["ResponseOutputItem"]
+
+ResponseOutputItem: TypeAlias = Annotated[
+    Union[
+        ResponseOutputMessage,
+        ResponseFileSearchToolCall,
+        ResponseFunctionToolCall,
+        ResponseFunctionWebSearch,
+        ResponseDocumentFinderToolCall,
+        ResponseFunctionFileReader,
+        ResponseComputerToolCall,
+        ResponseReasoningItem,
+    ],
+    PropertyInfo(discriminator="type"),
+]

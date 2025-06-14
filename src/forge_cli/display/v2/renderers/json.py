@@ -19,12 +19,14 @@ class JsonRenderer(BaseRenderer):
             file: Output file handle (defaults to stdout)
             include_events: Whether to include all events in output
             pretty: Whether to pretty-print JSON
+            in_chat_mode: Whether the renderer is used in interactive chat mode
         """
         super().__init__()
         self._file = file or sys.stdout
         self._include_events = include_events
         self._pretty = pretty
         self._start_time = time.time()
+        self._in_chat_mode = in_chat_mode
 
         # Track all events if requested
         self._events: list[dict[str, str | int | float | bool | list | dict]] = []
@@ -264,4 +266,9 @@ class JsonRenderer(BaseRenderer):
             # Output JSON in v1 format
             json.dump(output, self._file, indent=2, ensure_ascii=False)
             self._file.flush()
-            self._finalized = True
+
+            # Only mark the renderer as finalized when we are *not* running in
+            # interactive chat mode.  In chat mode the renderer must stay
+            # reusable for the next user message.
+            if not getattr(self, "_in_chat_mode", False):
+                self._finalized = True

@@ -1,0 +1,42 @@
+# File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
+
+from __future__ import annotations
+
+from typing import Dict, List, Optional, Union
+from typing_extensions import Literal, Required, TypedDict
+
+__all__ = ["DocumentFinderToolParam"]
+
+
+class DocumentFinderToolParam(TypedDict, total=False):
+    type: Required[Literal["document_finder"]]
+    """The type of the document finder tool. Always `document_finder`."""
+
+    vector_store_ids: Required[List[str]]
+    """The IDs of the vector stores to search across."""
+
+    max_num_results: int
+    """The maximum number of results to return.
+
+    This number should be between 1 and 50 inclusive.
+    """
+
+    filters: Optional[Dict[str, Union[str, float, bool, int]]]
+    """Optional metadata filters to apply during search.
+    
+    Filters are applied as key-value pairs where the key is the metadata field name
+    and the value is the expected value for that field.
+    """
+
+    score_threshold: float
+    """Minimum relevance score threshold for results.
+
+    Results with scores below this threshold will be filtered out.
+    Should be a value between 0 and 1.
+    """
+
+    deduplicate: bool
+    """Whether to remove duplicate documents across vector stores.
+
+    When True, keeps only the highest-scoring version of each document.
+    """
