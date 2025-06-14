@@ -274,8 +274,24 @@ class RichRenderer(BaseRenderer):
         # Combine content appropriately
         combined_content = []
         
+        # Add active tool status messages
+        if self._active_tools:
+            for tool_id, tool_info in self._active_tools.items():
+                if tool_info.get("status") == "running":
+                    tool_type = tool_info.get("type", "unknown")
+                    # Format tool message based on type
+                    if tool_type == "file_search":
+                        tool_msg = "📄 Searching documents..."
+                    elif tool_type == "web_search":
+                        tool_msg = "🌐 Searching web..."
+                    else:
+                        tool_msg = f"🔧 Running {tool_type}..."
+                    combined_content.append(Text(tool_msg, style="blue italic"))
+        
         # Add reasoning if active and available
         if self._show_reasoning and self._reasoning_text and self._reasoning_active:
+            if combined_content:  # Add spacing if there's tool content
+                combined_content.append(Text("\n", style=""))
             combined_content.append(Text("🤔 Thinking...", style="yellow bold"))
             combined_content.append(Text(self._reasoning_text, style="italic dim"))
             if self._response_text:
@@ -283,6 +299,8 @@ class RichRenderer(BaseRenderer):
         
         # Add response text if available
         if self._response_text:
+            if combined_content:  # Add spacing if there's other content
+                combined_content.append(Text("\n", style=""))
             try:
                 # Convert markdown to rich format
                 from rich.markdown import Markdown

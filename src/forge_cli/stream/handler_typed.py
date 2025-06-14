@@ -211,7 +211,16 @@ class TypedStreamHandler:
                     state.update_from_snapshot(event_data)
                     text = self._extract_text(event_data)
                     if text:
-                        self.display.handle_event("text_delta", {"text": text})
+                        # Include metadata with usage statistics
+                        event_data_with_metadata = {
+                            "text": text,
+                            "metadata": {
+                                "event_count": state.event_count,
+                                "event_type": event_type,
+                                "usage": state.usage,
+                            }
+                        }
+                        self.display.handle_event("text_delta", event_data_with_metadata)
 
             elif event_type.startswith("response.reasoning_summary_text."):
                 # Handle reasoning events
@@ -393,8 +402,12 @@ class TypedStreamHandler:
             # Process citations - implementation depends on processor updates
             pass
 
-        # Show final status
-        self.display.handle_event("status", {"message": f"Completed with {state.event_count} events"})
+        # Send stream complete event with final usage statistics
+        self.display.handle_event("stream_complete", {
+            "message": f"Completed with {state.event_count} events",
+            "usage": state.usage,
+            "event_count": state.event_count,
+        })
 
 
 # Export the typed handler as the default
