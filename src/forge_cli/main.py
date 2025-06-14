@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional
 # Add parent directory to path for SDK import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sdk import astream_response, async_get_vectorstore
+from .sdk import astream_response, async_get_vectorstore
 
 from .config import SearchConfig
 from .display.base import BaseDisplay
