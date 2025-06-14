@@ -400,9 +400,7 @@ async def main():
         return
 
     # Check for conflicting options
-    if args.chat and args.json:
-        print("Error: --chat and --json options cannot be used together")
-        return
+    # No longer mutually exclusive - json_chat_display handles both
 
     # Handle dataset if provided
     dataset = None
