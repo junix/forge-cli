@@ -1,7 +1,7 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Dict, Optional
-from typing_extensions import Literal
+
+from typing import Literal
 
 from pydantic import Field as FieldInfo
 
@@ -18,7 +18,7 @@ class ResponseFormatTextJSONSchemaConfig(BaseModel):
     of 64.
     """
 
-    schema_: Dict[str, object] = FieldInfo(alias="schema")
+    schema_: dict[str, object] = FieldInfo(alias="schema")
     """
     The schema for the response format, described as a JSON Schema object. Learn how
     to build JSON schemas [here](https://json-schema.org/).
@@ -27,13 +27,13 @@ class ResponseFormatTextJSONSchemaConfig(BaseModel):
     type: Literal["json_schema"]
     """The type of response format being defined. Always `json_schema`."""
 
-    description: Optional[str] = None
+    description: str | None = None
     """
     A description of what the response format is for, used by the model to determine
     how to respond in the format.
     """
 
-    strict: Optional[bool] = None
+    strict: bool | None = None
     """
     Whether to enable strict schema adherence when generating the output. If set to
     true, the model will always follow the exact schema defined in the `schema`

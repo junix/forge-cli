@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Union, Iterable, Optional
-from typing_extensions import Literal, Required, TypedDict
+from collections.abc import Iterable
+from typing import Literal, Required
+
+from typing_extensions import TypedDict
 
 __all__ = ["ResponseFileSearchToolCallParam", "Result"]
 
 
 class Result(TypedDict, total=False):
-    attributes: Optional[Dict[str, Union[str, float, bool]]]
+    attributes: dict[str, str | float | bool] | None
     """Set of 16 key-value pairs that can be attached to an object.
 
     This can be useful for storing additional information about the object in a
@@ -35,7 +37,7 @@ class ResponseFileSearchToolCallParam(TypedDict, total=False):
     id: Required[str]
     """The unique ID of the file search tool call."""
 
-    queries: Required[List[str]]
+    queries: Required[list[str]]
     """The queries used to search for files."""
 
     status: Required[Literal["in_progress", "searching", "completed", "incomplete", "failed"]]
@@ -47,5 +49,5 @@ class ResponseFileSearchToolCallParam(TypedDict, total=False):
     type: Required[Literal["file_search_call"]]
     """The type of the file search tool call. Always `file_search_call`."""
 
-    results: Optional[Iterable[Result]]
+    results: Iterable[Result] | None
     """The results of the file search tool call."""
