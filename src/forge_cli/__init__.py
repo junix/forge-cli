@@ -1,3 +1,9 @@
-"""Forge CLI - A tool for interacting with Knowledge Forge API."""
+"""
+Refactored multi-tool search module for Knowledge Forge SDK.
 
-__version__ = "0.1.0"
+This package provides a modular, maintainable implementation of the
+file search functionality with support for multiple tools including
+file search, document finder, web search, and more.
+"""
+
+__version__ = "2.0.0"

@@ -96,3 +96,5 @@ temp/
 # Misc
 .DS_Store
 Thumbs.db
+
+**/*.pye
