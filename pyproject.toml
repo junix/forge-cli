@@ -28,7 +28,7 @@ dev = [
 ]
 
 [project.scripts]
-forge-cli = "forge_cli.main:main"
+forge-cli = "forge_cli.main:run_main_async"
 
 [project.urls]
 Homepage = "https://github.com/yourusername/forge-cli"
