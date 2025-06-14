@@ -4,13 +4,12 @@ from typing import Dict, List, Optional, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .annotations import AnnotationFileCitation
-    from message._types.tool_call import ToolCall
 from pydantic import PrivateAttr, Field
 from typing_extensions import Literal
 
 from ._models import BaseModel
 from .response_function_tool_call import ResponseFunctionToolCall
-from _types.chunk import Chunk
+from .chunk import Chunk
 
 __all__ = ["ResponseFileSearchToolCall", "ResponseFileSearchToolCallResult"]
 

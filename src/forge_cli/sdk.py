@@ -19,7 +19,7 @@ import mimetypes
 import os
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, overload
+from typing import Any, Union, overload
 
 import aiohttp
 from loguru import logger
@@ -30,9 +30,7 @@ from forge_cli.response._types import (
     InputMessage,
     Request,
     Response,
-    ResponseCompletedEvent,
     ResponseStreamEvent,
-    ResponseTextDeltaEvent,
     WebSearchTool,
 )
 from forge_cli.response.adapters import (
@@ -480,14 +478,13 @@ async def astream_response(
                         if data_str.startswith("{") or data_str.startswith("["):
                             try:
                                 data = json.loads(data_str)
-                                
+
                                 # Yield typed event if requested
                                 if typed:
                                     try:
-                                        typed_event = StreamEventAdapter.parse_event({
-                                            "type": current_event_type,
-                                            **data
-                                        })
+                                        typed_event = StreamEventAdapter.parse_event(
+                                            {"type": current_event_type, **data}
+                                        )
                                         yield current_event_type, typed_event
                                     except Exception:
                                         # Fallback to dict if typing fails
@@ -498,7 +495,7 @@ async def astream_response(
                                 # If this is the completed event, also yield the final response
                                 if current_event_type == "response.completed":
                                     if typed:
-                                        yield "final_response", typed_event if 'typed_event' in locals() else data
+                                        yield "final_response", typed_event if "typed_event" in locals() else data
                                     else:
                                         yield "final_response", data
                             except json.JSONDecodeError:
@@ -872,30 +869,30 @@ async def async_create_typed_response(
 ) -> Response:
     """
     Create a response using a typed Request object.
-    
+
     Args:
         request: A typed Request object with all configuration
         stream: Whether to return a streaming response
         debug: Enable debug logging
-        
+
     Returns:
         A typed Response object
     """
     url = f"{BASE_URL}/v1/responses"
-    
+
     # Convert to OpenAI format
     payload = request.as_openai_chat_request()
-    
+
     if debug:
         logger.debug(f"Creating typed response with payload:\n{json.dumps(payload, indent=2, ensure_ascii=False)}")
-    
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as response:
                 if response.status != 200:
                     error_text = await response.text()
                     raise Exception(f"Response creation failed with status {response.status}: {error_text}")
-                
+
                 if stream:
                     # For streaming, we need to collect the final response
                     final_data = None
@@ -912,7 +909,7 @@ async def async_create_typed_response(
                                         final_data = data
                                 except json.JSONDecodeError:
                                     pass
-                    
+
                     if final_data:
                         return ResponseAdapter.from_dict(final_data)
                     else:
@@ -921,7 +918,7 @@ async def async_create_typed_response(
                     # Non-streaming response
                     result = await response.json()
                     return ResponseAdapter.from_dict(result)
-    
+
     except Exception as e:
         logger.error(f"Error creating typed response: {str(e)}")
         raise
@@ -933,26 +930,23 @@ async def astream_typed_response(
 ) -> AsyncIterator[tuple[str, ResponseStreamEvent]]:
     """
     Stream a response using a typed Request object, yielding typed events.
-    
+
     Args:
         request: A typed Request object with all configuration
         debug: Enable debug logging
-        
+
     Yields:
         Tuples of (event_type, typed_event) where typed_event is a ResponseStreamEvent
     """
     # Use the existing streaming function with typed=True
     messages = request.input_as_typed_messages()
     dict_messages = [{"role": msg.role, "content": msg.content} for msg in messages]
-    
+
     tools = []
     if request.tools:
         for tool in request.tools:
-            if hasattr(tool, 'as_openai_tool'):
-                tools.append(tool.as_openai_tool())
-            else:
-                tools.append(tool)
-    
+            tools.append(tool)
+
     async for event_type, event_data in astream_response(
         input_messages=dict_messages,
         model=request.model,
@@ -968,55 +962,44 @@ async def astream_typed_response(
 
 
 def create_typed_request(
-    input_messages: Union[str, List[Dict[str, Any]], List[InputMessage]],
+    input_messages: str | list[dict[str, Any]] | list[InputMessage],
     model: str = "qwen-max-latest",
-    tools: Optional[List[Union[Dict[str, Any], "Tool"]]] = None,
-    **kwargs
+    tools: list[Union[dict[str, Any], "Tool"]] | None = None,
+    **kwargs,
 ) -> Request:
     """
     Convenience function to create a typed Request object.
-    
+
     Args:
         input_messages: Input as string, dict messages, or typed messages
         model: Model to use
         tools: Optional tools to enable
         **kwargs: Additional request parameters
-        
+
     Returns:
         A typed Request object
     """
-    return ResponseAdapter.create_request(
-        input_messages=input_messages,
-        model=model,
-        tools=tools,
-        **kwargs
-    )
+    return ResponseAdapter.create_request(input_messages=input_messages, model=model, tools=tools, **kwargs)
 
 
-def create_file_search_tool(
-    vector_store_ids: List[str],
-    max_search_results: int = 20
-) -> FileSearchTool:
+def create_file_search_tool(vector_store_ids: list[str], max_search_results: int = 20) -> FileSearchTool:
     """
     Create a typed FileSearchTool.
-    
+
     Args:
         vector_store_ids: List of vector store IDs to search
         max_search_results: Maximum results to return
-        
+
     Returns:
         A typed FileSearchTool object
     """
-    return ToolAdapter.create_file_search_tool(
-        vector_store_ids=vector_store_ids,
-        max_search_results=max_search_results
-    )
+    return ToolAdapter.create_file_search_tool(vector_store_ids=vector_store_ids, max_search_results=max_search_results)
 
 
 def create_web_search_tool() -> WebSearchTool:
     """
     Create a typed WebSearchTool.
-    
+
     Returns:
         A typed WebSearchTool object
     """

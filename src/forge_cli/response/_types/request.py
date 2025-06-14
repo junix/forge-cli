@@ -142,7 +142,7 @@ class Request(BaseModel):
         """
         # Import locally to avoid circular imports
         from message import UserMessage
-        
+
         input_data = self.input
 
         if isinstance(input_data, str):
@@ -272,7 +272,9 @@ class Request(BaseModel):
             if content_type == "input_text":
                 typed_content.append(TextContent(text=getattr(content_item, "text", "")))
             elif content_type == "input_image":
-                typed_content.append(ImageContent(image_url=ImageUrlContent(url=getattr(content_item, "image_url", ""))))
+                typed_content.append(
+                    ImageContent(image_url=ImageUrlContent(url=getattr(content_item, "image_url", "")))
+                )
             elif content_type == "input_file":
                 file_id = getattr(content_item, "file_id", None)
                 if file_id is None:
@@ -409,6 +411,7 @@ class Request(BaseModel):
             List[ChatMessage]: A list of typed chat messages, including system instructions if provided.
         """
         from message import SystemMessage
+
         # Get the processed input messages as typed messages
         processed_messages = self.input_as_typed_messages()
 
@@ -518,6 +521,7 @@ class Request(BaseModel):
 
         # Import locally to avoid circular imports
         from message import ChatCompletionRequest
+
         return ChatCompletionRequest(**request_params)
 
     def _create_system_message(self, msg_dict: dict) -> "SystemMessage":
@@ -602,7 +606,9 @@ class Request(BaseModel):
         # Import locally to avoid circular imports
         from message import ToolMessage
 
-        return ToolMessage(content=msg_dict.get("content", ""), tool_call_id=str(msg_dict.get("tool_call_id", "unknown")))
+        return ToolMessage(
+            content=msg_dict.get("content", ""), tool_call_id=str(msg_dict.get("tool_call_id", "unknown"))
+        )
 
     def _convert_content_list(self, content_list: list[dict]) -> list["MessageContent"]:
         """Convert list of content dicts to typed content objects."""
@@ -679,24 +685,20 @@ class Request(BaseModel):
 
     def _convert_tools_for_openai(self, with_internal_tool: bool = False) -> list["MessageTool"] | None:
         """Convert response tools to OpenAI-compatible tool format.
-        
+
         This method converts various tool types (FileSearchTool, WebSearchTool, etc.)
         to the OpenAI function tool format which requires name, description, and parameters.
-        
+
         Args:
             with_internal_tool: If True, includes internal/hosted tools in the output.
                                If False, only function tools are included.
-        
+
         Returns:
             List of tool dictionaries in OpenAI format, or None if no compatible tools.
         """
         if not self.tools:
             return None
-        return [
-            tool.as_openai_tool()
-            for tool in self.tools
-            if with_internal_tool or tool.type not in HOSTED_TOOL_TYPES
-        ]
+        return [tool for tool in self.tools if with_internal_tool or tool.type not in HOSTED_TOOL_TYPES]
 
     def seek_file_search_tools(self) -> list[FileSearchTool]:
         """
@@ -785,7 +787,7 @@ class Request(BaseModel):
         """
         # Import Response here to avoid circular imports
         from .response import Response
-        from .response_usage import ResponseUsage, InputTokensDetails, OutputTokensDetails
+        from .response_usage import InputTokensDetails, OutputTokensDetails, ResponseUsage
 
         # Set default values
         if output is None:
