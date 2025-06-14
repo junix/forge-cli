@@ -5,20 +5,20 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Add parent directory to path for SDK import
 sys.path.insert(0, str(Path(__file__).parent.parent))
-# Try relative import first (when run as part of package)
-from chat.controller import ChatController
-from config import SearchConfig
-from display.base import BaseDisplay
-from display.json_display import JsonDisplay
-from display.plain_display import PlainDisplay
-from display.rich_display import RichDisplay
-from processors.registry import initialize_default_registry
-from sdk import astream_response, async_get_vectorstore
-from stream.handler import StreamHandler
+# Use absolute imports from top-level directory
+from forge_cli.chat.controller import ChatController
+from forge_cli.config import SearchConfig
+from forge_cli.display.base import BaseDisplay
+from forge_cli.display.json_display import JsonDisplay
+from forge_cli.display.plain_display import PlainDisplay
+from forge_cli.display.rich_display import RichDisplay
+from forge_cli.processors.registry import initialize_default_registry
+from forge_cli.sdk import astream_response, async_get_vectorstore
+from forge_cli.stream.handler import StreamHandler
 
 
 def create_display(config: SearchConfig) -> BaseDisplay:
@@ -37,7 +37,7 @@ def create_display(config: SearchConfig) -> BaseDisplay:
         return PlainDisplay()
 
 
-def prepare_request(config: SearchConfig, question: str) -> Dict[str, Any]:
+def prepare_request(config: SearchConfig, question: str) -> dict[str, Any]:
     """Prepare request parameters for the API."""
     # Base request
     request = {
@@ -85,7 +85,7 @@ def prepare_request(config: SearchConfig, question: str) -> Dict[str, Any]:
     return request
 
 
-async def process_search(config: SearchConfig, question: str) -> Optional[Dict[str, Any]]:
+async def process_search(config: SearchConfig, question: str) -> dict[str, Any] | None:
     """Process search with the given configuration."""
     # Initialize processor registry
     initialize_default_registry()
@@ -131,7 +131,7 @@ async def process_search(config: SearchConfig, question: str) -> Optional[Dict[s
         return None
 
 
-async def start_chat_mode(config: SearchConfig, initial_question: Optional[str] = None) -> None:
+async def start_chat_mode(config: SearchConfig, initial_question: str | None = None) -> None:
     """Start interactive chat mode."""
     # Initialize processor registry
     initialize_default_registry()
