@@ -1087,7 +1087,21 @@ async def astream_typed_response(
         debug=debug,
         typed=False,  # Get raw dict data to convert to Response
     ):
-        if event_data and isinstance(event_data, dict):
+        # Events that contain full response snapshots according to ADR-004
+        SNAPSHOT_EVENT_TYPES = {
+            "response.created",
+            "response.in_progress", 
+            "response.completed",
+            "response.output_text.delta",
+            "response.output_text.done",
+            "response.reasoning_summary_text.delta",
+            "response.reasoning_summary_text.done",
+            "response.file_search_call.completed",
+            "response.web_search_call.completed",
+            "response.function_call.completed",
+        }
+        
+        if event_data and isinstance(event_data, dict) and event_type in SNAPSHOT_EVENT_TYPES:
             try:
                 # Convert snapshot data to Response object
                 response = ResponseAdapter.from_dict(event_data)
@@ -1098,6 +1112,7 @@ async def astream_typed_response(
                 # For events that don't have full response data, yield None
                 yield event_type, None
         else:
+            # Non-snapshot events or empty data
             yield event_type, None
 
 

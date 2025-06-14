@@ -21,7 +21,7 @@ from forge_cli.display.v2.base import Display
 from forge_cli.processors.registry_typed import initialize_typed_registry
 from forge_cli.sdk import astream_typed_response, async_get_vectorstore
 from forge_cli.stream.handler_typed import TypedStreamHandler
-from forge_cli.response._types import Request, FileSearchTool, WebSearchTool, InputMessage
+from forge_cli.response._types import Request, FileSearchTool, WebSearchTool
 
 
 def create_display(config: SearchConfig) -> Display:
@@ -71,14 +71,13 @@ def prepare_request(config: SearchConfig, question: str, conversation_history: l
     
     # If we have conversation history, include it
     if conversation_history:
-        # Convert conversation history to InputMessage objects
-        for msg in conversation_history:
-            if isinstance(msg, dict) and "role" in msg and "content" in msg:
-                input_messages.append(InputMessage(role=msg["role"], content=msg["content"]))
-        # Don't add the current question again - it's already in the conversation history
+        # For typed API, we need to format messages properly
+        # The typed API expects a simpler format for input
+        # For now, just use the current message
+        input_messages = [{"type": "text", "text": question}]
     else:
         # Single message
-        input_messages = [InputMessage(role="user", content=question)]
+        input_messages = [{"type": "text", "text": question}]
 
     # Create typed request
     return Request(
@@ -87,7 +86,6 @@ def prepare_request(config: SearchConfig, question: str, conversation_history: l
         tools=tools,
         temperature=config.temperature or 0.7,
         max_output_tokens=config.max_output_tokens or 2000,
-        effort=config.effort or "low",
     )
 
 
@@ -163,12 +161,9 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
         # Add user message to conversation
         user_message = controller.conversation.add_user_message(content)
         
-        # Create a fresh display for this message
-        message_display = create_display(config)
-        
         # Mark display as in chat mode
-        if hasattr(message_display, "console"):
-            message_display._in_chat_mode = True
+        if hasattr(display, "console"):
+            display._in_chat_mode = True
         
         # Get conversation history
         messages = controller.conversation.to_api_format()
@@ -179,11 +174,11 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
         request = prepare_request(config, content, messages)
         
         # Start the display for this message
-        if hasattr(message_display, "handle_event"):
-            message_display.handle_event("stream_start", {"query": content})
+        if hasattr(display, "handle_event"):
+            display.handle_event("stream_start", {"query": content})
         
         # Create typed handler and stream
-        handler = TypedStreamHandler(message_display, debug=config.debug)
+        handler = TypedStreamHandler(display, debug=config.debug)
         
         try:
             # Stream the response
@@ -203,7 +198,7 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
                             break
                         
         except Exception as e:
-            message_display.show_error(f"Error processing message: {str(e)}")
+            display.show_error(f"Error processing message: {str(e)}")
             if config.debug:
                 import traceback
                 traceback.print_exc()

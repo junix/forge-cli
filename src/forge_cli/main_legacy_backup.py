@@ -1,27 +1,24 @@
-"""Main entry point - updated to use typed API by default with proper chat support."""
+"""Main entry point for the refactored file search module."""
 
 import argparse
 import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Import the TestDataset loader
 from forge_cli.dataset import TestDataset
 
 # Add parent directory to path for SDK import
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
 # Use absolute imports from top-level directory
 from forge_cli.chat.controller import ChatController
 from forge_cli.config import SearchConfig
 from forge_cli.display.registry import DisplayRegistry, initialize_default_displays
 from forge_cli.display.v2.base import Display
-from forge_cli.processors.registry_typed import initialize_typed_registry
-from forge_cli.sdk import astream_typed_response, async_get_vectorstore
-from forge_cli.stream.handler_typed import TypedStreamHandler
-from forge_cli.response._types import Request, FileSearchTool, WebSearchTool, InputMessage
+from forge_cli.processors.registry import initialize_default_registry
+from forge_cli.sdk import astream_response, async_get_vectorstore
+from forge_cli.stream.handler import StreamHandler
 
 
 def create_display(config: SearchConfig) -> Display:
@@ -40,61 +37,58 @@ def create_display(config: SearchConfig) -> Display:
         return Display(renderer)
 
 
-def prepare_request(config: SearchConfig, question: str, conversation_history: list[dict] = None) -> Request:
-    """Prepare typed request for the API."""
-    # Build tools list
+def prepare_request(config: SearchConfig, question: str) -> dict[str, str | int | float | bool | list]:
+    """Prepare request parameters for the API."""
+    # Base request
+    request = {
+        "input_messages": [
+            {
+                "role": "user",
+                "id": "user_message_1",
+                "content": question,
+            }
+        ],
+        "model": config.model,
+        "effort": config.effort,
+        "store": True,
+        "debug": config.debug,
+    }
+
+    # Add tools if enabled
     tools = []
 
     # File search tool
     if "file-search" in config.enabled_tools and config.vec_ids:
         tools.append(
-            FileSearchTool(
-                type="file_search",
-                vector_store_ids=config.vec_ids,
-                max_num_results=config.max_results,
-            )
+            {
+                "type": "file_search",
+                "vector_store_ids": config.vec_ids,
+                "max_num_results": config.max_results,
+            }
         )
 
     # Web search tool
     if "web-search" in config.enabled_tools:
-        tool_params = {"type": "web_search"}
+        web_tool = {"type": "web_search"}
+
+        # Add location if provided
         location = config.get_web_location()
         if location:
-            if "country" in location:
-                tool_params["country"] = location["country"]
-            if "city" in location:
-                tool_params["city"] = location["city"]
-        tools.append(WebSearchTool(**tool_params))
+            web_tool["user_location"] = {"type": "approximate", **location}
 
-    # Build input messages
-    input_messages = []
-    
-    # If we have conversation history, include it
-    if conversation_history:
-        # Convert conversation history to InputMessage objects
-        for msg in conversation_history:
-            if isinstance(msg, dict) and "role" in msg and "content" in msg:
-                input_messages.append(InputMessage(role=msg["role"], content=msg["content"]))
-        # Don't add the current question again - it's already in the conversation history
-    else:
-        # Single message
-        input_messages = [InputMessage(role="user", content=question)]
+        tools.append(web_tool)
 
-    # Create typed request
-    return Request(
-        input=input_messages,
-        model=config.model,
-        tools=tools,
-        temperature=config.temperature or 0.7,
-        max_output_tokens=config.max_output_tokens or 2000,
-        effort=config.effort or "low",
-    )
+    # Add tools to request if any
+    if tools:
+        request["tools"] = tools
+
+    return request
 
 
 async def process_search(config: SearchConfig, question: str) -> dict[str, str | int | float | bool | list] | None:
-    """Process search with the typed API."""
-    # Initialize typed processor registry
-    initialize_typed_registry()
+    """Process search with the given configuration."""
+    # Initialize processor registry
+    initialize_default_registry()
 
     # Create display
     display = create_display(config)
@@ -111,105 +105,42 @@ async def process_search(config: SearchConfig, question: str) -> dict[str, str |
         }
     )
 
-    # Create typed stream handler
-    handler = TypedStreamHandler(display, debug=config.debug)
+    # Create stream handler
+    handler = StreamHandler(display, debug=config.debug)
 
-    # Prepare typed request
+    # Prepare request
     request = prepare_request(config, question)
 
     try:
-        # Stream and process with typed API
-        event_stream = astream_typed_response(request, debug=config.debug)
-        state = await handler.handle_stream(event_stream, question)
+        # Stream and process
+        event_stream = astream_response(**request)
+        response = await handler.handle_stream(event_stream, question)
 
         # Display vector store info if not in JSON mode
-        if state and not config.json_output and config.vec_ids:
+        if response and not config.json_output and config.vec_ids:
             await display_vectorstore_info(config.vec_ids, config.use_rich)
 
-        # Return state information
-        return {
-            "response_id": state.response_id,
-            "model": state.model,
-            "usage": state.usage,
-            "event_count": state.event_count,
-            "citations": state.citations,
-        }
+        return response
 
     except Exception as e:
         display.show_error(f"Processing error: {str(e)}")
         if config.debug:
             import traceback
+
             traceback.print_exc()
         return None
 
 
 async def start_chat_mode(config: SearchConfig, initial_question: str | None = None) -> None:
-    """Start interactive chat mode with typed API."""
-    # Initialize typed processor registry
-    initialize_typed_registry()
+    """Start interactive chat mode."""
+    # Initialize processor registry
+    initialize_default_registry()
 
     # Create display
     display = create_display(config)
 
     # Create chat controller
     controller = ChatController(config, display)
-    
-    # Store the original prepare_request method
-    original_prepare_request = controller.prepare_request
-    
-    # Patch the controller to use typed API
-    async def typed_send_message(content: str) -> None:
-        """Send message using typed API with proper chat support."""
-        # Add user message to conversation
-        user_message = controller.conversation.add_user_message(content)
-        
-        # Create a fresh display for this message
-        message_display = create_display(config)
-        
-        # Mark display as in chat mode
-        if hasattr(message_display, "console"):
-            message_display._in_chat_mode = True
-        
-        # Get conversation history
-        messages = controller.conversation.to_api_format()
-        
-        # Create typed request
-        # Note: The typed API currently doesn't support full conversation history
-        # So we'll just use the current message for now
-        request = prepare_request(config, content, messages)
-        
-        # Start the display for this message
-        if hasattr(message_display, "handle_event"):
-            message_display.handle_event("stream_start", {"query": content})
-        
-        # Create typed handler and stream
-        handler = TypedStreamHandler(message_display, debug=config.debug)
-        
-        try:
-            # Stream the response
-            event_stream = astream_typed_response(request, debug=config.debug)
-            state = await handler.handle_stream(event_stream, content)
-            
-            # Extract assistant response from state
-            if state and state.output_items:
-                for item in state.output_items:
-                    if isinstance(item, dict) and item.get("type") == "message" and item.get("role") == "assistant":
-                        # Extract text content
-                        assistant_text = controller.extract_text_from_message(item)
-                        if assistant_text:
-                            controller.conversation.add_assistant_message(assistant_text)
-                            if config.debug:
-                                print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
-                            break
-                        
-        except Exception as e:
-            message_display.show_error(f"Error processing message: {str(e)}")
-            if config.debug:
-                import traceback
-                traceback.print_exc()
-    
-    # Replace method
-    controller.send_message = typed_send_message
 
     # Show welcome
     controller.show_welcome()
@@ -242,6 +173,7 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
         display.show_error(f"Chat error: {str(e)}")
         if config.debug:
             import traceback
+
             traceback.print_exc()
 
 
@@ -312,7 +244,7 @@ async def main():
 
     # Parse command line arguments
     parser = argparse.ArgumentParser(
-        description="Refactored multi-tool search using Knowledge Forge SDK (typed API)",
+        description="Refactored multi-tool search using Knowledge Forge SDK",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
@@ -431,13 +363,6 @@ async def main():
         help="Start interactive chat mode",
     )
 
-    # Legacy API argument (for backward compatibility)
-    parser.add_argument(
-        "--legacy-api",
-        action="store_true",
-        help="Use legacy dict-based API (not recommended)",
-    )
-
     # Other arguments
     parser.add_argument(
         "--version",
@@ -474,11 +399,8 @@ async def main():
         print(f"Knowledge Forge File Search Refactored v{__version__}")
         return
 
-    # Warn about legacy API
-    if args.legacy_api:
-        print("⚠️  Warning: Using legacy dict-based API. Consider using the typed API (default).")
-        print("   The legacy API will be deprecated in future versions.")
-        sys.exit(1)
+    # Check for conflicting options
+    # No longer mutually exclusive - json_chat_display handles both
 
     # Handle dataset if provided
     dataset = None
@@ -491,7 +413,6 @@ async def main():
                 print(f"  Files: {len(dataset.files)}")
         except Exception as e:
             print(f"Error loading dataset: {e}")
-    
     # Create configuration
     config = SearchConfig.from_args(args)
 

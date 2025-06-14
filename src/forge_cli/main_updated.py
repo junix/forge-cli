@@ -1,4 +1,4 @@
-"""Main entry point - updated to use typed API by default with proper chat support."""
+"""Main entry point - updated to use typed API by default."""
 
 import argparse
 import asyncio
@@ -21,7 +21,7 @@ from forge_cli.display.v2.base import Display
 from forge_cli.processors.registry_typed import initialize_typed_registry
 from forge_cli.sdk import astream_typed_response, async_get_vectorstore
 from forge_cli.stream.handler_typed import TypedStreamHandler
-from forge_cli.response._types import Request, FileSearchTool, WebSearchTool, InputMessage
+from forge_cli.response._types import Request, FileSearchTool, WebSearchTool
 
 
 def create_display(config: SearchConfig) -> Display:
@@ -40,7 +40,7 @@ def create_display(config: SearchConfig) -> Display:
         return Display(renderer)
 
 
-def prepare_request(config: SearchConfig, question: str, conversation_history: list[dict] = None) -> Request:
+def prepare_request(config: SearchConfig, question: str) -> Request:
     """Prepare typed request for the API."""
     # Build tools list
     tools = []
@@ -66,28 +66,13 @@ def prepare_request(config: SearchConfig, question: str, conversation_history: l
                 tool_params["city"] = location["city"]
         tools.append(WebSearchTool(**tool_params))
 
-    # Build input messages
-    input_messages = []
-    
-    # If we have conversation history, include it
-    if conversation_history:
-        # Convert conversation history to InputMessage objects
-        for msg in conversation_history:
-            if isinstance(msg, dict) and "role" in msg and "content" in msg:
-                input_messages.append(InputMessage(role=msg["role"], content=msg["content"]))
-        # Don't add the current question again - it's already in the conversation history
-    else:
-        # Single message
-        input_messages = [InputMessage(role="user", content=question)]
-
     # Create typed request
     return Request(
-        input=input_messages,
+        input=[{"type": "text", "text": question}],
         model=config.model,
         tools=tools,
         temperature=config.temperature or 0.7,
         max_output_tokens=config.max_output_tokens or 2000,
-        effort=config.effort or "low",
     )
 
 
@@ -154,62 +139,18 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
     # Create chat controller
     controller = ChatController(config, display)
     
-    # Store the original prepare_request method
-    original_prepare_request = controller.prepare_request
-    
     # Patch the controller to use typed API
-    async def typed_send_message(content: str) -> None:
-        """Send message using typed API with proper chat support."""
-        # Add user message to conversation
-        user_message = controller.conversation.add_user_message(content)
-        
-        # Create a fresh display for this message
-        message_display = create_display(config)
-        
-        # Mark display as in chat mode
-        if hasattr(message_display, "console"):
-            message_display._in_chat_mode = True
-        
-        # Get conversation history
-        messages = controller.conversation.to_api_format()
-        
-        # Create typed request
-        # Note: The typed API currently doesn't support full conversation history
-        # So we'll just use the current message for now
-        request = prepare_request(config, content, messages)
-        
-        # Start the display for this message
-        if hasattr(message_display, "handle_event"):
-            message_display.handle_event("stream_start", {"query": content})
-        
-        # Create typed handler and stream
-        handler = TypedStreamHandler(message_display, debug=config.debug)
-        
-        try:
-            # Stream the response
-            event_stream = astream_typed_response(request, debug=config.debug)
-            state = await handler.handle_stream(event_stream, content)
-            
-            # Extract assistant response from state
-            if state and state.output_items:
-                for item in state.output_items:
-                    if isinstance(item, dict) and item.get("type") == "message" and item.get("role") == "assistant":
-                        # Extract text content
-                        assistant_text = controller.extract_text_from_message(item)
-                        if assistant_text:
-                            controller.conversation.add_assistant_message(assistant_text)
-                            if config.debug:
-                                print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
-                            break
-                        
-        except Exception as e:
-            message_display.show_error(f"Error processing message: {str(e)}")
-            if config.debug:
-                import traceback
-                traceback.print_exc()
+    original_process = controller.process_message
+    
+    async def typed_process_message(message: str) -> None:
+        """Process message using typed API."""
+        request = prepare_request(config, message)
+        handler = TypedStreamHandler(display, debug=config.debug)
+        event_stream = astream_typed_response(request, debug=config.debug)
+        await handler.handle_stream(event_stream, message)
     
     # Replace method
-    controller.send_message = typed_send_message
+    controller.process_message = typed_process_message
 
     # Show welcome
     controller.show_welcome()
@@ -453,18 +394,18 @@ async def main():
         parser.print_help()
         print("\nExample usage:")
         print("  # File search:")
-        print('  python -m hello_file_search_refactored -q "What information is in these documents?"')
-        print("  python -m hello_file_search_refactored --vec-id vec_123 -t file-search")
+        print('  python -m forge_cli.main_updated -q "What information is in these documents?"')
+        print("  python -m forge_cli.main_updated --vec-id vec_123 -t file-search")
         print()
         print("  # Web search:")
-        print('  python -m hello_file_search_refactored -t web-search -q "Latest AI news"')
+        print('  python -m forge_cli.main_updated -t web-search -q "Latest AI news"')
         print()
         print("  # Both tools:")
-        print("  python -m hello_file_search_refactored -t file-search -t web-search --vec-id vec_123")
+        print("  python -m forge_cli.main_updated -t file-search -t web-search --vec-id vec_123")
         print()
         print("  # Interactive chat mode:")
-        print("  python -m hello_file_search_refactored --chat")
-        print("  python -m hello_file_search_refactored -i -t file-search --vec-id vec_123")
+        print("  python -m forge_cli.main_updated --chat")
+        print("  python -m forge_cli.main_updated -i -t file-search --vec-id vec_123")
         return
 
     # Handle version
