@@ -5,7 +5,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Literal
+from typing import Dict, Union, List, Optional, Literal
 
 
 @dataclass
@@ -16,7 +16,7 @@ class Message:
     content: str
     id: Optional[str] = None
     timestamp: Optional[float] = None
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Union[str, int, float, bool]]] = None
 
     def __post_init__(self):
         """Initialize defaults after dataclass init."""
@@ -27,7 +27,7 @@ class Message:
         if self.metadata is None:
             self.metadata = {}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Union[str, float, Dict]]:
         """Convert to dictionary for serialization."""
         return {
             "role": self.role,
@@ -38,7 +38,7 @@ class Message:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Message":
+    def from_dict(cls, data: Dict[str, Union[str, float, Dict]]) -> "Message":
         """Create from dictionary."""
         return cls(
             role=data["role"],
@@ -57,8 +57,8 @@ class ConversationState:
     session_id: str = field(default_factory=lambda: f"session_{uuid.uuid4().hex[:12]}")
     created_at: float = field(default_factory=time.time)
     model: str = "qwen-max-latest"
-    tools: List[Dict[str, Any]] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    tools: List[Dict[str, Union[str, bool, List]]] = field(default_factory=list)
+    metadata: Dict[str, Union[str, int, float, bool]] = field(default_factory=dict)
 
     def add_message(self, message: Message) -> None:
         """Add a message to the conversation."""
@@ -76,7 +76,7 @@ class ConversationState:
         self.add_message(message)
         return message
 
-    def to_api_format(self) -> List[Dict[str, Any]]:
+    def to_api_format(self) -> List[Dict[str, Union[str, float]]]:
         """Convert messages to API format."""
         return [{"role": msg.role, "content": msg.content, "id": msg.id} for msg in self.messages]
 

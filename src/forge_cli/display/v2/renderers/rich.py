@@ -49,8 +49,8 @@ class RichRenderer(BaseRenderer):
         self._response_text = ""
         self._reasoning_text = ""
         self._reasoning_active = False
-        self._citations: list[dict[str, Any]] = []
-        self._active_tools: dict[str, dict[str, Any]] = {}
+        self._citations: List[Dict[str, Union[str, int]]] = []
+        self._active_tools: Dict[str, Dict[str, Union[str, int]]] = {}
         self._errors: list[str] = []
         self._start_time = time.time()
         self._live_started = False
@@ -119,7 +119,7 @@ class RichRenderer(BaseRenderer):
         # Update display
         self._update_display()
 
-    def _handle_stream_start(self, data: dict[str, Any]) -> None:
+    def _handle_stream_start(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle stream start event."""
         self._query = data.get("query", "")
         self._start_time = time.time()
@@ -132,12 +132,12 @@ class RichRenderer(BaseRenderer):
                 self._live.start()
                 self._live_started = True
 
-    def _handle_stream_end(self, data: dict[str, Any]) -> None:
+    def _handle_stream_end(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle stream end event."""
         duration = time.time() - self._start_time
         self._usage = data.get("usage", {})
 
-    def _handle_stream_error(self, data: dict[str, Any]) -> None:
+    def _handle_stream_error(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle stream error event."""
         error = data.get("error", "Unknown error")
         self._errors.append(error)
@@ -147,7 +147,7 @@ class RichRenderer(BaseRenderer):
             error_panel = Panel(Text(f"❌ {error}", style="red"), title="Error", border_style="red")
             self._live.update(error_panel)
 
-    def _handle_text_delta(self, data: dict[str, Any]) -> None:
+    def _handle_text_delta(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle text delta event - actually a snapshot."""
         text = data.get("text", "")
         # Since this is a snapshot, replace the entire text
@@ -163,24 +163,24 @@ class RichRenderer(BaseRenderer):
             if "usage" in metadata:
                 self._usage = metadata["usage"]
 
-    def _handle_reasoning_start(self, data: dict[str, Any]) -> None:
+    def _handle_reasoning_start(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle reasoning start event."""
         if self._show_reasoning:
             self._reasoning_active = True
             self._layout["reasoning"].visible = True
 
-    def _handle_reasoning_delta(self, data: dict[str, Any]) -> None:
+    def _handle_reasoning_delta(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle reasoning delta event - actually a snapshot."""
         if self._show_reasoning:
             text = data.get("text", "")
             # Since this is a snapshot, replace the entire text
             self._reasoning_text = text
 
-    def _handle_reasoning_complete(self, data: dict[str, Any]) -> None:
+    def _handle_reasoning_complete(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle reasoning complete event."""
         self._reasoning_active = False
 
-    def _handle_tool_start(self, data: dict[str, Any]) -> None:
+    def _handle_tool_start(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle tool start event."""
         tool_id = data.get("tool_id", f"tool_{time.time()}")
         tool_type = data.get("tool_type", "unknown")
@@ -199,7 +199,7 @@ class RichRenderer(BaseRenderer):
         )
         self._active_tools[tool_id]["progress_id"] = task_id
 
-    def _handle_tool_complete(self, data: dict[str, Any]) -> None:
+    def _handle_tool_complete(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle tool complete event."""
         tool_id = data.get("tool_id")
         if tool_id and tool_id in self._active_tools:
@@ -215,7 +215,7 @@ class RichRenderer(BaseRenderer):
                     description=f"✅ {tool['type']} ({tool['results_count']} results)",
                 )
 
-    def _handle_tool_error(self, data: dict[str, Any]) -> None:
+    def _handle_tool_error(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle tool error event."""
         tool_id = data.get("tool_id")
         if tool_id and tool_id in self._active_tools:
@@ -227,7 +227,7 @@ class RichRenderer(BaseRenderer):
             if tool["progress_id"] is not None:
                 self._progress.update(tool["progress_id"], description=f"❌ {tool['type']} failed")
 
-    def _handle_citation_found(self, data: dict[str, Any]) -> None:
+    def _handle_citation_found(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle citation found event."""
         citation = {
             "number": data.get("citation_num", len(self._citations) + 1),
@@ -239,7 +239,7 @@ class RichRenderer(BaseRenderer):
         }
         self._citations.append(citation)
 
-    def _format_status_info(self, metadata: dict[str, Any] | None = None) -> Text:
+    def _format_status_info(self, metadata: Dict[str, Union[str, int, float, bool, List, Dict]] | None = None) -> Text:
         """Format status information with usage statistics - matches v1 exactly."""
         status_info = Text()
 
@@ -405,7 +405,7 @@ class RichRenderer(BaseRenderer):
             # Print directly if live not started
             self._console.print(Panel(Text(message, style="yellow"), title="Status", border_style="yellow"))
 
-    def render_status_rich(self, rich_content: Any) -> None:
+    def render_status_rich(self, rich_content: object) -> None:
         """Render rich content like v1 show_status_rich."""
         if self._live and self._live_started:
             self._live.update(rich_content)
@@ -420,7 +420,7 @@ class RichRenderer(BaseRenderer):
         else:
             self._console.print(Text(f"\n❌ Error: {error}", style="red bold"))
 
-    def render_finalize(self, response: dict[str, Any], state: Any) -> None:
+    def render_finalize(self, response: Dict[str, Union[str, int, float, bool, List, Dict]], state: object) -> None:
         """Finalize rendering like v1 finalize method."""
         # In chat mode, just stop the live display without re-displaying content
         if self._in_chat_mode and self._live:
@@ -461,7 +461,7 @@ class RichRenderer(BaseRenderer):
                 self._print_citations_summary()
 
     # Chat mode specific methods
-    def render_welcome(self, config: Any) -> None:
+    def render_welcome(self, config: object) -> None:
         """Show welcome message for chat mode - matches v1."""
         # Create a beautiful welcome panel
         welcome_text = Text()

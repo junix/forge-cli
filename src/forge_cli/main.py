@@ -5,7 +5,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Dict, Union, List
 
 # Import the TestDataset loader
 from forge_cli.dataset import TestDataset
@@ -38,7 +38,7 @@ def create_display(config: SearchConfig) -> Display:
         return Display(renderer)
 
 
-def prepare_request(config: SearchConfig, question: str) -> dict[str, Any]:
+def prepare_request(config: SearchConfig, question: str) -> Dict[str, Union[str, int, float, bool, List]]:
     """Prepare request parameters for the API."""
     # Base request
     request = {
@@ -86,7 +86,7 @@ def prepare_request(config: SearchConfig, question: str) -> dict[str, Any]:
     return request
 
 
-async def process_search(config: SearchConfig, question: str) -> dict[str, Any] | None:
+async def process_search(config: SearchConfig, question: str) -> Dict[str, Union[str, int, float, bool, List]] | None:
     """Process search with the given configuration."""
     # Initialize processor registry
     initialize_default_registry()

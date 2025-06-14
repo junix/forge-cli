@@ -58,7 +58,7 @@ class PlainRenderer(BaseRenderer):
             # Unknown event type - ignore in plain renderer
             pass
 
-    def _handle_stream_start(self, data: Dict[str, Any]) -> None:
+    def _handle_stream_start(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle stream start event."""
         # Match v1 style with emojis and formatting
         print("\n📄 Request Information:", file=self._file)
@@ -78,13 +78,13 @@ class PlainRenderer(BaseRenderer):
         print("\n🔄 Streaming response (please wait):", file=self._file)
         print("=" * 80, file=self._file)
 
-    def _handle_text_delta(self, data: Dict[str, Any]) -> None:
+    def _handle_text_delta(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle text delta event - actually a snapshot."""
         # Since the API sends snapshots, just replace the entire text
         text = data.get("text", "")
         self._accumulated_text = text
 
-    def _handle_tool_start(self, data: Dict[str, Any]) -> None:
+    def _handle_tool_start(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle tool start event."""
         tool_id = data.get("tool_id", "unknown")
         tool_type = data.get("tool_type", "unknown")
@@ -93,7 +93,7 @@ class PlainRenderer(BaseRenderer):
         # Match v1 style with emoji
         print(f"\n⏳ Starting {tool_type}...", file=self._file)
 
-    def _handle_tool_complete(self, data: Dict[str, Any]) -> None:
+    def _handle_tool_complete(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle tool complete event."""
         tool_id = data.get("tool_id", "unknown")
         tool_type = self._active_tools.get(tool_id, data.get("tool_type", "unknown"))
@@ -104,24 +104,24 @@ class PlainRenderer(BaseRenderer):
         if tool_id in self._active_tools:
             del self._active_tools[tool_id]
 
-    def _handle_reasoning_start(self, data: Dict[str, Any]) -> None:
+    def _handle_reasoning_start(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle reasoning start event."""
         if not self._in_reasoning:
             print("\nThinking...", file=self._file)
             self._in_reasoning = True
 
-    def _handle_reasoning_delta(self, data: Dict[str, Any]) -> None:
+    def _handle_reasoning_delta(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle reasoning delta event."""
         # In plain mode, we don't show reasoning content
         pass
 
-    def _handle_reasoning_complete(self, data: Dict[str, Any]) -> None:
+    def _handle_reasoning_complete(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle reasoning complete event."""
         if self._in_reasoning:
             print("Done thinking.\n", file=self._file)
             self._in_reasoning = False
 
-    def _handle_citation(self, data: Dict[str, Any]) -> None:
+    def _handle_citation(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle citation found event."""
         citation_num = data.get("citation_num", 0)
         citation_text = data.get("citation_text", "")
@@ -135,7 +135,7 @@ class PlainRenderer(BaseRenderer):
 
         print(f"\n{citation_display}", file=self._file)
 
-    def _handle_error(self, data: Dict[str, Any]) -> None:
+    def _handle_error(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle error event."""
         error = data.get("error", "Unknown error")
         print(f"\n❌ Error: {error}", file=self._file, flush=True)

@@ -27,7 +27,7 @@ class JsonRenderer(BaseRenderer):
         self._start_time = time.time()
 
         # Track all events if requested
-        self._events: list[dict[str, Any]] = []
+        self._events: List[Dict[str, Union[str, int, float, bool, List, Dict]]] = []
 
         # Build response state
         self._state = {
@@ -89,7 +89,7 @@ class JsonRenderer(BaseRenderer):
                     # Unknown events are recorded but not processed
                     pass
 
-    def _handle_stream_start(self, data: dict[str, Any]) -> None:
+    def _handle_stream_start(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle stream start event."""
         self._state["status"] = "streaming"
         self._state["query"] = data.get("query", "")
@@ -100,7 +100,7 @@ class JsonRenderer(BaseRenderer):
         metadata["effort"] = data.get("effort", "")
         metadata["temperature"] = data.get("temperature", 0.0)
 
-    def _handle_stream_end(self, data: dict[str, Any]) -> None:
+    def _handle_stream_end(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle stream end event."""
         self._state["status"] = "completed"
         self._state["metadata"]["end_time"] = time.time()
@@ -108,30 +108,30 @@ class JsonRenderer(BaseRenderer):
         self._state["metadata"]["usage"] = data.get("usage", {})
         self._state["metadata"]["response_id"] = data.get("response_id", "")
 
-    def _handle_stream_error(self, data: dict[str, Any]) -> None:
+    def _handle_stream_error(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle stream error event."""
         self._state["status"] = "error"
         self._state["errors"].append(
             {"timestamp": data.get("timestamp", time.time()), "error": data.get("error", "Unknown error")}
         )
 
-    def _handle_text_delta(self, data: dict[str, Any]) -> None:
+    def _handle_text_delta(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle text delta event - actually a snapshot."""
         text = data.get("text", "")
         # Since this is a snapshot, replace the entire text
         self._state["response_text"] = text
 
-    def _handle_text_complete(self, data: dict[str, Any]) -> None:
+    def _handle_text_complete(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle text complete event."""
         # Could store final text if different
         pass
 
-    def _handle_reasoning_start(self, data: dict[str, Any]) -> None:
+    def _handle_reasoning_start(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle reasoning start event."""
         if "reasoning" not in self._state:
             self._state["reasoning"] = {"status": "active", "text": "", "started_at": time.time()}
 
-    def _handle_reasoning_delta(self, data: dict[str, Any]) -> None:
+    def _handle_reasoning_delta(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle reasoning delta event - actually a snapshot."""
         text = data.get("text", "")
         if isinstance(self._state.get("reasoning"), dict):
@@ -141,13 +141,13 @@ class JsonRenderer(BaseRenderer):
             # Legacy compatibility
             self._state["reasoning_text"] = text
 
-    def _handle_reasoning_complete(self, data: dict[str, Any]) -> None:
+    def _handle_reasoning_complete(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle reasoning complete event."""
         if isinstance(self._state.get("reasoning"), dict):
             self._state["reasoning"]["status"] = "completed"
             self._state["reasoning"]["completed_at"] = time.time()
 
-    def _handle_tool_start(self, data: dict[str, Any]) -> None:
+    def _handle_tool_start(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle tool start event."""
         tool_id = data.get("tool_id", f"tool_{time.time()}")
         self._state["tools"][tool_id] = {
@@ -157,7 +157,7 @@ class JsonRenderer(BaseRenderer):
             "parameters": data.get("parameters", {}),
         }
 
-    def _handle_tool_progress(self, data: dict[str, Any]) -> None:
+    def _handle_tool_progress(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle tool progress event."""
         tool_id = data.get("tool_id")
         if tool_id and tool_id in self._state["tools"]:
@@ -165,7 +165,7 @@ class JsonRenderer(BaseRenderer):
             tool["progress"] = data.get("progress", 0)
             tool["message"] = data.get("message", "")
 
-    def _handle_tool_complete(self, data: dict[str, Any]) -> None:
+    def _handle_tool_complete(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle tool complete event."""
         tool_id = data.get("tool_id")
         if tool_id and tool_id in self._state["tools"]:
@@ -175,7 +175,7 @@ class JsonRenderer(BaseRenderer):
             tool["results_count"] = data.get("results_count", 0)
             tool["results"] = data.get("results", [])
 
-    def _handle_tool_error(self, data: dict[str, Any]) -> None:
+    def _handle_tool_error(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle tool error event."""
         tool_id = data.get("tool_id")
         if tool_id and tool_id in self._state["tools"]:
@@ -183,7 +183,7 @@ class JsonRenderer(BaseRenderer):
             tool["status"] = "error"
             tool["error"] = data.get("error", "Unknown error")
 
-    def _handle_citation_found(self, data: dict[str, Any]) -> None:
+    def _handle_citation_found(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle citation found event."""
         citation = {
             "number": data.get("citation_num", len(self._state["citations"]) + 1),
@@ -205,7 +205,7 @@ class JsonRenderer(BaseRenderer):
 
         self._state["citations"].append(citation)
 
-    def _handle_message_start(self, data: dict[str, Any]) -> None:
+    def _handle_message_start(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle message start event."""
         self._state["message"] = {
             "status": "active",
@@ -213,7 +213,7 @@ class JsonRenderer(BaseRenderer):
             "started_at": time.time(),
         }
 
-    def _handle_message_complete(self, data: dict[str, Any]) -> None:
+    def _handle_message_complete(self, data: Dict[str, Union[str, int, float, bool, List, Dict]]) -> None:
         """Handle message complete event."""
         if "message" in self._state:
             self._state["message"]["status"] = "completed"
