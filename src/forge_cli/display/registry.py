@@ -82,24 +82,28 @@ class DisplayRegistry:
 
 def initialize_default_displays():
     """Initialize the default display implementations."""
+    from .json_chat_display import JsonChatDisplay
     from .json_display import JsonDisplay
     from .plain_display import PlainDisplay
     from .rich_display import RichDisplay
-    from .json_chat_display import JsonChatDisplay
 
-    # Register JSON display with condition
+    # Register JSON display with condition and factory to handle extra kwargs
     DisplayRegistry.register_display(
-        "json", 
-        JsonDisplay, 
-        condition=lambda config: getattr(config, "json_output", False) is True and getattr(config, "chat", False) is False
+        "json",
+        JsonDisplay,
+        # Factory to handle extra kwargs that JsonDisplay.__init__ doesn't accept
+        factory=lambda **kwargs: JsonDisplay(),
+        condition=lambda config: getattr(config, "json_output", False) is True
+        and getattr(config, "chat", False) is False,
     )
-    
+
     # Register JSON Chat display with condition
     DisplayRegistry.register_display(
         "json_chat",
         JsonChatDisplay,
         factory=lambda **kwargs: JsonChatDisplay(console=kwargs.get("console", None)),
-        condition=lambda config: getattr(config, "json_output", False) is True and getattr(config, "chat", False) is True
+        condition=lambda config: getattr(config, "json_output", False) is True
+        and getattr(config, "chat", False) is True,
     )
 
     # Register Rich display with condition and factory
