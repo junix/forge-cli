@@ -2,13 +2,12 @@
 
 import asyncio
 import json
-from typing import Dict, Any, Optional, List
+from typing import Any
 
 from ..config import SearchConfig
 from ..display.base import BaseDisplay
-from ..models.conversation import ConversationState, Message
+from ..models.conversation import ConversationState
 from ..stream.handler import StreamHandler
-from ..processors.registry import default_registry
 from .commands import CommandRegistry
 
 
@@ -22,7 +21,7 @@ class ChatController:
         self.commands = CommandRegistry()
         self.running = False
 
-    def prepare_tools(self) -> List[Dict[str, Any]]:
+    def prepare_tools(self) -> list[dict[str, Any]]:
         """Prepare tools configuration based on config."""
         tools = []
 
@@ -75,7 +74,7 @@ class ChatController:
 
             await self.display.show_status("\n".join(lines))
 
-    async def get_user_input(self) -> Optional[str]:
+    async def get_user_input(self) -> str | None:
         """Get input from the user with prompt_toolkit support for auto-completion."""
         try:
             # Try to use prompt_toolkit for better input experience
@@ -207,6 +206,11 @@ class ChatController:
             # Handle command
             return await self.handle_command(command_name, args)
         else:
+            # Check for empty messages
+            if not user_input or user_input.isspace():
+                await self.display.show_error("Empty messages cannot be sent. Please type something.")
+                return True
+
             # Send as message
             await self.send_message(user_input)
             return True
@@ -309,7 +313,7 @@ class ChatController:
             if hasattr(self.display, "_in_chat_mode"):
                 delattr(self.display, "_in_chat_mode")
 
-    def prepare_request(self) -> Dict[str, Any]:
+    def prepare_request(self) -> dict[str, Any]:
         """Prepare API request with conversation history."""
         # Update tools in case they changed
         self.conversation.tools = self.prepare_tools()
@@ -329,7 +333,7 @@ class ChatController:
 
         return request
 
-    def extract_text_from_message(self, message_item: Dict[str, Any]) -> Optional[str]:
+    def extract_text_from_message(self, message_item: dict[str, Any]) -> str | None:
         """Extract text content from a message item."""
         # Handle different content formats
         content = message_item.get("content", [])
