@@ -1,6 +1,5 @@
 """File search tool call processor."""
 
-
 from .base import BaseToolCallProcessor
 
 

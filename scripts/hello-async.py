@@ -1,48 +1,56 @@
 #!/usr/bin/env python3
 """
-Async hello example that demonstrates using the sdk.py client library
+Async hello example that demonstrates using the typed API
 to send requests to the Knowledge Forge API.
+
+This example shows the migration from dict-based to typed Response API.
 """
 
 import asyncio
 import os
-from typing import Any
+from typing import Optional, Union, Any
 
-# Import sdk functions
+# Import typed SDK functions and types
 from sdk import (
-    astream_response,
-    async_create_response,
+    astream_typed_response,
+    async_create_typed_response,
     async_fetch_response,
-    validate_input_messages,
+    create_typed_request,
 )
+from forge_cli.response._types import Response
+from forge_cli.response.adapters import MigrationHelper
 
 
 async def hello_async():
     """Send a simple hello request and then fetch it by ID."""
-    print("=== Knowledge Forge API Async Hello Example ===")
+    print("=== Knowledge Forge API Typed Hello Example ===")
 
     # Create the initial message
     user_message = "你好，Knowledge Forge!"
 
-    # Create a validated message object
-    messages = validate_input_messages(user_message)
+    # Create a typed request object
+    request = create_typed_request(
+        input_messages=user_message,
+        model="qwen-max-latest",
+        effort="low",
+        store=True
+    )
 
     print(f"Sending message: '{user_message}'")
 
     try:
-        # Method 1: Using async_create_response (regular async response)
-        print("\n=== Method 1: Using async_create_response ===")
-        response = await async_create_response(input_messages=messages, model="qwen-max", effort="low", store=True)
+        # Method 1: Using async_create_typed_response (regular async response)
+        print("\n=== Method 1: Using async_create_typed_response ===")
+        response = await async_create_typed_response(request)
 
         if response:
             print("\nResponse received:")
             print_response_summary(response)
 
             # Fetch the response by ID to verify
-            response_id = response.get("id")
-            if response_id:
-                print(f"\nFetching response with ID: {response_id}")
-                fetched_response = await async_fetch_response(response_id)
+            if response.id:
+                print(f"\nFetching response with ID: {response.id}")
+                fetched_response = await async_fetch_response(response.id)
 
                 if fetched_response:
                     print("\nFetched response by ID:")
@@ -52,21 +60,17 @@ async def hello_async():
         else:
             print("No response received")
 
-        # Method 2: Using astream_response (streaming response)
-        print("\n=== Method 2: Using astream_response (streaming) ===")
+        # Method 2: Using astream_typed_response (streaming response)
+        print("\n=== Method 2: Using astream_typed_response (streaming) ===")
         print(f"Sending streaming message: '{user_message}'")
 
         # Variables to collect stream data
         complete_text = ""
         event_count = 0
-        stream_result = None
+        stream_result: Optional[Response] = None
 
-        # Process the streaming response
-        async for event_type, event_data in astream_response(
-            input_messages=messages,
-            model="qwen-max",
-            effort="low",
-        ):
+        # Process the streaming response with typed API
+        async for event_type, response in astream_typed_response(request):
             event_count += 1
 
             # Print event type (only for first 3 events and last event to avoid spam)
@@ -75,18 +79,18 @@ async def hello_async():
             elif event_count % 10 == 0:  # Print a dot for every 10 events
                 print(".", end="", flush=True)
 
-            # Handle text deltas
-            if event_type == "response.output_text.delta" and event_data and "text" in event_data:
-                # Handle various text content formats
-                text_content = event_data["text"]
-                if isinstance(text_content, dict) and "text" in text_content:
-                    complete_text += text_content["text"]
-                elif isinstance(text_content, str):
-                    complete_text += text_content
+            # Handle text deltas using typed Response
+            if event_type == "response.output_text.delta" and response:
+                # Use Response's output_text property for clean access
+                if response.output_text:
+                    current_text = response.output_text
+                    # Accumulate only the new text (assuming snapshot-based)
+                    if len(current_text) > len(complete_text):
+                        complete_text = current_text
 
             # Save final response when completed
-            if event_type == "final_response":
-                stream_result = event_data
+            if event_type == "response.completed" and response:
+                stream_result = response
 
             # Exit on done event
             if event_type == "done":
@@ -102,10 +106,9 @@ async def hello_async():
             print_response_summary(stream_result)
 
             # Fetch the response by ID to verify
-            response_id = stream_result.get("id")
-            if response_id:
-                print(f"\nFetching streamed response with ID: {response_id}")
-                fetched_response = await async_fetch_response(response_id)
+            if stream_result.id:
+                print(f"\nFetching streamed response with ID: {stream_result.id}")
+                fetched_response = await async_fetch_response(stream_result.id)
 
                 if fetched_response:
                     print("\nFetched streamed response by ID:")
@@ -117,45 +120,42 @@ async def hello_async():
         print(f"Error: {e}")
 
 
-def print_response_summary(response: dict[str, Any]):
-    """Print a summary of a response object."""
-    print(f"Response ID: {response.get('id')}")
-    print(f"Model: {response.get('model')}")
-    print(f"Created at: {response.get('created_at')}")
-
-    # Extract and print text content
-    text_content = extract_text_from_response(response)
-    if text_content:
-        print(f"Content: '{text_content}'")
-    else:
-        print("No text content found in response")
-
-
-def extract_text_from_response(response: dict[str, Any]) -> str | None:
-    """Extract text content from a response object."""
-    try:
-        # First, look for output messages
-        for output_item in response.get("output", []):
-            if output_item.get("type") == "message":
-                for content_item in output_item.get("content", []):
-                    if content_item.get("type") == "output_text":
-                        return content_item.get("text", "")
-
-        # If not found in output messages, try the first output text
-        for item in response.get("output", []):
-            if isinstance(item, dict) and item.get("role") == "assistant":
-                content = item.get("content", "")
-                if isinstance(content, str):
-                    return content
-                elif isinstance(content, list):
-                    for part in content:
-                        if part.get("type") == "text":
-                            return part.get("text", "")
-
-        return None
-    except Exception as e:
-        print(f"Error extracting text from response: {e}")
-        return None
+def print_response_summary(response: Union[Response, dict[str, Any]]):
+    """Print a summary of a response object (supports both typed and dict)."""
+    # Handle typed Response
+    if isinstance(response, Response):
+        print(f"Response ID: {response.id}")
+        print(f"Model: {response.model}")
+        print(f"Created at: {response.created_at}")
+        
+        # Use Response's output_text property
+        text_content = response.output_text
+        if text_content:
+            print(f"Content: '{text_content}'")
+        else:
+            print("No text content found in response")
+        
+        # Show token usage if available
+        if response.usage:
+            print(f"Tokens used: {response.usage.total_tokens}")
+    
+    # Handle dict response (backward compatibility)
+    elif isinstance(response, dict):
+        print(f"Response ID: {response.get('id')}")
+        print(f"Model: {response.get('model')}")
+        print(f"Created at: {response.get('created_at')}")
+        
+        # Use migration helper for safe text extraction
+        text_content = MigrationHelper.safe_get_text(response)
+        if text_content:
+            print(f"Content: '{text_content}'")
+        else:
+            print("No text content found in response")
+        
+        # Show token usage if available
+        usage = MigrationHelper.safe_get_usage(response)
+        if usage:
+            print(f"Tokens used: {usage.get('total_tokens', 0)}")
 
 
 if __name__ == "__main__":

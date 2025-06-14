@@ -10,7 +10,7 @@ from forge_cli.response._types import (
 )
 
 # Forward reference for Tool, assuming it's a type defined elsewhere or a generic dict
-Tool: TypeAlias = Union[Dict[str, Any], Any] # Replace Any with actual Tool type if available
+Tool: TypeAlias = Union[Dict[str, Any], Any]  # Replace Any with actual Tool type if available
 
 class ResponseAdapter:
     @staticmethod

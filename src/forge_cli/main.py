@@ -447,7 +447,6 @@ async def main():
         await process_search(config, args.question)
 
 
-
 def run_main_async():
     try:
         asyncio.run(main())
@@ -456,6 +455,7 @@ def run_main_async():
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     run_main_async()

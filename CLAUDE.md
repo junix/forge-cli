@@ -4,6 +4,21 @@
 
 This project provides modern, modular command-line tools and SDK for interacting with the Knowledge Forge API. Built with Python 3.8+ and structured as a proper Python package, it offers comprehensive functionality for file uploads, vector store management, AI-powered question answering, and streaming responses.
 
+## 🆕 Migration to Typed API (In Progress)
+
+The project is currently migrating from dict-based to typed Response API for better type safety and developer experience. See [MIGRATION_STATUS.md](MIGRATION_STATUS.md) for current progress. Both APIs are supported during the transition:
+
+```python
+# Old dict-based API (still works)
+async for event_type, event_data in astream_response(...):
+    text = event_data.get("text", "")
+
+# New typed API (recommended)
+request = create_typed_request(...)
+async for event_type, response in astream_typed_response(request):
+    text = response.output_text  # Type-safe with IDE support
+```
+
 ## Project Structure
 
 ```

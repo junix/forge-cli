@@ -1055,25 +1055,50 @@ async def async_create_typed_response(
 async def astream_typed_response(
     request: Request,
     debug: bool = False,
-) -> AsyncIterator[tuple[str, ResponseStreamEvent]]:
+) -> AsyncIterator[tuple[str, Response | None]]:
     """
-    Stream a response using a typed Request object, yielding typed events.
+    Stream a response using a typed Request object, yielding typed events with Response snapshots.
 
     Args:
         request: A typed Request object with all configuration
         debug: Enable debug logging
 
     Yields:
-        Tuples of (event_type, typed_event) where typed_event is a ResponseStreamEvent
+        Tuples of (event_type, response_snapshot) where response_snapshot is a Response object
+        representing the complete state at that point in the stream (snapshot-based design per ADR-004).
+        For events that don't contain full response data, response_snapshot will be None.
     """
-    # Use the existing streaming function with typed=True
+    # Import Response adapter for conversion
+    from forge_cli.response.adapters import ResponseAdapter
 
+    # Convert Request to proper format for astream_response
+    # The Request object uses 'input' but astream_response expects 'input_messages'
+    request_dict = request.model_dump(exclude_none=True)
+
+    # Map Request fields to astream_response parameters
     async for event_type, event_data in astream_response(
-        **request.model_dump(),
+        input_messages=request_dict.get("input", []),
+        model=request_dict.get("model", "qwen-max"),
+        effort=request_dict.get("effort", "low"),
+        store=request_dict.get("store", True),
+        temperature=request_dict.get("temperature", 0.7),
+        max_output_tokens=request_dict.get("max_output_tokens", 1000),
+        tools=request_dict.get("tools", None),
         debug=debug,
-        typed=True,
+        typed=False,  # Get raw dict data to convert to Response
     ):
-        yield event_type, event_data
+        if event_data and isinstance(event_data, dict):
+            try:
+                # Convert snapshot data to Response object
+                response = ResponseAdapter.from_dict(event_data)
+                yield event_type, response
+            except Exception as e:
+                if debug:
+                    logger.debug(f"Could not convert event data to Response for event {event_type}: {e}")
+                # For events that don't have full response data, yield None
+                yield event_type, None
+        else:
+            yield event_type, None
 
 
 def create_typed_request(

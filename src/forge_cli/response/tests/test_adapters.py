@@ -11,7 +11,7 @@ from forge_cli.response._types import (
     Response as ActualResponse,
     ResponseStreamEvent as ActualResponseStreamEvent,
     WebSearchTool as ActualWebSearchTool,
-    ResponseCreatedEvent, # Assuming this and other specific events exist
+    ResponseCreatedEvent,  # Assuming this and other specific events exist
     ResponseTextDeltaEvent,
 )
 from forge_cli.response.adapters import (
@@ -22,6 +22,7 @@ from forge_cli.response.adapters import (
 
 # Mock Pydantic models for testing purposes if they are complex to instantiate directly
 # For this example, we'll assume they can be instantiated with kwargs or have simple fields.
+
 
 class MockPydanticModel:
     def __init__(self, **kwargs):
@@ -61,7 +62,9 @@ class TestResponseAdapter(unittest.TestCase):
 
     def test_create_request_with_string_input(self):
         with patch("forge_cli.response.adapters.Request", new=MockPydanticModel) as MockRequest:
-            MockRequest.return_value = MockPydanticModel(input=[{"role": "user", "content": "Hello"}], model="test-model", tools=[])
+            MockRequest.return_value = MockPydanticModel(
+                input=[{"role": "user", "content": "Hello"}], model="test-model", tools=[]
+            )
             request_obj = ResponseAdapter.create_request("Hello", model="test-model")
             self.assertIsInstance(request_obj, MockPydanticModel)
             self.assertEqual(request_obj.input[0]["content"], "Hello")
@@ -89,11 +92,12 @@ class TestResponseAdapter(unittest.TestCase):
             self.assertIsInstance(request_obj, MockPydanticModel)
             self.assertEqual(request_obj.input[0]["content"], "Test InputMessage")
 
-
     def test_create_request_with_tools(self):
         tools = [{"type": "function", "function": {"name": "get_weather"}}]
         with patch("forge_cli.response.adapters.Request", new=MockPydanticModel) as MockRequest:
-            MockRequest.return_value = MockPydanticModel(input=[{"role":"user", "content":"hi"}], model="test", tools=tools)
+            MockRequest.return_value = MockPydanticModel(
+                input=[{"role": "user", "content": "hi"}], model="test", tools=tools
+            )
             request_obj = ResponseAdapter.create_request("hi", model="test", tools=tools)
             self.assertIsInstance(request_obj, MockPydanticModel)
             self.assertEqual(len(request_obj.tools), 1)
@@ -101,7 +105,7 @@ class TestResponseAdapter(unittest.TestCase):
 
     def test_request_to_openai_format(self):
         # Assume Request object has an 'as_openai_chat_request' method
-        mock_request_obj = MockPydanticModel(input=[{"role":"user", "content":"Test"}], model="gpt-3.5", tools=[])
+        mock_request_obj = MockPydanticModel(input=[{"role": "user", "content": "Test"}], model="gpt-3.5", tools=[])
 
         openai_dict = ResponseAdapter.request_to_openai_format(mock_request_obj)
         self.assertIn("messages", openai_dict)
@@ -117,32 +121,32 @@ class TestStreamEventAdapter(unittest.TestCase):
         self.assertIsInstance(parsed_event, MockPydanticModel)
         self.assertEqual(parsed_event.id, "evt_1")
         # Check if it was instantiated with the correct class (mocked)
-        self.assertTrue(hasattr(parsed_event, 'type') and parsed_event.type == "response.created")
-
+        self.assertTrue(hasattr(parsed_event, "type") and parsed_event.type == "response.created")
 
     @patch("forge_cli.response._types.ResponseTextDeltaEvent", new=MockPydanticModel)
     def test_parse_event_text_delta(self):
         event_data = {"type": "response.output_text.delta", "delta": {"text": "hello"}}
         parsed_event = StreamEventAdapter.parse_event(event_data)
         self.assertIsInstance(parsed_event, MockPydanticModel)
-        self.assertTrue(hasattr(parsed_event, 'delta'))
+        self.assertTrue(hasattr(parsed_event, "delta"))
         self.assertEqual(parsed_event.delta["text"], "hello")
 
     # Test fallback to generic ResponseStreamEvent
-    @patch("forge_cli.response.adapters.ResponseStreamEvent", new=MockPydanticModel) # Patch generic
+    @patch("forge_cli.response.adapters.ResponseStreamEvent", new=MockPydanticModel)  # Patch generic
     def test_parse_event_unknown_type(self):
         event_data = {"type": "unknown.event", "custom_field": "value"}
         # We need to ensure _types does not have 'UnknownEvent' to test fallback
         with patch("forge_cli.response.adapters.getattr") as mock_getattr:
             # Make getattr raise AttributeError for "UnknownEvent" to simulate it not being in _types
             def side_effect(module, name):
-                if name == "UnknownEvent": # Assuming event_map would generate this
+                if name == "UnknownEvent":  # Assuming event_map would generate this
                     raise AttributeError
-                return MagicMock() # Return a mock for other getattr calls if any
+                return MagicMock()  # Return a mock for other getattr calls if any
+
             mock_getattr.side_effect = side_effect
 
             parsed_event = StreamEventAdapter.parse_event(event_data)
-            self.assertIsInstance(parsed_event, MockPydanticModel) # Falls back to generic ResponseStreamEvent
+            self.assertIsInstance(parsed_event, MockPydanticModel)  # Falls back to generic ResponseStreamEvent
             self.assertEqual(parsed_event.custom_field, "value")
 
 
@@ -158,11 +162,10 @@ class TestToolAdapter(unittest.TestCase):
         self.assertEqual(tool_obj.file_search.vector_store_ids, vector_store_ids)
         self.assertEqual(tool_obj.file_search.max_search_results, 5)
 
-
     def test_create_web_search_tool(self):
         # Similar to above, assuming WebSearchTool can be instantiated
         tool_obj = ToolAdapter.create_web_search_tool()
-        self.assertIsInstance(tool_obj, ActualWebSearchTool) # Actual type
+        self.assertIsInstance(tool_obj, ActualWebSearchTool)  # Actual type
         # WebSearchTool might be an empty model, or have default fields.
         # For example, if it's `class WebSearchTool(BaseModel): type: str = "web_search"`,
         # then this test is fine. If it's just `class WebSearchTool(Tool): pass` then also fine.
@@ -173,7 +176,7 @@ class TestToolAdapter(unittest.TestCase):
         # Test should reflect current implementation.
         tools_list = [
             ActualFileSearchTool(file_search={"vector_store_ids": ["vs_1"], "max_search_results": 1}),
-            ActualWebSearchTool()
+            ActualWebSearchTool(),
         ]
         # If tools are Pydantic models, they might need to be dicts for OpenAI
         # However, the current implementation of tools_to_openai_format is `return tools`

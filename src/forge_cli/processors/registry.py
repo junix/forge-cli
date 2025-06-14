@@ -1,6 +1,5 @@
 """Central registry for output processors."""
 
-
 from .base import OutputProcessor
 
 

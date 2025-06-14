@@ -52,17 +52,17 @@ class ComputerTool(BaseModel):
             COMPUTER_USE: Control computer interface actions
             >>> print(tool.description(with_arguments=True))
             COMPUTER_USE: Control computer interface actions
-            
+
             Arguments:
             <action>click/type/screenshot</action>
             <coordinate>x,y</coordinate>
             <text>text to type</text>
         """
         base_description = "COMPUTER_USE: Control computer interface actions"
-        
+
         if not with_arguments:
             return base_description
-            
+
         return f"""{base_description}
 
 Arguments:

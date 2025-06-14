@@ -66,47 +66,43 @@ class AnnotationFileCitation(BaseModel):
         # Use filename if available, otherwise fall back to file_id
         display_name = self.filename if self.filename else self.file_id
         return f"{display_name}, P{self.index}"
-    
+
     def __eq__(self, other) -> bool:
         """Compare AnnotationFileCitation for equality.
-        
+
         Two file citations are equal if they reference the same file and index.
-        Snippet and filename are not considered for equality to allow for 
+        Snippet and filename are not considered for equality to allow for
         different representations of the same citation.
-        
+
         Args:
             other: Another object to compare with
-            
+
         Returns:
             True if both citations reference the same file and index
         """
         if not isinstance(other, AnnotationFileCitation):
             return False
-        return (
-            self.file_id == other.file_id and 
-            self.index == other.index and
-            self.type == other.type
-        )
-    
+        return self.file_id == other.file_id and self.index == other.index and self.type == other.type
+
     def __ne__(self, other) -> bool:
         """Compare AnnotationFileCitation for inequality."""
         return not self.__eq__(other)
-    
+
     def __hash__(self) -> int:
         """Make AnnotationFileCitation hashable for use in sets and dicts.
-        
+
         Uses the same fields as __eq__ to ensure hash consistency.
         """
         return hash((self.file_id, self.index, self.type))
 
     def as_message_annotation(self) -> "MessageAnnotationFileCitation":
         """Convert to message annotation type.
-        
+
         Returns:
             MessageAnnotationFileCitation: Message annotation for use in ChatMessage objects.
         """
         from message._types.annotations import MessageAnnotationFileCitation
-        
+
         return MessageAnnotationFileCitation(
             file_id=self.file_id,
             index=self.index,
@@ -179,47 +175,44 @@ class AnnotationURLCitation(BaseModel):
             return f"[{self.title}]({domain})"
         else:
             return f"[{domain}]({domain})"
-    
+
     def __eq__(self, other) -> bool:
         """Compare AnnotationURLCitation for equality.
-        
+
         Two URL citations are equal if they reference the same URL.
         Title, snippet, and index positions are not considered for equality
-        since the same URL might appear at different positions or with 
+        since the same URL might appear at different positions or with
         different titles/snippets.
-        
+
         Args:
             other: Another object to compare with
-            
+
         Returns:
             True if both citations reference the same URL
         """
         if not isinstance(other, AnnotationURLCitation):
             return False
-        return (
-            self.url == other.url and
-            self.type == other.type
-        )
-    
+        return self.url == other.url and self.type == other.type
+
     def __ne__(self, other) -> bool:
         """Compare AnnotationURLCitation for inequality."""
         return not self.__eq__(other)
-    
+
     def __hash__(self) -> int:
         """Make AnnotationURLCitation hashable for use in sets and dicts.
-        
+
         Uses the same fields as __eq__ to ensure hash consistency.
         """
         return hash((self.url, self.type))
 
     def as_message_annotation(self) -> "MessageAnnotationURLCitation":
         """Convert to message annotation type.
-        
+
         Returns:
             MessageAnnotationURLCitation: Message annotation for use in ChatMessage objects.
         """
         from message._types.annotations import MessageAnnotationURLCitation
-        
+
         return MessageAnnotationURLCitation(
             end_index=self.end_index,
             start_index=self.start_index,
@@ -240,45 +233,41 @@ class AnnotationFilePath(BaseModel):
 
     type: Literal["file_path"]
     """The type of the file path. Always `file_path`."""
-    
+
     def __eq__(self, other) -> bool:
         """Compare AnnotationFilePath for equality.
-        
+
         Two file path annotations are equal if they reference the same file and index.
-        
+
         Args:
             other: Another object to compare with
-            
+
         Returns:
             True if both annotations reference the same file and index
         """
         if not isinstance(other, AnnotationFilePath):
             return False
-        return (
-            self.file_id == other.file_id and 
-            self.index == other.index and
-            self.type == other.type
-        )
-    
+        return self.file_id == other.file_id and self.index == other.index and self.type == other.type
+
     def __ne__(self, other) -> bool:
         """Compare AnnotationFilePath for inequality."""
         return not self.__eq__(other)
-    
+
     def __hash__(self) -> int:
         """Make AnnotationFilePath hashable for use in sets and dicts.
-        
+
         Uses the same fields as __eq__ to ensure hash consistency.
         """
         return hash((self.file_id, self.index, self.type))
 
     def as_message_annotation(self) -> "MessageAnnotationFilePath":
         """Convert to message annotation type.
-        
+
         Returns:
             MessageAnnotationFilePath: Message annotation for use in ChatMessage objects.
         """
         from message._types.annotations import MessageAnnotationFilePath
-        
+
         return MessageAnnotationFilePath(
             file_id=self.file_id,
             index=self.index,

@@ -384,11 +384,11 @@ class Response(BaseModel):
         from .response_file_search_tool_call import ResponseFileSearchToolCall
         from .response_function_web_search import ResponseFunctionWebSearch
         from .response_function_file_reader import ResponseFunctionFileReader
-        
+
         for output_item in self.output:
             if not isinstance(output_item, rag_tool_types):
                 continue
-            
+
             # Only process completed or failed tool calls
             if output_item.status not in ["completed", "failed"]:
                 continue
@@ -447,11 +447,11 @@ class Response(BaseModel):
         from .response_file_search_tool_call import ResponseFileSearchToolCall
         from .response_function_web_search import ResponseFunctionWebSearch
         from .response_function_file_reader import ResponseFunctionFileReader
-        
+
         for output_item in self.output:
             if not isinstance(output_item, rag_tool_types):
                 continue
-            
+
             # Only process completed or failed tool calls
             if output_item.status not in ["completed", "failed"]:
                 continue
@@ -476,19 +476,19 @@ class Response(BaseModel):
 
     def compact_retrieve_chunks(self, mode: Literal["all", "deduplicate", "nonrefed"]) -> "Response":
         """压缩检索工具返回的片段以减少上下文占用
-        
+
         当存在多个工具调用（文件搜索、网络搜索、文件阅读）返回大量片段时，
         这些片段会占用大量模型上下文空间。此方法提供三种策略来缩减片段大小：
-        
+
         Args:
             mode: 压缩模式
                 - "all": 压缩所有片段内容，将内容替换为缩减说明并标记为不可引用
                 - "deduplicate": 去除重复片段，基于文件ID+索引或URL判断重复，保留最后出现的
                 - "nonrefed": 删除未被最终答案引用的片段，基于citation_id判断引用状态
-        
+
         Returns:
             新的Response对象，包含压缩后的工具调用结果
-            
+
         Example:
             >>> response = some_response_with_tool_calls()
             >>> compact_response = response.compact_retrieve_chunks("deduplicate")
@@ -496,59 +496,57 @@ class Response(BaseModel):
         """
         import re
         from typing import Dict, Set, Tuple, Any
-        
+
         # Create a copy of the response to avoid modifying the original
         compacted_response = self.model_copy(deep=True)
-        
+
         # Import tool call types
         from .response_file_search_tool_call import ResponseFileSearchToolCall
-        from .response_function_web_search import ResponseFunctionWebSearch  
+        from .response_function_web_search import ResponseFunctionWebSearch
         from .response_function_file_reader import ResponseFunctionFileReader
-        
+
         # Define RAG tool types that contain retrievable chunks
         rag_tool_types = (
             ResponseFileSearchToolCall,
             ResponseFunctionWebSearch,
             ResponseFunctionFileReader,
         )
-        
+
         if mode == "all":
             # 模式1: 压缩所有片段内容
             compacted_response = compacted_response._compact_all_chunks(rag_tool_types)
-            
+
         elif mode == "deduplicate":
             # 模式2: 去除重复片段
             compacted_response = compacted_response._deduplicate_chunks(rag_tool_types)
-            
+
         elif mode == "nonrefed":
             # 模式3: 删除未被引用的片段
             compacted_response = compacted_response._remove_unreferenced_chunks(rag_tool_types)
-            
+
         else:
             raise ValueError(f"Unsupported compaction mode: {mode}. Supported modes: 'all', 'deduplicate', 'nonrefed'")
-        
+
         logger.bind(
-            mode=mode,
-            original_output_count=len(self.output),
-            compacted_output_count=len(compacted_response.output)
+            mode=mode, original_output_count=len(self.output), compacted_output_count=len(compacted_response.output)
         ).info("Completed chunk compaction")
-        
+
         return compacted_response
-    
+
     def _compact_all_chunks(self, rag_tool_types) -> "Response":
         """压缩所有检索片段的内容"""
         from typing import cast
         from .response_file_search_tool_call import ResponseFileSearchToolCall
         from .response_function_web_search import ResponseFunctionWebSearch
         from .response_function_file_reader import ResponseFunctionFileReader
-        
+
         for output_item in self.output:
             if not isinstance(output_item, rag_tool_types):
                 continue
 
             if output_item.status not in ["completed", "failed"]:
                 continue
-                
+
             if output_item.type == "file_search_call":
                 file_search_call = cast(ResponseFileSearchToolCall, output_item)
                 if file_search_call.results:
@@ -560,7 +558,7 @@ class Response(BaseModel):
                             result.attributes["segment_type"] = "compressed"
                         else:
                             result.attributes = {"segment_type": "compressed"}
-                            
+
             elif output_item.type == "web_search_call":
                 web_search_call = cast(ResponseFunctionWebSearch, output_item)
                 if web_search_call.results:
@@ -572,7 +570,7 @@ class Response(BaseModel):
                             result.metadata["segment_type"] = "compressed"
                         else:
                             result.metadata = {"segment_type": "compressed"}
-                            
+
             elif output_item.type == "file_reader_call":
                 file_reader_call = cast(ResponseFunctionFileReader, output_item)
                 if file_reader_call.results:
@@ -584,16 +582,16 @@ class Response(BaseModel):
                             result.metadata["segment_type"] = "compressed"
                         else:
                             result.metadata = {"segment_type": "compressed"}
-                                
+
         return self
-    
+
     def _deduplicate_chunks(self, rag_tool_types) -> "Response":
         """去除重复片段，保留最先出现的
-        
+
         使用as_annotation()方法基于文档位置进行去重，而非显示citation_id。
         - 文件内容：使用file_id + segment_index (文档位置)
         - 网页内容：使用URL
-        
+
         通过正向迭代确保保留最先出现的重复项，删除后续重复，
         这样可以避免回复引用"未来"片段的时间逻辑问题。
         """
@@ -601,16 +599,16 @@ class Response(BaseModel):
         from .response_file_search_tool_call import ResponseFileSearchToolCall
         from .response_function_web_search import ResponseFunctionWebSearch
         from .response_function_file_reader import ResponseFunctionFileReader
-        
+
         seen_annotations = set()
-        
+
         # 正向迭代所有工具调用以保留最先出现的重复项
         for output_item in self.output:
             if not isinstance(output_item, rag_tool_types):
                 continue
             if output_item.status not in ["completed", "failed"]:
                 continue
-                
+
             if output_item.type == "file_search_call":
                 file_search_call = cast(ResponseFileSearchToolCall, output_item)
                 if file_search_call.results:
@@ -618,7 +616,7 @@ class Response(BaseModel):
                     # 正向处理结果列表，保留最先出现的
                     for result in file_search_call.results:
                         should_keep = True
-                        
+
                         # 检查是否可引用并获取annotation进行去重
                         if result.is_citable():
                             # Use as_annotation() which uses document segment index for proper deduplication
@@ -627,13 +625,13 @@ class Response(BaseModel):
                                 should_keep = False  # 重复，跳过
                             elif annotation:
                                 seen_annotations.add(annotation)
-                        
+
                         if should_keep:
                             kept_results.append(result)
-                    
+
                     # 直接更新结果，保持原有顺序
                     file_search_call.results = kept_results
-                    
+
             elif output_item.type == "web_search_call":
                 web_search_call = cast(ResponseFunctionWebSearch, output_item)
                 if web_search_call.results:
@@ -641,7 +639,7 @@ class Response(BaseModel):
                     # 正向处理结果列表，保留最先出现的
                     for result in web_search_call.results:
                         should_keep = True
-                        
+
                         # 检查是否可引用并获取annotation进行去重
                         if result.is_citable():
                             # Use as_annotation() which uses document segment index for proper deduplication
@@ -650,13 +648,13 @@ class Response(BaseModel):
                                 should_keep = False  # 重复，跳过
                             elif annotation:
                                 seen_annotations.add(annotation)
-                        
+
                         if should_keep:
                             kept_results.append(result)
-                    
+
                     # 直接更新结果，保持原有顺序
                     web_search_call._results = kept_results
-                    
+
             elif output_item.type == "file_reader_call":
                 file_reader_call = cast(ResponseFunctionFileReader, output_item)
                 if file_reader_call.results:
@@ -664,7 +662,7 @@ class Response(BaseModel):
                     # 正向处理结果列表，保留最先出现的
                     for result in file_reader_call.results:
                         should_keep = True
-                        
+
                         # 检查是否可引用并获取annotation进行去重
                         if result.is_citable():
                             # Use as_annotation() which uses document segment index for proper deduplication
@@ -673,22 +671,22 @@ class Response(BaseModel):
                                 should_keep = False  # 重复，跳过
                             elif annotation:
                                 seen_annotations.add(annotation)
-                        
+
                         if should_keep:
                             kept_results.append(result)
-                    
+
                     # 直接更新结果，保持原有顺序
                     file_reader_call._results = kept_results
-                        
-        logger.bind(
-            total_seen_annotations=len(seen_annotations)
-        ).info("Completed chunk deduplication using annotation equality")
-        
+
+        logger.bind(total_seen_annotations=len(seen_annotations)).info(
+            "Completed chunk deduplication using annotation equality"
+        )
+
         return self
-    
+
     def _remove_unreferenced_chunks(self, rag_tool_types) -> "Response":
         """删除未被最终答案引用的片段
-        
+
         使用get_refed_citations()获取实际被引用的citation对象，
         然后通过annotation对象的相等性比较来判断哪些结果应该保留。
         这比手动解析file_id/URL更可靠，且与去重逻辑保持一致。
@@ -697,36 +695,36 @@ class Response(BaseModel):
         from .response_file_search_tool_call import ResponseFileSearchToolCall
         from .response_function_web_search import ResponseFunctionWebSearch
         from .response_function_file_reader import ResponseFunctionFileReader
-        
+
         # 获取所有实际被引用的citation annotations
         referenced_citations = self.get_cited_annotations()
         referenced_annotations_set = set(referenced_citations)
-        
+
         logger.bind(
             total_referenced=len(referenced_citations),
             file_citations=len([a for a in referenced_citations if a.type == "file_citation"]),
             url_citations=len([a for a in referenced_citations if a.type == "url_citation"]),
-            file_paths=len([a for a in referenced_citations if a.type == "file_path"])
+            file_paths=len([a for a in referenced_citations if a.type == "file_path"]),
         ).info("Collected referenced citations for unreferenced chunk removal")
-        
+
         # 删除未被引用的结果项
         removed_file_count = 0
         removed_web_count = 0
         removed_chunk_count = 0
-        
+
         for output_item in self.output:
             if not isinstance(output_item, rag_tool_types):
                 continue
             if output_item.status not in ["completed", "failed"]:
                 continue
-                
+
             if output_item.type == "file_search_call":
                 file_search_call = cast(ResponseFileSearchToolCall, output_item)
                 if file_search_call.results:
                     kept_results = []
                     for result in file_search_call.results:
                         should_keep = True
-                        
+
                         # 检查结果是否可引用，如果可引用则检查是否被实际引用
                         if result.is_citable():
                             # Use as_annotation() which uses document segment index for proper comparison
@@ -735,18 +733,18 @@ class Response(BaseModel):
                                 should_keep = False  # 可引用但未被引用，删除
                                 removed_file_count += 1
                         # 不可引用的结果（如navigate类型）总是保留
-                        
+
                         if should_keep:
                             kept_results.append(result)
                     file_search_call.results = kept_results
-                    
+
             elif output_item.type == "web_search_call":
                 web_search_call = cast(ResponseFunctionWebSearch, output_item)
                 if web_search_call.results:
                     kept_results = []
                     for result in web_search_call.results:
                         should_keep = True
-                        
+
                         # 检查结果是否可引用，如果可引用则检查是否被实际引用
                         if result.is_citable():
                             # Use as_annotation() which uses document segment index for proper comparison
@@ -755,18 +753,18 @@ class Response(BaseModel):
                                 should_keep = False  # 可引用但未被引用，删除
                                 removed_web_count += 1
                         # 不可引用的结果总是保留
-                        
+
                         if should_keep:
                             kept_results.append(result)
                     web_search_call._results = kept_results
-                    
+
             elif output_item.type == "file_reader_call":
                 file_reader_call = cast(ResponseFunctionFileReader, output_item)
                 if file_reader_call.results:
                     kept_results = []
                     for result in file_reader_call.results:
                         should_keep = True
-                        
+
                         # 检查结果是否可引用，如果可引用则检查是否被实际引用
                         if result.is_citable():
                             # Use as_annotation() which uses document segment index for proper comparison
@@ -775,39 +773,41 @@ class Response(BaseModel):
                                 should_keep = False  # 可引用但未被引用，删除
                                 removed_chunk_count += 1
                         # 不可引用的结果（如navigate类型）总是保留
-                        
+
                         if should_keep:
                             kept_results.append(result)
-                    
+
                     # 直接更新结果
                     file_reader_call._results = kept_results
-        
+
         logger.bind(
             removed_file_results=removed_file_count,
-            removed_web_results=removed_web_count, 
+            removed_web_results=removed_web_count,
             removed_chunks=removed_chunk_count,
-            total_removed=removed_file_count + removed_web_count + removed_chunk_count
+            total_removed=removed_file_count + removed_web_count + removed_chunk_count,
         ).info("Completed unreferenced chunk removal using annotation equality")
-        
+
         return self
 
-    def get_cited_annotations(self) -> List[Union["AnnotationFileCitation", "AnnotationURLCitation", "AnnotationFilePath"]]:
+    def get_cited_annotations(
+        self,
+    ) -> List[Union["AnnotationFileCitation", "AnnotationURLCitation", "AnnotationFilePath"]]:
         """获取Response中实际被引用的citations
-        
+
         从Response的annotations字段中收集所有实际被最终答案使用的引用信息。
         这些是真正出现在输出文本中的引用，代表被成功使用的数据源。
-        
+
         Returns:
-            List[Union[AnnotationFileCitation, AnnotationURLCitation, AnnotationFilePath]]: 
+            List[Union[AnnotationFileCitation, AnnotationURLCitation, AnnotationFilePath]]:
             实际被引用的citation列表
-            
+
         Example:
             >>> response = some_response_with_citations()
             >>> actual_refs = response.get_refed_citations()
             >>> print(f"实际使用了 {len(actual_refs)} 个引用")
         """
         referenced_citations = []
-        
+
         # 扫描所有输出项中的annotations
         for output_item in self.output:
             if output_item.type != "message":
@@ -820,27 +820,27 @@ class Response(BaseModel):
                     # 收集所有类型的citation annotations
                     if annotation.type in ["file_citation", "url_citation", "file_path"]:
                         referenced_citations.append(annotation)
-        
+
         logger.bind(
             total_referenced=len(referenced_citations),
             file_citations=len([a for a in referenced_citations if a.type == "file_citation"]),
             url_citations=len([a for a in referenced_citations if a.type == "url_citation"]),
-            file_paths=len([a for a in referenced_citations if a.type == "file_path"])
+            file_paths=len([a for a in referenced_citations if a.type == "file_path"]),
         ).info("Collected actually referenced citations from Response annotations")
-        
+
         return referenced_citations
-    
+
     def get_candidate_annotations(self) -> List[Union["AnnotationFileCitation", "AnnotationURLCitation"]]:
         """获取所有检索到的、可引用片段的源位置注释
-        
+
         遍历所有工具调用结果，对每个citable的项目调用as_annotation()方法，
         收集所有可能被引用的数据源的文档位置信息。这些基于文档段索引的注释，
         代表检索阶段获得的候选源位置，不依赖显示引用编号。
-        
+
         Returns:
-            List[Union[AnnotationFileCitation, AnnotationURLCitation]]: 
+            List[Union[AnnotationFileCitation, AnnotationURLCitation]]:
             所有候选源注释的列表，基于文档段索引而非显示引用ID
-            
+
         Example:
             >>> response = some_response_with_tool_results()
             >>> candidates = response.get_candidate_annotations()
@@ -849,28 +849,28 @@ class Response(BaseModel):
         from .response_file_search_tool_call import ResponseFileSearchToolCall
         from .response_function_web_search import ResponseFunctionWebSearch
         from .response_function_file_reader import ResponseFunctionFileReader
-        
+
         candidate_annotations = []
-        
+
         # Define RAG tool types that contain retrievable chunks
         rag_tool_types = (
             ResponseFileSearchToolCall,
             ResponseFunctionWebSearch,
             ResponseFunctionFileReader,
         )
-        
+
         from typing import cast
         from .response_file_search_tool_call import ResponseFileSearchToolCall
         from .response_function_web_search import ResponseFunctionWebSearch
         from .response_function_file_reader import ResponseFunctionFileReader
-        
+
         for output_item in self.output:
             if not isinstance(output_item, rag_tool_types):
                 continue
             # Only process completed or failed tool calls
             if output_item.status not in ["completed", "failed"]:
                 continue
-                
+
             if output_item.type == "file_search_call":
                 # 处理文件搜索结果
                 file_search_call = cast(ResponseFileSearchToolCall, output_item)
@@ -882,7 +882,7 @@ class Response(BaseModel):
                             annotation = result.as_annotation()
                             if annotation is not None:
                                 candidate_annotations.append(annotation)
-                                    
+
             elif output_item.type == "web_search_call":
                 # 处理网页搜索结果
                 web_search_call = cast(ResponseFunctionWebSearch, output_item)
@@ -894,7 +894,7 @@ class Response(BaseModel):
                             annotation = result.as_annotation()
                             if annotation is not None:
                                 candidate_annotations.append(annotation)
-                                    
+
             elif output_item.type == "file_reader_call":
                 # 处理文件阅读结果 (Chunk对象)
                 file_reader_call = cast(ResponseFunctionFileReader, output_item)
@@ -906,22 +906,22 @@ class Response(BaseModel):
                             annotation = result.as_annotation()
                             if annotation is not None:
                                 candidate_annotations.append(annotation)
-        
+
         logger.bind(
             total_candidates=len(candidate_annotations),
             file_annotations=len([a for a in candidate_annotations if a.type == "file_citation"]),
-            url_annotations=len([a for a in candidate_annotations if a.type == "url_citation"])
+            url_annotations=len([a for a in candidate_annotations if a.type == "url_citation"]),
         ).info("Collected candidate source annotations from tool results")
-        
+
         return candidate_annotations
-    
+
     def compact(self) -> Dict[str, Any]:
         """Remove duplicate results across all RAG tool calls.
-        
+
         This method creates a new Response with deduplicated results across
         file_search, web_search, and file_reader tool calls. It uses annotation
         objects for comparison to ensure consistent deduplication logic.
-        
+
         Returns:
             Dict containing compaction statistics and the compacted response:
             - response: The new Response object with deduplicated results
@@ -935,7 +935,7 @@ class Response(BaseModel):
             - total_results_after: Total results across all tools after
             - total_results_removed: Total duplicate results removed
             - unique_annotations_seen: Number of unique annotations processed
-        
+
         Example:
             >>> stats = response.compact()
             >>> new_response = stats["response"]
@@ -946,17 +946,17 @@ class Response(BaseModel):
         from .response_file_search_tool_call import ResponseFileSearchToolCall
         from .response_function_web_search import ResponseFunctionWebSearch
         from .response_function_file_reader import ResponseFunctionFileReader
-        
+
         # Create a deep copy to avoid modifying the original
         compacted_response = self.model_copy(deep=True)
-        
+
         # Define RAG tool types
         rag_tool_types = (
             ResponseFileSearchToolCall,
             ResponseFunctionWebSearch,
             ResponseFunctionFileReader,
         )
-        
+
         # Statistics
         stats = {
             "total_tool_calls_before": 0,
@@ -965,18 +965,18 @@ class Response(BaseModel):
             "results_by_type": {
                 "file_search": {"before": 0, "after": 0, "removed": 0},
                 "web_search": {"before": 0, "after": 0, "removed": 0},
-                "file_reader": {"before": 0, "after": 0, "removed": 0}
+                "file_reader": {"before": 0, "after": 0, "removed": 0},
             },
             "removed_tool_call_ids": [],
-            "kept_tool_call_ids": []
+            "kept_tool_call_ids": [],
         }
-        
+
         # Track seen annotations across all tool calls
         seen_annotations = set()
-        
+
         # New output list
         new_output = []
-        
+
         # Process each output item
         for output_item in compacted_response.output:
             # Check if this is a RAG tool type
@@ -984,21 +984,21 @@ class Response(BaseModel):
                 # Skip if not completed
                 if output_item.status not in ["completed", "failed"]:
                     new_output.append(output_item)
-                    if hasattr(output_item, 'id'):
+                    if hasattr(output_item, "id"):
                         stats["kept_tool_call_ids"].append(output_item.id)
                     continue
-                
+
                 stats["total_tool_calls_before"] += 1
                 kept_results = []
                 tool_type = None
-                
+
                 if output_item.type == "file_search_call":
                     tool_type = "file_search"
                     file_search_call = cast(ResponseFileSearchToolCall, output_item)
-                    
+
                     if file_search_call.results:
                         stats["results_by_type"][tool_type]["before"] += len(file_search_call.results)
-                        
+
                         for result in file_search_call.results:
                             # Only deduplicate citable results
                             if result.is_citable():
@@ -1011,7 +1011,7 @@ class Response(BaseModel):
                             else:
                                 # Keep non-citable results (navigate type)
                                 kept_results.append(result)
-                        
+
                         if kept_results:
                             file_search_call.results = kept_results
                             new_output.append(file_search_call)
@@ -1021,14 +1021,14 @@ class Response(BaseModel):
                         else:
                             stats["removed_tool_calls"] += 1
                             stats["removed_tool_call_ids"].append(file_search_call.id)
-                            
+
                 elif output_item.type == "web_search_call":
                     tool_type = "web_search"
                     web_search_call = cast(ResponseFunctionWebSearch, output_item)
-                    
+
                     if web_search_call.results:
                         stats["results_by_type"][tool_type]["before"] += len(web_search_call.results)
-                        
+
                         for result in web_search_call.results:
                             if result.is_citable():
                                 annotation = result.as_annotation()
@@ -1039,7 +1039,7 @@ class Response(BaseModel):
                                     stats["results_by_type"][tool_type]["removed"] += 1
                             else:
                                 kept_results.append(result)
-                        
+
                         if kept_results:
                             # Clear existing results and add kept results
                             web_search_call._results = kept_results
@@ -1050,14 +1050,14 @@ class Response(BaseModel):
                         else:
                             stats["removed_tool_calls"] += 1
                             stats["removed_tool_call_ids"].append(web_search_call.id)
-                            
+
                 elif output_item.type == "file_reader_call":
                     tool_type = "file_reader"
                     file_reader_call = cast(ResponseFunctionFileReader, output_item)
-                    
+
                     if file_reader_call.results:
                         stats["results_by_type"][tool_type]["before"] += len(file_reader_call.results)
-                        
+
                         for result in file_reader_call.results:
                             if result.is_citable():
                                 annotation = result.as_annotation()
@@ -1068,7 +1068,7 @@ class Response(BaseModel):
                                     stats["results_by_type"][tool_type]["removed"] += 1
                             else:
                                 kept_results.append(result)
-                        
+
                         if kept_results:
                             file_reader_call._results = kept_results
                             new_output.append(file_reader_call)
@@ -1081,34 +1081,34 @@ class Response(BaseModel):
             else:
                 # Keep non-RAG tool calls as-is
                 new_output.append(output_item)
-        
+
         # Update the response with new output
         compacted_response.output = new_output
-        
+
         # Calculate totals
         stats["total_results_before"] = sum(t["before"] for t in stats["results_by_type"].values())
         stats["total_results_after"] = sum(t["after"] for t in stats["results_by_type"].values())
         stats["total_results_removed"] = sum(t["removed"] for t in stats["results_by_type"].values())
         stats["unique_annotations_seen"] = len(seen_annotations)
-        
+
         # Add response to stats
         stats["response"] = compacted_response
-        
+
         # Log summary
         logger.bind(
             total_removed=stats["total_results_removed"],
             removed_tool_calls=stats["removed_tool_calls"],
-            unique_annotations=stats["unique_annotations_seen"]
+            unique_annotations=stats["unique_annotations_seen"],
         ).info("Completed response compaction with cross-tool deduplication")
-        
+
         return stats
-    
+
     def deduplicate(self) -> "Response":
         """Create a deduplicated copy of this response.
-        
+
         Convenience method that returns just the deduplicated response
         without the statistics.
-        
+
         Returns:
             Response: New response with deduplicated results
         """
@@ -1116,7 +1116,7 @@ class Response(BaseModel):
 
     def has_duplicates(self) -> bool:
         """Check if this response contains duplicate results.
-        
+
         Returns:
             bool: True if duplicates exist, False otherwise
         """
@@ -1125,7 +1125,7 @@ class Response(BaseModel):
 
     def get_duplication_stats(self) -> Dict[str, Any]:
         """Get duplication statistics without creating a new response.
-        
+
         Returns:
             Dict: Statistics about duplicates without the response object
         """
@@ -1135,30 +1135,30 @@ class Response(BaseModel):
 
     def brief_repr(self, algorithm: Literal["truncate", "smart", "hierarchical"] = "smart") -> "Response":
         """Create a brief representation of the response with shortened string values.
-        
+
         This method creates a clone of the response where long strings are abbreviated
         to reduce noise in logs and debugging output. Three algorithms are available:
-        
+
         1. "truncate": Simple string truncation showing start and end
            - Shows first 40 chars and last 30 chars of strings
            - Good for general purpose logging
-           
+
         2. "smart": Context-aware truncation preserving key information
            - Preserves complete short strings
            - Shows more context for important fields (text, content, results)
            - Summarizes tool results and chunks intelligently
-           
+
         3. "hierarchical": Structured view with smart summaries
            - Shows response structure with counts
            - Summarizes tool calls and results
            - Best for understanding response flow
-        
+
         Args:
             algorithm: The algorithm to use for brevity ("truncate", "smart", "hierarchical")
-            
+
         Returns:
             New Response with abbreviated content
-            
+
         Example:
             >>> brief = response.brief_repr("smart")
             >>> print(brief.model_dump_json(indent=2))  # Readable JSON
@@ -1171,9 +1171,10 @@ class Response(BaseModel):
             return self._brief_repr_hierarchical()
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
-    
+
     def _brief_repr_truncate(self) -> "Response":
         """Simple truncation algorithm: show start and end of strings."""
+
         def truncate_value(value: Any, start_len: int = 40, end_len: int = 30) -> Any:
             if isinstance(value, str) and len(value) > start_len + end_len + 10:
                 return f"{value[:start_len]} ... {value[-end_len:]}"
@@ -1190,29 +1191,29 @@ class Response(BaseModel):
                     return [truncate_value(item, start_len, end_len) for item in value]
             else:
                 return value
-        
+
         # Create a deep copy and truncate
         response_data = self.model_dump()
         truncated_data = truncate_value(response_data)
         return Response.model_validate(truncated_data)
-    
+
     def _brief_repr_smart(self) -> "Response":
         """Smart context-aware truncation preserving important information."""
         from .response_file_search_tool_call import ResponseFileSearchToolCall
         from .response_function_web_search import ResponseFunctionWebSearch
         from .response_function_file_reader import ResponseFunctionFileReader
-        
+
         def smart_truncate(value: Any, context: str = "", depth: int = 0) -> Any:
             # Don't truncate short strings
             if isinstance(value, str):
                 if len(value) <= 100:
                     return value
-                
+
                 # Different truncation rules based on context
                 if context in ["text", "content", "snippet", "output_text"]:
                     # More generous for main content
                     if len(value) > 200:
-                        return f"{value[:100]} ... [{len(value)-130} chars] ... {value[-30:]}"
+                        return f"{value[:100]} ... [{len(value) - 130} chars] ... {value[-30:]}"
                     return value
                 elif context in ["arguments", "query", "instructions"]:
                     # Show more of arguments/queries for debugging
@@ -1229,7 +1230,7 @@ class Response(BaseModel):
                     if len(value) > 80:
                         return f"{value[:40]} ... {value[-30:]}"
                     return value
-                    
+
             elif isinstance(value, dict):
                 result = {}
                 for k, v in value.items():
@@ -1238,41 +1239,41 @@ class Response(BaseModel):
                         # Summarize long result lists
                         result[k] = [
                             smart_truncate(v[0], k, depth + 1),
-                            f"... {len(v)-2} more results ...",
-                            smart_truncate(v[-1], k, depth + 1)
+                            f"... {len(v) - 2} more results ...",
+                            smart_truncate(v[-1], k, depth + 1),
                         ]
                     elif k == "output" and isinstance(v, list) and len(v) > 5:
                         # Summarize output items
                         result[k] = [
                             smart_truncate(v[0], k, depth + 1),
                             smart_truncate(v[1], k, depth + 1) if len(v) > 1 else None,
-                            f"... {len(v)-3} more items ...",
-                            smart_truncate(v[-1], k, depth + 1)
+                            f"... {len(v) - 3} more items ...",
+                            smart_truncate(v[-1], k, depth + 1),
                         ]
                         result[k] = [item for item in result[k] if item is not None]
                     else:
                         result[k] = smart_truncate(v, k, depth + 1)
                 return result
-                
+
             elif isinstance(value, list):
                 if len(value) > 10 and depth > 1:
                     # Collapse long lists at deeper levels
                     return [
                         smart_truncate(value[0], context, depth + 1),
-                        f"... {len(value)-2} more items ...",
-                        smart_truncate(value[-1], context, depth + 1)
+                        f"... {len(value) - 2} more items ...",
+                        smart_truncate(value[-1], context, depth + 1),
                     ]
                 else:
                     return [smart_truncate(item, context, depth + 1) for item in value]
-                    
+
             else:
                 return value
-        
+
         # Process with smart truncation
         response_data = self.model_dump()
         smart_data = smart_truncate(response_data)
         return Response.model_validate(smart_data)
-    
+
     def _brief_repr_hierarchical(self) -> "Response":
         """Hierarchical view with structured summaries."""
         from .response_output_message import ResponseOutputMessage
@@ -1283,7 +1284,7 @@ class Response(BaseModel):
         from .response_document_finder_tool_call import ResponseDocumentFinderToolCall
         from .response_computer_tool_call import ResponseComputerToolCall
         from .response_code_interpreter_tool_call import ResponseCodeInterpreterToolCall
-        
+
         # Create a simplified copy
         brief_data = {
             "id": self.id[:8] + "..." if len(self.id) > 12 else self.id,
@@ -1292,98 +1293,98 @@ class Response(BaseModel):
             "object": self.object,
             "status": self.status,
         }
-        
+
         # Add error if present
         if self.error:
             brief_data["error"] = {
                 "type": self.error.type,
-                "message": self.error.message[:100] + "..." if len(self.error.message) > 100 else self.error.message
+                "message": self.error.message[:100] + "..." if len(self.error.message) > 100 else self.error.message,
             }
-        
+
         # Summarize output items
         brief_output = []
         message_count = 0
         tool_call_counts = {}
-        
+
         for item in self.output:
             if item.type == "message":
                 message_count += 1
                 # Summarize message content
                 content_summary = f"[{len(item.content)} content items]"
-                if hasattr(item, 'content') and item.content:
+                if hasattr(item, "content") and item.content:
                     # Count content types
                     content_types = {}
                     for content in item.content:
-                        ctype = getattr(content, 'type', 'unknown')
+                        ctype = getattr(content, "type", "unknown")
                         content_types[ctype] = content_types.get(ctype, 0) + 1
                     content_summary = f"[{', '.join(f'{count} {typ}' for typ, count in content_types.items())}]"
-                
-                brief_output.append({
-                    "type": "message",
-                    "role": item.role,
-                    "content": content_summary
-                })
-                
-            elif hasattr(item, 'type') and 'tool_call' in item.type or item.type == 'function_call':
+
+                brief_output.append({"type": "message", "role": item.role, "content": content_summary})
+
+            elif hasattr(item, "type") and "tool_call" in item.type or item.type == "function_call":
                 # Count tool calls by type
                 tool_type = item.type
                 tool_call_counts[tool_type] = tool_call_counts.get(tool_type, 0) + 1
-                
+
                 # Create a brief representation
                 brief_item = {
                     "type": tool_type,
-                    "id": item.id[:8] + "..." if hasattr(item, 'id') and len(item.id) > 12 else getattr(item, 'id', 'N/A'),
-                    "status": getattr(item, 'status', 'N/A')
+                    "id": item.id[:8] + "..."
+                    if hasattr(item, "id") and len(item.id) > 12
+                    else getattr(item, "id", "N/A"),
+                    "status": getattr(item, "status", "N/A"),
                 }
-                
+
                 # Add result count for specific tool types
-                if hasattr(item, 'results') and item.results:
+                if hasattr(item, "results") and item.results:
                     brief_item["results"] = f"[{len(item.results)} results]"
-                elif hasattr(item, 'name'):
+                elif hasattr(item, "name"):
                     brief_item["name"] = item.name
-                    
+
                 brief_output.append(brief_item)
-        
+
         # Create summary
         output_summary = []
         if message_count > 0:
             output_summary.append(f"{message_count} messages")
         for tool_type, count in tool_call_counts.items():
             output_summary.append(f"{count} {tool_type}")
-        
+
         brief_data["output"] = f"[{', '.join(output_summary)}]" if output_summary else "[]"
         brief_data["output_items"] = brief_output[:10]  # Show first 10 items
         if len(self.output) > 10:
             brief_data["output_items"].append(f"... {len(self.output) - 10} more items ...")
-        
+
         # Add key properties
         brief_data["output_text_length"] = len(self.output_text)
         brief_data["parallel_tool_calls"] = self.parallel_tool_calls
-        
+
         # Add tool info
         if self.tools:
             brief_data["tools"] = f"[{len(self.tools)} tools defined]"
-            tool_names = [tool.name if hasattr(tool, 'name') else tool.type for tool in self.tools[:3]]
+            tool_names = [tool.name if hasattr(tool, "name") else tool.type for tool in self.tools[:3]]
             if len(self.tools) > 3:
                 tool_names.append(f"... {len(self.tools) - 3} more")
             brief_data["tool_names"] = tool_names
-        
+
         # Add usage if present
         if self.usage:
             brief_data["usage"] = {
                 "total_tokens": self.usage.total_tokens,
                 "input_tokens": self.usage.input_tokens,
-                "output_tokens": self.usage.output_tokens
+                "output_tokens": self.usage.output_tokens,
             }
-        
+
         # Add other important fields if present
         if self.temperature is not None:
             brief_data["temperature"] = self.temperature
         if self.max_output_tokens is not None:
             brief_data["max_output_tokens"] = self.max_output_tokens
         if self.instructions:
-            brief_data["instructions"] = self.instructions[:100] + "..." if len(self.instructions) > 100 else self.instructions
-        
+            brief_data["instructions"] = (
+                self.instructions[:100] + "..." if len(self.instructions) > 100 else self.instructions
+            )
+
         # Create a new Response with simplified data
         # Since we've heavily modified the structure, we'll use model_validate with minimal required fields
         minimal_response = Response(
@@ -1394,12 +1395,12 @@ class Response(BaseModel):
             output=[],  # Empty output, we'll show summary separately
             parallel_tool_calls=self.parallel_tool_calls,
             tool_choice=self.tool_choice,
-            tools=self.tools[:3] if len(self.tools) > 3 else self.tools  # Limit tools shown
+            tools=self.tools[:3] if len(self.tools) > 3 else self.tools,  # Limit tools shown
         )
-        
+
         # Add a custom brief summary as metadata
         if not minimal_response.metadata:
             minimal_response.metadata = {}
         minimal_response.metadata["brief_summary"] = brief_data
-        
+
         return minimal_response
