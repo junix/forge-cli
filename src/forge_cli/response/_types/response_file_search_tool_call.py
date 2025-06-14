@@ -63,7 +63,7 @@ class ResponseFileSearchToolCallResult(BaseModel):
         Returns:
             bool: True if the result has a valid segment_index (integer >= 0), False otherwise.
         """
-        from constants.metadata_keys import SEGMENT_INDEX_KEY
+        from forge_cli.constants.metadata_keys import SEGMENT_INDEX_KEY
         
         # Must have attributes
         if not self.attributes:
@@ -100,7 +100,7 @@ class ResponseFileSearchToolCallResult(BaseModel):
         """
         # Import here to avoid circular imports
         from .annotations import AnnotationFileCitation
-        from constants.metadata_keys import SEGMENT_INDEX_KEY
+        from forge_cli.constants.metadata_keys import SEGMENT_INDEX_KEY
 
         # Validate required fields
         if not self.file_id or not self.text:
@@ -146,7 +146,7 @@ class ResponseFileSearchToolCallResult(BaseModel):
         Returns:
             Chunk: A Chunk object containing the search result content and metadata.
         """
-        from constants.metadata_keys import (
+        from forge_cli.constants.metadata_keys import (
             DOC_ID_KEY,
             DOC_TITLE_KEY,
             DOCUMENT_TITLE_KEY,

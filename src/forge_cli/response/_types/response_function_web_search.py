@@ -362,7 +362,7 @@ class ResponseFunctionWebSearch(BaseModel):
                                    or list of Chunk objects if successful
         """
         from forge_cli.common.logger import logger
-        from constants.metadata_keys import (
+        from forge_cli.constants.metadata_keys import (
             DOC_TITLE_KEY,
             DOC_URL_KEY,
             SCORE_KEY,

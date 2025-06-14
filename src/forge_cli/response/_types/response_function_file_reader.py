@@ -1,7 +1,7 @@
 import uuid
 from typing import Any, Literal
 
-from constants.metadata_keys import (
+from forge_cli.constants.metadata_keys import (
     DOC_ID_KEY,
     FILE_ID_KEY,
 )

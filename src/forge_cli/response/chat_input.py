@@ -1,6 +1,6 @@
 from typing import Any
 
-from common.logger import logger
+from forge_cli.common.logger import logger
 from openai.types.chat.chat_completion_assistant_message_param import ChatCompletionAssistantMessageParam
 from pydantic import ValidationError
 
