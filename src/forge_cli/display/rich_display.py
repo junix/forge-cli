@@ -73,15 +73,14 @@ class RichDisplay(BaseDisplay):
         if metadata:
             self.current_metadata = metadata
 
-        # Create subtitle with usage stats
-        subtitle = self._format_subtitle(metadata)
+        # Create status text for title
+        status_info = self._format_status_info(metadata)
 
         # Update panel
         try:
             panel = Panel(
                 Markdown(content),
-                title="Response",
-                subtitle=subtitle,
+                title=status_info,
                 border_style="green",
             )
             self.live.update(panel)
@@ -89,8 +88,7 @@ class RichDisplay(BaseDisplay):
             # Fallback to plain text if markdown fails
             panel = Panel(
                 Text(content),
-                title="Response",
-                subtitle=subtitle,
+                title=status_info,
                 border_style="green",
             )
             self.live.update(panel)
@@ -141,35 +139,35 @@ class RichDisplay(BaseDisplay):
 
             self.console.print(completion_text)
 
-    def _format_subtitle(self, metadata: Optional[Dict[str, Any]]) -> Text:
-        """Format subtitle with usage statistics."""
+    def _format_status_info(self, metadata: Optional[Dict[str, Any]]) -> Text:
+        """Format status information with usage statistics."""
         if not metadata:
             return Text("")
 
-        subtitle = Text()
+        status_info = Text()
 
         # Event count
         if "event_count" in metadata:
-            subtitle.append(f"{metadata['event_count']:05d}", style="cyan bold")
-            subtitle.append(" / ", style="white")
+            status_info.append(f"{metadata['event_count']:05d}", style="cyan bold")
+            status_info.append(" / ", style="white")
 
         # Event type
         if "event_type" in metadata:
-            subtitle.append(metadata["event_type"], style="green")
-            subtitle.append(" / ", style="white")
+            status_info.append(metadata["event_type"], style="green")
+            status_info.append(" / ", style="white")
 
         # Usage stats
         usage = metadata.get("usage", {})
         if usage:
-            subtitle.append("  ↑ ", style="blue")
-            subtitle.append(str(usage.get("input_tokens", 0)), style="blue bold")
-            subtitle.append("  ↓ ", style="magenta")
-            subtitle.append(str(usage.get("output_tokens", 0)), style="magenta bold")
-            subtitle.append("  ∑ ", style="yellow")
-            subtitle.append(str(usage.get("total_tokens", 0)), style="yellow bold")
+            status_info.append("  ↑ ", style="blue")
+            status_info.append(str(usage.get("input_tokens", 0)), style="blue bold")
+            status_info.append("  ↓ ", style="magenta")
+            status_info.append(str(usage.get("output_tokens", 0)), style="magenta bold")
+            status_info.append("  ∑ ", style="yellow")
+            status_info.append(str(usage.get("total_tokens", 0)), style="yellow bold")
 
-        subtitle.justify = "right"
-        return subtitle
+        # Left alignment (default)
+        return status_info
 
     # Chat mode specific methods
     async def show_welcome(self, config: Any) -> None:

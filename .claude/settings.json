@@ -1,0 +1,55 @@
+{
+  "env": {
+    "PYTHONPATH": "/Users/junix/knowledge-forge-office/knowledge_forge"
+  },
+  "project": {
+    "name": "Knowledge Forge",
+    "description": "A comprehensive knowledge management system with AI-powered capabilities",
+    "conventions": {
+      "adr": {
+        "location": "docs/adr/",
+        "template": "docs/adr/ADR-template.md",
+        "naming": "ADR-XXX-short-description.md",
+        "index": "docs/adr/README.md"
+      },
+      "documentation": {
+        "architecture": "docs/ARCHITECTURE.md",
+        "api": "docs/api/",
+        "guides": "docs/guides/"
+      }
+    }
+  },
+  "permissions": {
+    "allow": [
+      "Write",
+      "Read",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "NotebookRead",
+      "NotebookEdit",
+      "WebFetch",
+      "WebSearch",
+      "TodoRead",
+      "TodoWrite",
+      "Task",
+      "Glob",
+      "Grep",
+      "LS"
+    ]
+  },
+  "instructions": {
+    "adr": [
+      "When creating a new ADR, use the next available number in sequence",
+      "Always update the ADR index in docs/adr/README.md",
+      "Use the template from docs/adr/ADR-template.md",
+      "Include date, author, and status in each ADR",
+      "Link related ADRs in the References section"
+    ],
+    "architecture": [
+      "Keep architecture decisions in ADR format",
+      "Document 'why' not just 'what'",
+      "Consider alternatives before making decisions"
+    ]
+  }
+}
