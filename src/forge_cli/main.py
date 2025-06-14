@@ -447,12 +447,15 @@ async def main():
         await process_search(config, args.question)
 
 
-if __name__ == "__main__":
+
+def run_main_async():
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        # Exit silently on keyboard interrupt (Ctrl+C)
-        sys.exit(0)
-    except Exception:
-        # Exit silently on other exceptions
+        print("\nChat interrupted by user.")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
         sys.exit(1)
+
+if __name__ == "__main__":
+    run_main_async()

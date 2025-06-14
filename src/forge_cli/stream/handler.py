@@ -2,12 +2,13 @@
 
 import time
 from collections.abc import AsyncIterator
-from typing import Dict, Any, Optional, Union
+from typing import Any
 
 from ..display.v2.base import Display
 from ..models.state import StreamState, ToolStatus
 from ..processors.registry import default_registry
-from ..response._types import ResponseStreamEvent
+
+# Removed ResponseStreamEvent import to avoid isinstance issues with generics
 
 
 class StreamHandler:
@@ -26,7 +27,7 @@ class StreamHandler:
 
     async def handle_stream(
         self,
-        event_stream: AsyncIterator[tuple[str, Optional[Union[Dict[str, Any], ResponseStreamEvent]]]],
+        event_stream: AsyncIterator[tuple[str, dict[str, Any] | Any | None]],
         question: str,
     ) -> dict[str, str | int | float | bool | list | dict] | None:
         """
@@ -47,8 +48,8 @@ class StreamHandler:
                 if event_type and event_type.startswith("response"):
                     self.state.response_event_count += 1
 
-                # Handle typed events
-                if isinstance(event_data, ResponseStreamEvent):
+                # Handle typed events - check for Pydantic model rather than specific type
+                if hasattr(event_data, "model_dump") and callable(getattr(event_data, "model_dump")):
                     # Convert typed event to dict for compatibility
                     event_dict = event_data.model_dump(by_alias=True, exclude_none=True)
                 elif isinstance(event_data, dict):
@@ -152,9 +153,7 @@ class StreamHandler:
         tool_patterns = ["_call.searching", "_call.in_progress", "_call.completed"]
         return any(pattern in event_type for pattern in tool_patterns)
 
-    async def _handle_tool_event(
-        self, event_type: str, event_data: Dict[str, Any]
-    ) -> None:
+    async def _handle_tool_event(self, event_type: str, event_data: dict[str, Any]) -> None:
         """Handle tool-specific events."""
         # Extract tool type from event
         tool_type = event_type
@@ -193,7 +192,7 @@ class StreamHandler:
             if self.search_start_time and self.search_completed_time:
                 tool_state.retrieval_time = (self.search_completed_time - self.search_start_time) * 1000
 
-    def _extract_queries(self, event_data: Dict[str, Any]) -> list[str]:
+    def _extract_queries(self, event_data: dict[str, Any]) -> list[str]:
         """Extract queries from various event data structures."""
         if not isinstance(event_data, dict):
             return []
@@ -212,7 +211,7 @@ class StreamHandler:
     async def _log_debug_info(
         self,
         event_type: str,
-        event_data: Dict[str, Any],
+        event_data: dict[str, Any],
     ) -> None:
         """Log debug information for events."""
         print(f"\nDEBUG: Event: {event_type}")

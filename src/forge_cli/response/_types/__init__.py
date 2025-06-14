@@ -2,6 +2,19 @@ from __future__ import annotations
 
 from typing import List, Union
 
+from .annotations import (
+    Annotation as Annotation,
+)
+from .annotations import (
+    AnnotationFileCitation as AnnotationFileCitation,
+)
+from .annotations import (
+    AnnotationFilePath as AnnotationFilePath,
+)
+from .annotations import (
+    AnnotationURLCitation as AnnotationURLCitation,
+)
+
 # # Re-export for backward compatibility
 # InputMessageContent = Union[InputTextContent, InputImageContent]
 # Response = OpenAIResponse
@@ -91,17 +104,14 @@ from .response_computer_tool_call_param import (
 from .response_content_part_added_event import (
     ResponseContentPartAddedEvent as ResponseContentPartAddedEvent,
 )
-from .response_document_finder_tool_call import (
-    ResponseDocumentFinderToolCall as ResponseDocumentFinderToolCall,
-)
-from .response_document_finder_tool_call import (
-    DocumentFinderResult as DocumentFinderResult,
-)
 from .response_content_part_done_event import (
     ResponseContentPartDoneEvent as ResponseContentPartDoneEvent,
 )
 from .response_create_params import ResponseCreateParams as ResponseCreateParams
 from .response_created_event import ResponseCreatedEvent as ResponseCreatedEvent
+from .response_document_finder_tool_call import (
+    ResponseDocumentFinderToolCall as ResponseDocumentFinderToolCall,
+)
 from .response_error import ResponseError as ResponseError
 from .response_error_event import ResponseErrorEvent as ResponseErrorEvent
 from .response_failed_event import ResponseFailedEvent as ResponseFailedEvent
@@ -203,12 +213,6 @@ from .response_output_message_param import (
 from .response_output_refusal import ResponseOutputRefusal as ResponseOutputRefusal
 from .response_output_refusal_param import (
     ResponseOutputRefusalParam as ResponseOutputRefusalParam,
-)
-from .annotations import (
-    Annotation as Annotation,
-    AnnotationFileCitation as AnnotationFileCitation,
-    AnnotationFilePath as AnnotationFilePath,
-    AnnotationURLCitation as AnnotationURLCitation,
 )
 from .response_output_text import ResponseOutputText as ResponseOutputText
 from .response_output_text_param import (
