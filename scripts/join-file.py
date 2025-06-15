@@ -1,137 +1,85 @@
 #!/usr/bin/env python3
 import argparse
+import asyncio
 import json
-import mimetypes
 import os
-import time  # Import the mimetypes library
 
-import requests
-
-# Use environment variable for server URL if available, otherwise default to localhost
-default_url = os.environ.get("KNOWLEDGE_FORGE_URL", "http://localhost:9999")
+# Import SDK functions
+from forge_cli.sdk import async_delete_file, async_upload_file
 
 
-def upload_file(file_path, server_url=default_url):
-    """Upload a file to the Knowledge Forge API."""
+async def upload_file(file_path):
+    """Upload a file to the Knowledge Forge API using SDK."""
     if not os.path.exists(file_path):
         print(f"Error: File '{file_path}' does not exist.")
-        return
-
-    # Guess the MIME type of the file
-    mime_type, _ = mimetypes.guess_type(file_path)
-    if mime_type is None:
-        mime_type = "application/octet-stream"  # Default if guessing fails
-        print(f"Warning: Could not guess MIME type for {file_path}. Using {mime_type}.")
-
-    file_object = None  # Initialize file_object to ensure it's closed in finally
-    try:
-        # Prepare the multipart/form-data
-        file_object = open(file_path, "rb")
-        file_name = os.path.basename(file_path)
-        # Send file with filename and correct content type
-        files = {"file": (file_name, file_object, mime_type)}
-        # Remove mime_type from data, purpose is still needed by the API endpoint
-        # Using 'general' as the default purpose now, as per the latest API changes
-        data = {"purpose": "general"}
-
-        # Make the POST request to the API
-        url = f"{server_url}/v1/files"
-        print(f"Uploading '{file_name}' ({mime_type}) to: {url} with purpose: {data['purpose']}")
-
-        # Send the request
-        response = requests.post(url, files=files, data=data)
-
-        # Check if the request was successful
-        response.raise_for_status()
-
-        # Print the response
-        print("Upload successful. Server response:")
-        print(json.dumps(response.json(), indent=2))
-        res = response.json()
-        task_id = res["task_id"]
-        file_id = res["id"]
-        if task_id:
-            for i in range(10):
-                time.sleep(1)
-                url = f"{server_url}/v1/tasks/{task_id}"
-                response = requests.get(url)
-                response.raise_for_status()
-                print(json.dumps(response.json(), indent=2))
-                if response.json()["status"] == "completed":
-                    url = f"{server_url}/v1/files/{file_id}/content"
-                    response = requests.get(url)
-                    response.raise_for_status()
-                    print(json.dumps(response.json(), indent=2))
-                    return response.json()
-                    break
-
-    except requests.exceptions.RequestException as e:
-        print(f"Error during upload: {e}")
-        if hasattr(e, "response") and e.response is not None:
-            try:
-                error_data = e.response.json()
-                print(f"Server error details: {json.dumps(error_data, indent=2)}")
-            except json.JSONDecodeError:
-                print(f"Server error response (non-JSON): {e.response.text[:500]}")  # Limit long responses
         return None
-    finally:
-        # Ensure the file is closed even if an error occurs
-        if file_object and not file_object.closed:
-            file_object.close()
+
+    try:
+        file_name = os.path.basename(file_path)
+        print(f"Uploading '{file_name}' with purpose: general")
+
+        # Call the SDK function to upload the file
+        result = await async_upload_file(
+            file_path=file_path,
+            purpose="general",
+        )
+
+        if result:
+            print("Upload successful. Server response:")
+            print(result.model_dump_json(indent=2, exclude_none=True, ensure_ascii=False))
+            return result
+        else:
+            print("Failed to upload file.")
+            return None
+
+    except Exception as e:
+        print(f"Error during upload: {e}")
+        return None
 
 
-def delete_file(file_id, server_url=default_url):
-    """Delete a file from the Knowledge Forge API.
+async def delete_file(file_id):
+    """Delete a file from the Knowledge Forge API using SDK.
 
     Args:
         file_id (str): The ID of the file to delete.
-        server_url (str, optional): Server URL. Defaults to "http://localhost:9999".
 
     Returns:
-        dict or None: The server response if successful, None otherwise.
+        bool: True if successful, False otherwise.
     """
     try:
-        # Construct the URL for the DELETE request
-        url = f"{server_url}/v1/files/{file_id}"
-        print(f"Deleting file with ID '{file_id}' from: {url}")
+        print(f"Deleting file with ID '{file_id}'")
 
-        # Send the DELETE request
-        response = requests.delete(url)
+        # Call the SDK function to delete the file
+        result = await async_delete_file(file_id)
 
-        # Check if the request was successful
-        response.raise_for_status()
+        if result:
+            print("Delete successful. Server response:")
+            print(result.model_dump_json(indent=2, exclude_none=True, ensure_ascii=False))
+            return True
+        else:
+            print("Failed to delete file.")
+            return False
 
-        # Print and return the response
-        print("Delete successful. Server response:")
-        print(json.dumps(response.json(), indent=2))
-        return response.json()
-
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         print(f"Error during file deletion: {e}")
-        if hasattr(e, "response") and e.response is not None:
-            try:
-                error_data = e.response.json()
-                print(f"Server error details: {json.dumps(error_data, indent=2)}")
-            except json.JSONDecodeError:
-                print(f"Server error response (non-JSON): {e.response.text[:500]}")  # Limit long responses
-        return None
+        return False
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Upload a file to Knowledge Forge API")
+async def main():
+    """Main async function to handle file operations."""
+    parser = argparse.ArgumentParser(description="Upload or delete files using Knowledge Forge SDK")
     parser.add_argument("-f", "--file", help="Path to the file to upload")
-    parser.add_argument(
-        "--server",
-        default=default_url,
-        help=f"Server URL (default: {default_url})",
-    )
     parser.add_argument("--delete", help="ID of the file to delete")
 
     args = parser.parse_args()
 
     if args.delete:
-        delete_file(args.delete, args.server)
+        await delete_file(args.delete)
     elif args.file:
-        upload_file(args.file, args.server)
+        await upload_file(args.file)
     else:
         parser.print_help()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

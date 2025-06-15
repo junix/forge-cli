@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import argparse
+import asyncio
 import json
 import os
 from typing import Any
 
-import requests
 from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
@@ -12,71 +12,62 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+# Import SDK functions
+from forge_cli.sdk import async_query_vectorstore
+
 # Initialize Rich console
 console = Console()
 
-# Use environment variable for server URL if available, otherwise default to localhost
-default_url = os.environ.get("KNOWLEDGE_FORGE_URL", "http://localhost:9999")
 
-
-def query_vector_store(
+async def query_vector_store(
     vector_store_id: str,
     query: str,
     top_k: int = 10,
     filters: dict[str, Any] | None = None,
-    server_url: str = default_url,
 ):
-    """Query a vector store for documents matching the given query.
+    """Query a vector store for documents matching the given query using SDK.
 
     Args:
         vector_store_id (str): ID of the vector store to query.
         query (str): The search query text.
         top_k (int, optional): Number of results to return. Defaults to 10.
         filters (dict, optional): Optional filters to apply to the search.
-        server_url (str, optional): Server URL. Defaults to environment variable or localhost.
 
     Returns:
         dict or None: The server response if successful, None otherwise.
     """
     try:
-        # Construct the URL for the POST request
-        url = f"{server_url}/v1/vector_stores/{vector_store_id}/search"
-
         # Check if using default vector store ID
         if vector_store_id == "a1b2c3d4-e5f6-7890-abcd-ef1234567890":
             console.print(f"Querying default vector store with: '[bold cyan]{query}[/]'")
         else:
             console.print(f"Querying vector store '[bold green]{vector_store_id}[/]' with: '[bold cyan]{query}[/]'")
 
-        # Prepare request payload
-        payload = {"query": query, "top_k": top_k}
+        # Call the SDK function to query the vector store
+        result = await async_query_vectorstore(
+            vector_store_id=vector_store_id,
+            query=query,
+            top_k=top_k,
+            filters=filters,
+        )
 
-        # Add optional filters if provided
-        if filters:
-            payload["filters"] = filters
-
-        # Send the POST request
-        response = requests.post(url, json=payload)
-
-        # Check if the request was successful
-        response.raise_for_status()
-
-        # Get the response data
-        response_data = response.json()
+        if not result:
+            console.print("[bold red]Failed to query vector store.[/]")
+            return None
 
         # Create a header panel for the search results
         console.print()
         console.print(
             Panel(
-                f"[bold]Search query:[/] [cyan]{response_data['search_query']}[/]\n"
-                f"[bold]Found:[/] [green]{len(response_data['data'])}[/] results",
+                f"[bold]Search query:[/] [cyan]{result.search_query}[/]\n"
+                f"[bold]Found:[/] [green]{len(result.data)}[/] results",
                 title="[bold]Knowledge Forge Search Results[/]",
                 border_style="blue",
             )
         )
 
         # Print each result with its score and content
-        for i, result in enumerate(response_data["data"], 1):
+        for i, search_result in enumerate(result.data, 1):
             # Create a table for each result
             result_table = Table(
                 show_header=False,
@@ -91,25 +82,25 @@ def query_vector_store(
             result_table.add_column("Value", style="white")
 
             # Add score and file info
-            result_table.add_row("Score", f"[yellow]{result['score']:.4f}[/]")
+            result_table.add_row("Score", f"[yellow]{search_result.score:.4f}[/]")
             result_table.add_row(
                 "File",
-                f"[green]{result['filename']}[/] (ID: [dim]{result['file_id']}[/])",
+                f"[green]{search_result.filename}[/] (ID: [dim]{search_result.file_id}[/])",
             )
 
             # Add attributes if any
-            if result["attributes"]:
+            if search_result.attributes:
                 attr_text = Text()
-                for key, value in result["attributes"].items():
+                for key, value in search_result.attributes.items():
                     attr_text.append(f"{key}: ", style="cyan")
                     attr_text.append(f"{json.dumps(value)}\n", style="yellow")
                 result_table.add_row("Attributes", attr_text)
 
             # Add content
-            for content_item in result["content"]:
-                if content_item["type"] == "text":
+            for content_item in search_result.content:
+                if content_item.type == "text":
                     # Format the text content for better readability
-                    text = content_item["text"].strip()
+                    text = content_item.text.strip()
                     # Truncate long text for display
                     if len(text) > 500:
                         text = text[:500] + "..."
@@ -128,32 +119,15 @@ def query_vector_store(
             console.print(result_table)
             console.print()  # Add spacing between results
 
-        return response_data
+        return result.model_dump()
 
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         console.print(f"[bold red]Error during vector store query:[/] {e}")
-        if hasattr(e, "response") and e.response is not None:
-            try:
-                error_data = e.response.json()
-                console.print(
-                    Panel(
-                        json.dumps(error_data, indent=2),
-                        title="[bold red]Server Error Details[/]",
-                        border_style="red",
-                    )
-                )
-            except json.JSONDecodeError:
-                console.print(
-                    Panel(
-                        e.response.text[:500],  # Limit long responses
-                        title="[bold red]Server Error Response (non-JSON)[/]",
-                        border_style="red",
-                    )
-                )
         return None
 
 
-if __name__ == "__main__":
+async def main():
+    """Main async function to handle the query."""
     parser = argparse.ArgumentParser(description="Knowledge Forge Vector Store Query Tool")
 
     # Vector store query arguments
@@ -170,15 +144,12 @@ if __name__ == "__main__":
         help="Number of results to return (default: 10)",
     )
 
-    # Server URL option
-    parser.add_argument(
-        "--server",
-        default=default_url,
-        help=f"Server URL (default: {default_url})",
-    )
-
     # Parse arguments
     args = parser.parse_args()
 
     # Query the vector store
-    query_vector_store(args.vec_id, args.query, args.top_k, server_url=args.server)
+    await query_vector_store(args.vec_id, args.query, args.top_k)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
