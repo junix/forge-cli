@@ -1,0 +1,211 @@
+---
+description: About the codebase
+globs:**/*.py
+alwaysApply: true
+---
+
+```text
+/Users/junix/knowledge-forge-office
+├── Makefile
+├── README.md
+├── __init__.py
+├── commands # 存放命令行工具脚本
+│   ├── create-files.py # 创建/上传文件的命令脚本
+│   ├── create-vectorstore.py # 创建向量存储的命令脚本
+│   ├── hello.py # 测试API连接的 "hello" 命令脚本
+│   ├── join-file.py # 将文件加入向量存储的命令脚本
+│   └── simple-flow.py # 演示文件上传、创建集合、加入集合的简单流程脚本
+├── docs # 项目文档目录
+│   └── README.md # 文档说明文件
+├── gw.py # FastAPI 反向代理网关实现
+├── knowledge_forge # 项目核心代码库
+│   ├── __init__.py # 包初始化文件
+│   ├──_types.py # 定义项目中使用的数据类型 (如 RawFile, Chunk, Page, Trace)
+│   ├── algo # 算法实现目录
+│   │   ├── __init__.py # 算法包初始化文件
+│   │   ├── stream_fix_align.py # 流式固定模式对齐算法
+│   │   └── stream_regex_align.py # 流式正则表达式对齐算法
+│   ├── api.py # FastAPI 应用主入口，定义API路由和中间件
+│   ├── apis # 存放API路由模块
+│   │   ├── __init__.py # API包初始化文件
+│   │   ├── api_files.py # 文件上传、下载、删除的API端点
+│   │   ├── api_response.py # 处理生成响应的API端点
+│   │   ├── api_serverstatus.py # 服务器状态检查的API端点
+│   │   ├── api_task.py # 异步任务状态查询的API端点
+│   │   └── api_vectorstore.py # 向量存储管理的API端点
+│   ├── channel # 异步通信通道实现目录
+│   │   ├── __init__.py # 通道包初始化文件
+│   │   ├── base_channel.py # 通道抽象基类定义(BaseChannel和DuplexChannelBase)
+│   │   ├── base_channel_demo.py # 演示不同通道实现的使用方法
+│   │   ├── queue_channel.py # 基于asyncio.Queue的单向通道实现
+│   │   ├── memstream.py # 双向异步内存流实现，用于组件间通信
+│   │   └── memstream2.py # 另一种双向通道实现(DuplexEndpoint)
+│   ├── citation # 引用处理相关模块
+│   │   ├── __init__.py # 引用包初始化文件
+│   │   ├── citation_styling.py # 引用标记的样式定义
+│   │   └── patch.py # 在文本流中处理和替换引用标记
+│   ├── code_interpreter # 代码解释器相关模块
+│   │   ├── __init__.py # 代码解释器包初始化文件
+│   │   └── ipython.py # 使用IPython执行Python代码的执行器
+│   ├── collection.py # 定义向量存储集合 (Collection) 的数据模型
+│   ├── common # 通用工具模块
+│   │   ├── __init__.py # 通用工具包初始化文件
+│   │   ├── custom_logging.py # 自定义日志功能
+│   │   └── logger.py # 日志配置与初始化 (使用Loguru)
+│   ├── conf # 配置管理模块
+│   │   ├── __init__.py # 配置包初始化，根据环境加载不同配置
+│   │   ├── dev.py # 开发环境配置
+│   │   └── local.py # 本地环境配置
+│   ├── consoles.py # 使用Rich库进行控制台输出美化的工具函数
+│   ├── context # 上下文管理模块，用于管理存储和状态
+│   │   ├── __init__.py # 上下文包初始化文件
+│   │   ├── context.py # 上下文抽象基类定义
+│   │   ├── local_context.py # 基于本地存储 (RocksDB) 的上下文实现
+│   │   └── remote_context.py # 基于远程存储 (MongoDB) 的上下文实现
+│   ├── conv.py # 对话 (Conversation) 数据模型和操作
+│   ├── doc.py # 文档 (Document, DocumentContent) 数据模型定义
+│   ├── doc_parser # 文档解析模块
+│   │   ├── __init__.py # 文档解析包初始化文件
+│   │   ├── conv.py # 文档格式转换工具 (如Word转PDF)
+│   │   ├── parser.py # 文档解析器抽象基类
+│   │   ├── pdfs.py # PDF文件处理工具 (分页、转图片)
+│   │   ├── tencents.py # 使用腾讯云LKE进行文档解析的实现
+│   │   ├── urls.py # URL处理和检测工具
+│   │   ├── yxt_v1.py # 使用YXT V1解析服务的实现
+│   │   └── yxt_v2.py # 使用YXT V2解析服务的实现
+│   ├── embed # 文本嵌入模型相关模块
+│   │   ├── __init__.py # 嵌入包初始化文件
+│   │   ├── base.py # 嵌入模型抽象基类
+│   │   ├── huggingface.py # 使用SentenceTransformers的嵌入实现
+│   │   └── yxt.py # 使用YXT嵌入服务的实现
+│   ├── event.py # 定义事件类型和数据模型
+│   ├── fs # 文件系统抽象与操作模块
+│   │   ├── __init__.py # 文件系统包初始化文件
+│   │   ├── base.py # 文件存储抽象基类和类型定义
+│   │   ├── common.py # 文件处理通用工具 (MIME类型检测, MD5)
+│   │   ├── excels.py # Excel文件处理类 (继承自File)
+│   │   ├── file.py # 通用文件处理类 (支持本地、OSS、URL等)
+│   │   ├── image.py # (旧版?) 图像文件处理类
+│   │   ├── images.py # (新版?) 图像文件处理类 (Pydantic模型)
+│   │   ├── mime_types.py # 基于文件内容的MIME类型检测
+│   │   ├── pdf.py # PDF文件处理类 (基于pymupdf)
+│   │   ├── pdf2doc.py # 将PDF页面转换为Page对象的工具
+│   │   └── words.py # Word文档处理类 (继承自File)
+│   ├── jllms # 大型语言模型(LLM)交互模块
+│   │   ├── -qwen_turbo.py.d
+│   │   ├── README.md
+│   │   ├── chunk_combiner.py # 合并流式LLM响应块的工具
+│   │   ├── common.py # LLM交互通用工具函数
+│   │   ├── deepseek_llm.py # Deepseek模型接口实现
+│   │   ├── doubao_llm.py # 豆包(Doubao)模型接口实现
+│   │   ├── llm.py # LLM抽象基类定义
+│   │   ├── llm_demo.py # LLM调用演示脚本
+│   │   ├── qwen_demo.py # 通义千问模型调用演示
+│   │   ├── qwen_llm.py # Qwen(通义千问)模型接口实现
+│   │   └── yxt.py # YXT LLM网关接口封装
+│   ├── log-demo.py # 演示日志记录功能的脚本
+│   ├── mcps # MCP (Model Call Protocol) 服务器与工具相关模块
+│   │   ├── __init__.py # MCP包初始化文件
+│   │   ├── mcp-local.json # MCP本地配置文件
+│   │   ├── mcp.py # MCP服务器抽象与实现 (Stdio, HTTP)
+│   │   └── mcp_demo.py # 运行MCP与自定义提示的演示脚本
+│   ├── memory # (空) 内存或历史管理相关模块 (待实现)
+│   │   └── __init__.py # 内存包初始化文件
+│   ├── message.py # 消息 (Message) 数据模型定义
+│   ├── oss # 对象存储服务(OSS)交互模块
+│   │   ├── README.md
+│   │   ├── __init__.py # OSS包初始化文件，导出BaiduBOSClient
+│   │   ├── aliyun # 阿里云OSS相关文件
+│   │   ├── aliyuns.py # 阿里云对象存储客户端实现
+│   │   ├── baidus.py # 百度对象存储(BOS)客户端实现
+│   │   └── base.py # OSS客户端抽象基类定义
+│   ├── prompts # 提示工程相关模块
+│   │   ├── __init__.py # 提示包初始化文件
+│   │   └── router.py # 定义用于工具选择的系统提示
+│   ├── proxy.py # 简单的FastAPI反向代理实现 (与gw.py内容相同)
+│   ├── repo # 数据存储库模块 (MongoDB, RocksDB等)
+│   │   ├── __init__.py # 存储库包初始化文件
+│   │   ├── data # 数据文件目录
+│   │   ├── idutils.py # 从字典获取ID的工具函数
+│   │   ├── mongos.py # MongoDB存储实现 (基于motor)
+│   │   ├── rocksdb.py # RocksDB键值存储实现
+│   │   └── store.py # 存储库抽象基类定义
+│   ├── reranker # 重排序(Reranker)模型交互模块
+│   │   ├── __init__.py # Reranker包初始化文件
+│   │   └── yxt.py # YXT Reranker服务客户端实现
+│   ├── response_style_api # 定义响应API的数据模型
+│   │   └── _types.py # 响应请求和响应对象的数据模型
+│   ├── search # 搜索功能模块
+│   │   ├── __init__.py # 搜索包初始化文件
+│   │   ├── bing-search.txt # Bing搜索示例或配置
+│   │   ├── bings.py # Bing搜索客户端实现
+│   │   ├── duckduckgo.py # DuckDuckGo搜索客户端实现 (基于LangChain)
+│   │   ├── qwen.py # 使用Qwen模型的网络搜索功能
+│   │   ├── search_engine.py # 搜索引擎基类 (占位符)
+│   │   └── tasks # 与搜索相关的任务
+│   ├── service # 服务层，封装业务逻辑
+│   │   ├── __init__.py # 服务包初始化，进行上下文和服务实例的初始化
+│   │   ├── doc_service.py # 文档处理服务 (摘要、标签生成、解析)
+│   │   ├── response_service # 响应生成服务模块
+│   │   │   ├── __init__.py # 响应服务包初始化文件
+│   │   │   ├── base.py # 响应服务抽象基类，定义通用方法和接口
+│   │   │   ├── high_effort.py # 高复杂度响应生成服务实现
+│   │   │   ├── low_effort.py # 低复杂度响应生成服务实现 (直接调用LLM)
+│   │   │   └── medium_effort.py # 中等复杂度响应生成服务实现
+│   │   └── vectorstore_service.py # 向量存储管理服务
+│   ├── step.py # 步骤 (Step) 数据模型定义
+│   ├── streams # 流式处理相关模块
+│   │   ├── __init__.py # 流式处理包初始化文件
+│   │   ├── algo.py # 流式文本处理算法 (解析分隔符、替换令牌)
+│   │   └── types.py # 流式数据类型定义 (AsyncStream, Stream)
+│   ├── tasks # 异步任务或特定功能实现
+│   │   ├── outline.py # (内容与suggestions.py相同) 生成搜索建议/问题
+│   │   ├── select_search.py # 判断是否需要使用搜索工具的任务
+│   │   ├── suggestions.py # 基于对话历史生成搜索建议
+│   │   ├── super_concise_summary.py # 生成超简洁文档摘要的任务
+│   │   ├── title_generate # 对话标题生成模块
+│   │   ├── transcript_writer.py # 播客稿件生成的系统提示
+│   │   └── yxt_doc_inspector.py # 使用YXT V1服务检查文档元数据(摘要、关键词)
+│   ├── test-api.py # API测试脚本
+│   ├── tokenizer.py # 文本分词和计数工具 (基于tiktoken)
+│   ├── tools # 工具(Tool)抽象与实现
+│   │   ├── __init__.py # 工具包初始化文件
+│   │   ├── base_tool.py # 工具抽象基类，提供LangChain兼容性
+│   │   ├── example_openai_tool.py # 使用OpenAIToolSchema的示例(天气工具)
+│   │   ├── openai_tool.py # 定义OpenAI兼容工具模式的基类
+│   │   ├── python_tool.py # Python代码执行工具实现
+│   │   ├── qa.py # (空) 基于文档的问答工具 (待实现)
+│   │   ├── scrape.py # 网页抓取工具 (基于doc_parser.extract)
+│   │   ├── search_web.py # 网络搜索工具模式和实现 (基于LLM)
+│   │   ├── semantic_search.py # 基于文档的语义搜索工具实现
+│   │   ├── semantic_search_r1.py # 使用Deepseek R1模型的语义搜索工具实现
+│   │   └── tool_hub.py # 管理和执行多个工具的集合类
+│   ├── utils # 通用工具函数
+│   │   ├── __init__.py # 工具包初始化，提供MD5计算
+│   │   ├── base64_utils.py # Base64编解码工具函数
+│   │   ├── encoders.py # 自定义JSON编码器 (处理datetime)
+│   │   ├── pretty_print.py # 美化打印dataclass实例的工具
+│   │   ├── task_pool.py # 简单的异步任务池实现
+│   │   └── uri_utils.py # URI类型推断和转换工具
+│   ├── utils.py # 通用工具函数集合
+│   └── vectorstore # 向量存储交互模块
+│       ├── __init__.py # 向量存储包初始化文件
+│       ├── base.py # 向量索引抽象基类
+│       ├── local # 本地向量存储实现
+│       └── yxt.py # YXT向量存储服务客户端实现
+├── non-gw.py # 直接运行FastAPI应用的脚本 (非网关模式)
+├── project.md # 项目文件结构描述
+├── project.mmdc # 项目文件结构描述（带注释）
+├── pyproject.toml # 项目配置文件 (依赖项、项目信息)
+├── pytest.ini # Pytest配置文件
+├── requirements.txt # 项目依赖列表
+├── server-local.py # 启动本地开发服务器的脚本 (带重载)
+├── server.py # 启动生产服务器的脚本
+├── stdout # 标准输出日志文件
+├── test_qwen_with_tool.py # 测试通义千问模型与工具集成的脚本
+├── tests # 测试目录(测试文件一定要放到这里)
+│   ├── repo # 存储库测试
+│   │   └── test_rocksdb.py # RocksDB存储测试
+│   └── test_doc.py # 文档模型测试
+├── uv.lock # UV包管理器锁文件
+````

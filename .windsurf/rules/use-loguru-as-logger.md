@@ -1,0 +1,15 @@
+---
+trigger: always_on
+description: Instructs the AI to use the Loguru library for logging.
+globs:
+---
+
+Please use the `loguru` library for all logging purposes within this codebase instead of the standard Python `logging` module.
+
+**Key Guidelines:**
+
+1.  **Import:** Use `from common.logger import logger`(we custom logger in the module)
+2.  **Usage:** Utilize `logger.info()`, `logger.debug()`, `logger.warning()`, `logger.error()`, `logger.exception()`, etc., for logging messages.
+3.  **Configuration:** Assume basic configuration is handled elsewhere, but be mindful of potential structured logging benefits (e.g., using `logger.bind()`).
+4.  **Replacement:** If modifying existing code, replace `logging.Logger` instances and calls with their `loguru` equivalents.
+

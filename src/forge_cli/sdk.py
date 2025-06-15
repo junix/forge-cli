@@ -1090,7 +1090,7 @@ async def astream_typed_response(
         # Events that contain full response snapshots according to ADR-004
         SNAPSHOT_EVENT_TYPES = {
             "response.created",
-            "response.in_progress", 
+            "response.in_progress",
             "response.completed",
             "response.output_text.delta",
             "response.output_text.done",
@@ -1100,7 +1100,7 @@ async def astream_typed_response(
             "response.web_search_call.completed",
             "response.function_call.completed",
         }
-        
+
         if event_data and isinstance(event_data, dict) and event_type in SNAPSHOT_EVENT_TYPES:
             try:
                 # Convert snapshot data to Response object

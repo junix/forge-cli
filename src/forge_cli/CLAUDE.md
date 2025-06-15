@@ -62,7 +62,7 @@ display = JsonDisplay()    # JSON output
 ### Core Modules
 
 #### `models/` - Data Types and State
-- **output_types.py**: TypedDict definitions matching API responses
+- **response/_types/**: Comprehensive OpenAPI-generated type definitions
 - **events.py**: Event type enumeration and helpers
 - **state.py**: Centralized state management during streaming
 
@@ -171,7 +171,7 @@ class HtmlDisplay(BaseDisplay):
 
 ### Adding a New Output Item Type
 
-1. Define the type in `models/output_types.py`
+1. Define the type in `response/_types/` (for API types) or `models/` (for internal types)
 2. Create a processor in `processors/`
 3. Register the processor
 4. The stream handler will automatically use it

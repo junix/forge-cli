@@ -1,0 +1,6 @@
+---
+description: 
+globs: **/tools/*.py,**/response_service/*.py
+alwaysApply: false
+---
+read tools/tools.md for how the tool system is designed.

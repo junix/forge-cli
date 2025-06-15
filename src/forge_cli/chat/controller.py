@@ -6,7 +6,7 @@ import json
 from ..config import SearchConfig
 from ..display.v3.base import Display
 from ..models.conversation import ConversationState
-from ..stream.handler import StreamHandler
+from ..stream.handler_typed import TypedStreamHandler
 from .commands import CommandRegistry
 
 
@@ -257,7 +257,7 @@ class ChatController:
                 print(f"  [{i}] {msg.role}: {msg.content[:50]}...")
 
         # Create stream handler
-        handler = StreamHandler(self.display, debug=self.config.debug)
+        handler = TypedStreamHandler(self.display, debug=self.config.debug)
 
         # Store the final formatted content
         final_content = None

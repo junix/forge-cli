@@ -2,7 +2,7 @@
 
 ## Overview
 
-The models module defines all data structures and types used throughout the Forge CLI system. It provides a centralized location for type definitions, ensuring consistency across the codebase and enabling strong type checking.
+The models module defines core internal data structures for the Forge CLI system, focusing on conversation management and stream state tracking. API response and request types are centralized in `response/_types/` for consistency with the OpenAPI-generated type system.
 
 ## Directory Structure
 

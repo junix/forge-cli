@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+when you want to know the functionality of some module, read `CLADUE.md`(if exists in that dir) first, it's describe the module's design and usage

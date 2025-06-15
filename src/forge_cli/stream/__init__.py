@@ -1,7 +1,7 @@
 """Stream handling modules."""
 
-from .handler import StreamHandler
+from .handler_typed import TypedStreamHandler
 
 __all__ = [
-    "StreamHandler",
+    "TypedStreamHandler",
 ]
