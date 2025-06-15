@@ -8,7 +8,7 @@ from typing import Any, Literal
 from ..display.v3.base import Display
 from ..processors.registry_typed import default_typed_registry, initialize_typed_registry
 from ..response._types import Response
-from ..response.adapters import MigrationHelper
+# Removed MigrationHelper - using typed Response directly
 
 # Tool status type alias
 ToolStatusType = Literal["idle", "searching", "in_progress", "completed", "failed"]
@@ -254,9 +254,11 @@ class TypedStreamHandler:
             state.response_id = data.get("id")
             state.model = data.get("model")
 
-    def _extract_text(self, data: dict[str, Any] | Response | None) -> str:
-        """Extract text from event data (works with both APIs)."""
-        return MigrationHelper.safe_get_text(data)
+    def _extract_text(self, data: Response | None) -> str:
+        """Extract text from typed Response object."""
+        if data is None:
+            return ""
+        return data.output_text or ""
 
     def _extract_reasoning_text(self, data: dict[str, Any] | Response | None) -> str:
         """Extract reasoning text from event data."""

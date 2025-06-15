@@ -33,11 +33,7 @@ from forge_cli.response._types import (
     ResponseStreamEvent,
     WebSearchTool,
 )
-from forge_cli.response.adapters import (
-    ResponseAdapter,
-    StreamEventAdapter,
-    ToolAdapter,
-)
+# Removed adapter imports - using typed objects directly
 
 # Use environment variable for server URL if available, otherwise default to localhost
 BASE_URL = os.environ.get("KNOWLEDGE_FORGE_URL", "http://localhost:9999")
@@ -886,13 +882,13 @@ async def async_create_typed_response(
                                     pass
 
                     if final_data:
-                        return ResponseAdapter.from_dict(final_data)
+                        return Response(**final_data)
                     else:
                         raise Exception("No final response received from stream")
                 else:
                     # Non-streaming response
                     result = await response.json()
-                    return ResponseAdapter.from_dict(result)
+                    return Response(**result)
 
     except Exception as e:
         logger.error(f"Error creating typed response: {str(e)}")
@@ -915,9 +911,6 @@ async def astream_typed_response(
         representing the complete state at that point in the stream (snapshot-based design per ADR-004).
         For events that don't contain full response data, response_snapshot will be None.
     """
-    # Import Response adapter for conversion
-    from forge_cli.response.adapters import ResponseAdapter
-
     # Convert Request to API format
     request_dict = request.model_dump(exclude_none=True)
     
@@ -1015,7 +1008,7 @@ async def astream_typed_response(
                                 if data and isinstance(data, dict) and current_event_type in SNAPSHOT_EVENT_TYPES:
                                     try:
                                         # Convert snapshot data to Response object
-                                        response_obj = ResponseAdapter.from_dict(data)
+                                        response_obj = Response(**data)
                                         yield current_event_type, response_obj
                                     except Exception as e:
                                         if debug:
@@ -1059,7 +1052,12 @@ def create_typed_request(
     Returns:
         A typed Request object
     """
-    return ResponseAdapter.create_request(input_messages=input_messages, model=model, tools=tools, **kwargs)
+    # Convert string to message list
+    if isinstance(input_messages, str):
+        input_messages = [{"role": "user", "content": input_messages}]
+
+    # Create Request directly
+    return Request(input=input_messages, model=model, tools=tools or [], **kwargs)
 
 
 def create_file_search_tool(vector_store_ids: list[str], max_search_results: int = 20) -> FileSearchTool:
@@ -1073,7 +1071,7 @@ def create_file_search_tool(vector_store_ids: list[str], max_search_results: int
     Returns:
         A typed FileSearchTool object
     """
-    return ToolAdapter.create_file_search_tool(vector_store_ids=vector_store_ids, max_search_results=max_search_results)
+    return FileSearchTool(type="file_search", vector_store_ids=vector_store_ids, max_num_results=max_search_results)
 
 
 def create_web_search_tool() -> WebSearchTool:
@@ -1083,4 +1081,4 @@ def create_web_search_tool() -> WebSearchTool:
     Returns:
         A typed WebSearchTool object
     """
-    return ToolAdapter.create_web_search_tool()
+    return WebSearchTool(type="web_search")
