@@ -2,11 +2,13 @@
 
 from typing import Any
 
+from forge_cli.common.types import ProcessedMessage
+from forge_cli.response._types.annotations import AnnotationList
+from forge_cli.response._types.response_output_message import ResponseOutputMessage
 from ..response._types import (
     AnnotationFileCitation,
     AnnotationURLCitation,
-    ResponseOutputMessage,
-    ResponseOutputText,
+    ResponseOutputText, # ResponseOutputMessage is imported directly
 )
 from .base import OutputProcessor
 
@@ -18,7 +20,7 @@ class MessageProcessor(OutputProcessor):
         """Check if this processor can handle the item type."""
         return item_type == "message"
 
-    def process(self, item: ResponseOutputMessage) -> dict[str, Any] | None:
+    def process(self, item: ResponseOutputMessage) -> ProcessedMessage | None:
         """Extract text and annotations from message content."""
         if item.role != "assistant":
             return None
@@ -33,15 +35,15 @@ class MessageProcessor(OutputProcessor):
                 all_annotations = content_item.annotations or []
                 break
 
-        return {
-            "type": "message",
-            "text": full_text,
-            "annotations": all_annotations,
-            "id": item.id or "",
-            "status": item.status or "completed",
-        }
+        return ProcessedMessage(
+            type="message",
+            text=full_text,
+            annotations=all_annotations, # type: ignore # AnnotationList vs List[AnnotationUnion]
+            id=item.id or "",
+            status=item.status or "completed",
+        )
 
-    def format(self, processed: dict[str, Any]) -> str:
+    def format(self, processed: ProcessedMessage) -> str:
         """Format message with text and citations."""
         text = processed.get("text", "")
         annotations = processed.get("annotations", [])
@@ -61,7 +63,7 @@ class MessageProcessor(OutputProcessor):
 
         return "\n".join(parts)
 
-    def _process_annotations(self, annotations: list[Any]) -> list[dict[str, Any]]:
+    def _process_annotations(self, annotations: AnnotationList) -> list[dict[str, Any]]:
         """Process annotations into citation format."""
         citations = []
 

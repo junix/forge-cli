@@ -1,6 +1,7 @@
 """File search tool call processor with typed API support."""
 
-from typing import Any
+from typing import Any, cast, List
+from forge_cli.common.types import ProcessedFileSearchData, FileSearchResult
 from forge_cli.response._types import ResponseFileSearchToolCall
 from .base_typed import BaseToolCallProcessor
 
@@ -20,7 +21,7 @@ class FileSearchProcessor(BaseToolCallProcessor):
     def _add_tool_specific_data(
         self,
         item: ResponseFileSearchToolCall,
-        processed: dict[str, Any],
+        processed: ProcessedFileSearchData,
     ) -> None:
         """Add file search specific data."""
         # Extract file_id if searching specific file
@@ -31,7 +32,7 @@ class FileSearchProcessor(BaseToolCallProcessor):
         if item.vector_store_ids:
             processed["vector_store_ids"] = list(item.vector_store_ids)
 
-    def _add_tool_specific_formatting(self, processed: dict[str, Any], parts: list[str]) -> None:
+    def _add_tool_specific_formatting(self, processed: ProcessedFileSearchData, parts: list[str]) -> None:
         """Add file search specific formatting."""
         # Add file ID if searching specific file
         file_id = processed.get("file_id")
@@ -47,10 +48,15 @@ class FileSearchProcessor(BaseToolCallProcessor):
         """Extract file ID to filename mappings from results."""
         mappings = {}
 
-        results = self.extract_results(item)
-        for result in results:
-            # Results should have file_id and filename attributes
-            if hasattr(result, "file_id") and hasattr(result, "filename"):
-                mappings[result.file_id] = result.filename
+        results: List[Any] = self.extract_results(item)
+        for result_dict in results:
+            if isinstance(result_dict, dict): # Ensure it's a dictionary
+                # Cast to FileSearchResult to inform the type checker of the expected structure
+                result = cast(FileSearchResult, result_dict)
+                file_id = result.get("file_id")
+                filename = result.get("filename")
+                if file_id and filename:
+                    mappings[file_id] = filename
+            # else: log or handle non-dict items if they can occur
 
         return mappings

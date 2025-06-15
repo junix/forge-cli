@@ -5,8 +5,17 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, List, Dict, Union, Optional, TypedDict
 
+
+MetadataDict = Dict[str, Union[str, int, float, bool]]
+
+class MessageDict(TypedDict):
+    role: Literal["user", "assistant", "system"]
+    content: str
+    id: Optional[str]
+    timestamp: Optional[float]
+    metadata: Optional[MetadataDict]
 
 @dataclass
 class Message:
@@ -27,7 +36,7 @@ class Message:
         if self.metadata is None:
             self.metadata = {}
 
-    def to_dict(self) -> dict[str, str | float | dict]:
+    def to_dict(self) -> MessageDict:
         """Convert to dictionary for serialization."""
         return {
             "role": self.role,
@@ -38,14 +47,14 @@ class Message:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, str | float | dict]) -> "Message":
+    def from_dict(cls, data: MessageDict) -> "Message":
         """Create from dictionary."""
         return cls(
-            role=data["role"],
+            role=data["role"], # type: ignore
             content=data["content"],
             id=data.get("id"),
             timestamp=data.get("timestamp"),
-            metadata=data.get("metadata", {}),
+            metadata=data.get("metadata", {}), # type: ignore
         )
 
 
@@ -57,7 +66,7 @@ class ConversationState:
     session_id: str = field(default_factory=lambda: f"session_{uuid.uuid4().hex[:12]}")
     created_at: float = field(default_factory=time.time)
     model: str = "qwen-max-latest"
-    tools: list[dict[str, str | bool | list]] = field(default_factory=list)
+    tools: List[Dict[str, Union[str, bool, List[str]]]] = field(default_factory=list)
     metadata: dict[str, str | int | float | bool] = field(default_factory=dict)
 
     def add_message(self, message: Message) -> None:

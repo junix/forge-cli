@@ -14,6 +14,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    Mapping,
 )
 
 import pydantic
@@ -66,7 +67,6 @@ from typing_extensions import (
 )
 
 from openai._types import (
-    AnyMapping,
     Body,
     Headers,
     HttpxRequestFiles,
@@ -603,7 +603,7 @@ class FinalRequestOptionsInput(TypedDict, total=False):
     files: HttpxRequestFiles | None
     idempotency_key: str
     json_data: Body
-    extra_json: AnyMapping
+    extra_json: Mapping[str, Any]
 
 
 @final
@@ -621,7 +621,7 @@ class FinalRequestOptions(pydantic.BaseModel):
     # It should be noted that we cannot use `json` here as that would override
     # a BaseModel method in an incompatible fashion.
     json_data: Union[Body, None] = None
-    extra_json: Union[AnyMapping, None] = None
+    extra_json: Union[Mapping[str, Any], None] = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
