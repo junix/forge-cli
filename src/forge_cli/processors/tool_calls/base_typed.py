@@ -1,6 +1,7 @@
 """Base class for tool call processors with typed API support."""
 
-from typing import Any, Union
+from typing import Any
+
 from ..base_typed import TypedToolProcessor
 
 

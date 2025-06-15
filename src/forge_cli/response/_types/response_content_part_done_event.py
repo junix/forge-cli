@@ -1,16 +1,17 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Union
-from typing_extensions import Literal, Annotated, TypeAlias
+
+from typing import Annotated, Literal, TypeAlias
 
 from openai._utils import PropertyInfo
+
 from ._models import BaseModel
-from .response_output_text import ResponseOutputText
 from .response_output_refusal import ResponseOutputRefusal
+from .response_output_text import ResponseOutputText
 
 __all__ = ["ResponseContentPartDoneEvent", "Part"]
 
-Part: TypeAlias = Annotated[Union[ResponseOutputText, ResponseOutputRefusal], PropertyInfo(discriminator="type")]
+Part: TypeAlias = Annotated[ResponseOutputText | ResponseOutputRefusal, PropertyInfo(discriminator="type")]
 
 
 class ResponseContentPartDoneEvent(BaseModel):

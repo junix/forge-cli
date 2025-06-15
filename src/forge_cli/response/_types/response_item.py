@@ -1,9 +1,9 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Union
+
+from typing import Annotated, TypeAlias
 
 from openai._utils import PropertyInfo
-from typing_extensions import Annotated, TypeAlias
 
 from .response_computer_tool_call import ResponseComputerToolCall
 from .response_computer_tool_call_output_item import ResponseComputerToolCallOutputItem
@@ -17,15 +17,6 @@ from .response_output_message import ResponseOutputMessage
 __all__ = ["ResponseItem"]
 
 ResponseItem: TypeAlias = Annotated[
-    Union[
-        ResponseInputMessageItem,
-        ResponseOutputMessage,
-        ResponseFileSearchToolCall,
-        ResponseComputerToolCall,
-        ResponseComputerToolCallOutputItem,
-        ResponseFunctionWebSearch,
-        ResponseFunctionToolCallItem,
-        ResponseFunctionToolCallOutputItem,
-    ],
+    ResponseInputMessageItem | ResponseOutputMessage | ResponseFileSearchToolCall | ResponseComputerToolCall | ResponseComputerToolCallOutputItem | ResponseFunctionWebSearch | ResponseFunctionToolCallItem | ResponseFunctionToolCallOutputItem,
     PropertyInfo(discriminator="type"),
 ]

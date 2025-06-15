@@ -9,7 +9,6 @@ from rich.live import Live
 from rich.text import Text
 
 from forge_cli.response._types.response import Response
-from forge_cli.common.logger import logger
 
 from ..base import BaseRenderer
 
@@ -460,13 +459,13 @@ class PlaintextRenderer(BaseRenderer):
         self._add_separator(text, "USAGE")
 
         text.append("📊 Token Usage: ", style=self._styles["usage_label"])
-        text.append(f"Input: ", style=self._styles["usage_label"])
+        text.append("Input: ", style=self._styles["usage_label"])
         text.append(f"{usage.input_tokens or 0}", style=self._styles["usage"])
         text.append(" │ ", style=self._styles["separator"])
-        text.append(f"Output: ", style=self._styles["usage_label"])
+        text.append("Output: ", style=self._styles["usage_label"])
         text.append(f"{usage.output_tokens or 0}", style=self._styles["usage"])
         text.append(" │ ", style=self._styles["separator"])
-        text.append(f"Total: ", style=self._styles["usage_label"])
+        text.append("Total: ", style=self._styles["usage_label"])
         text.append(f"{usage.total_tokens or 0}", style="bold " + self._styles["usage"])
         text.append("\n\n")
 

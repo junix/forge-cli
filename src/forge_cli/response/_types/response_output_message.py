@@ -1,9 +1,9 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import List, Union
+
+from typing import Annotated, Literal, TypeAlias
 
 from openai._utils import PropertyInfo
-from typing_extensions import Annotated, Literal, TypeAlias
 
 from ._models import BaseModel
 from .response_output_refusal import ResponseOutputRefusal
@@ -11,14 +11,14 @@ from .response_output_text import ResponseOutputText
 
 __all__ = ["ResponseOutputMessage", "Content"]
 
-Content: TypeAlias = Annotated[Union[ResponseOutputText, ResponseOutputRefusal], PropertyInfo(discriminator="type")]
+Content: TypeAlias = Annotated[ResponseOutputText | ResponseOutputRefusal, PropertyInfo(discriminator="type")]
 
 
 class ResponseOutputMessage(BaseModel):
     id: str
     """The unique ID of the output message."""
 
-    content: List[Content]
+    content: list[Content]
     """The content of the output message."""
 
     role: Literal["assistant"]

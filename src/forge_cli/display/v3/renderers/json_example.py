@@ -2,8 +2,9 @@
 """Example usage of the JSON renderer for v3 display system."""
 
 import io
-from forge_cli.display.v3.renderers.json import JsonRenderer, JsonDisplayConfig
+
 from forge_cli.display.v3.base import Display
+from forge_cli.display.v3.renderers.json import JsonDisplayConfig, JsonRenderer
 
 
 def demo_json_renderer():
@@ -68,8 +69,8 @@ def demo_json_renderer():
 
     # Example 4: File output
     print("4. JSON to file output:")
-    import tempfile
     import os
+    import tempfile
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as temp_file:
         temp_filename = temp_file.name
@@ -85,7 +86,7 @@ def demo_json_renderer():
         display.complete()
 
         # Read back and display
-        with open(temp_filename, "r") as f:
+        with open(temp_filename) as f:
             file_content = f.read()
         print(f"File output to {temp_filename}:")
         print(file_content)

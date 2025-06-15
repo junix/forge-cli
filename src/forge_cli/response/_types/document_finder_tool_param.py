@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Union
-from typing_extensions import Literal, Required, TypedDict
+from typing import Literal, Required
+
+from typing_extensions import TypedDict
 
 __all__ = ["DocumentFinderToolParam"]
 
@@ -12,7 +13,7 @@ class DocumentFinderToolParam(TypedDict, total=False):
     type: Required[Literal["document_finder"]]
     """The type of the document finder tool. Always `document_finder`."""
 
-    vector_store_ids: Required[List[str]]
+    vector_store_ids: Required[list[str]]
     """The IDs of the vector stores to search across."""
 
     max_num_results: int
@@ -21,7 +22,7 @@ class DocumentFinderToolParam(TypedDict, total=False):
     This number should be between 1 and 50 inclusive.
     """
 
-    filters: Optional[Dict[str, Union[str, float, bool, int]]]
+    filters: dict[str, str | float | bool | int] | None
     """Optional metadata filters to apply during search.
     
     Filters are applied as key-value pairs where the key is the metadata field name

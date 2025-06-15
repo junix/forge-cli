@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Union, Iterable
-from typing_extensions import Literal, Required, TypeAlias, TypedDict
+from collections.abc import Iterable
+from typing import Literal, Required, TypeAlias
+
+from typing_extensions import TypedDict
 
 __all__ = [
     "ResponseOutputTextParam",
@@ -56,7 +58,7 @@ class AnnotationFilePath(TypedDict, total=False):
     """The type of the file path. Always `file_path`."""
 
 
-Annotation: TypeAlias = Union[AnnotationFileCitation, AnnotationURLCitation, AnnotationFilePath]
+Annotation: TypeAlias = AnnotationFileCitation | AnnotationURLCitation | AnnotationFilePath
 
 
 class ResponseOutputTextParam(TypedDict, total=False):

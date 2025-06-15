@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional
-from typing_extensions import Literal, Required, TypedDict
+from typing import Literal, Required
+
+from typing_extensions import TypedDict
 
 __all__ = ["ResponseFormatTextJSONSchemaConfigParam"]
 
@@ -16,7 +17,7 @@ class ResponseFormatTextJSONSchemaConfigParam(TypedDict, total=False):
     of 64.
     """
 
-    schema: Required[Dict[str, object]]
+    schema: Required[dict[str, object]]
     """
     The schema for the response format, described as a JSON Schema object. Learn how
     to build JSON schemas [here](https://json-schema.org/).
@@ -31,7 +32,7 @@ class ResponseFormatTextJSONSchemaConfigParam(TypedDict, total=False):
     how to respond in the format.
     """
 
-    strict: Optional[bool]
+    strict: bool | None
     """
     Whether to enable strict schema adherence when generating the output. If set to
     true, the model will always follow the exact schema defined in the `schema`

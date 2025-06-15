@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Iterable, List, Optional, Union
+from collections.abc import Iterable
+from typing import Literal, Required, TypeAlias, Union
 
 from openai.types.shared_params.metadata import Metadata
 from openai.types.shared_params.reasoning import Reasoning
 from openai.types.shared_params.responses_model import ResponsesModel
-from typing_extensions import Literal, Required, TypeAlias, TypedDict
+from typing_extensions import TypedDict
 
 from .response_includable import ResponseIncludable
 from .response_input_param import ResponseInputParam
@@ -26,7 +27,7 @@ __all__ = [
 
 
 class ResponseCreateParamsBase(TypedDict, total=False):
-    input: Required[Union[str, ResponseInputParam]]
+    input: Required[str | ResponseInputParam]
     """Text, image, or file inputs to the model, used to generate a response.
 
     Learn more:
@@ -47,7 +48,7 @@ class ResponseCreateParamsBase(TypedDict, total=False):
     available models.
     """
 
-    include: Optional[List[ResponseIncludable]]
+    include: list[ResponseIncludable] | None
     """Specify additional output data to include in the model response.
 
     Currently supported values are:
@@ -64,7 +65,7 @@ class ResponseCreateParamsBase(TypedDict, total=False):
       in the zero data retention program).
     """
 
-    instructions: Optional[str]
+    instructions: str | None
     """
     Inserts a system (or developer) message as the first item in the model's
     context.
@@ -74,14 +75,14 @@ class ResponseCreateParamsBase(TypedDict, total=False):
     swap out system (or developer) messages in new responses.
     """
 
-    max_output_tokens: Optional[int]
+    max_output_tokens: int | None
     """
     An upper bound for the number of tokens that can be generated for a response,
     including visible output tokens and
     [reasoning tokens](https://platform.openai.com/docs/guides/reasoning).
     """
 
-    metadata: Optional[Metadata]
+    metadata: Metadata | None
     """Set of 16 key-value pairs that can be attached to an object.
 
     This can be useful for storing additional information about the object in a
@@ -91,24 +92,24 @@ class ResponseCreateParamsBase(TypedDict, total=False):
     a maximum length of 512 characters.
     """
 
-    parallel_tool_calls: Optional[bool]
+    parallel_tool_calls: bool | None
     """Whether to allow the model to run tool calls in parallel."""
 
-    previous_response_id: Optional[str]
+    previous_response_id: str | None
     """The unique ID of the previous response to the model.
 
     Use this to create multi-turn conversations. Learn more about
     [conversation state](https://platform.openai.com/docs/guides/conversation-state).
     """
 
-    reasoning: Optional[Reasoning]
+    reasoning: Reasoning | None
     """**o-series models only**
 
     Configuration options for
     [reasoning models](https://platform.openai.com/docs/guides/reasoning).
     """
 
-    service_tier: Optional[Literal["auto", "default", "flex"]]
+    service_tier: Literal["auto", "default", "flex"] | None
     """Specifies the latency tier to use for processing the request.
 
     This parameter is relevant for customers subscribed to the scale tier service:
@@ -129,10 +130,10 @@ class ResponseCreateParamsBase(TypedDict, total=False):
     utilized.
     """
 
-    store: Optional[bool]
+    store: bool | None
     """Whether to store the generated model response for later retrieval via API."""
 
-    temperature: Optional[float]
+    temperature: float | None
     """What sampling temperature to use, between 0 and 2.
 
     Higher values like 0.8 will make the output more random, while lower values like
@@ -174,7 +175,7 @@ class ResponseCreateParamsBase(TypedDict, total=False):
       [function calling](https://platform.openai.com/docs/guides/function-calling).
     """
 
-    top_p: Optional[float]
+    top_p: float | None
     """
     An alternative to sampling with temperature, called nucleus sampling, where the
     model considers the results of the tokens with top_p probability mass. So 0.1
@@ -183,7 +184,7 @@ class ResponseCreateParamsBase(TypedDict, total=False):
     We generally recommend altering this or `temperature` but not both.
     """
 
-    truncation: Optional[Literal["auto", "disabled"]]
+    truncation: Literal["auto", "disabled"] | None
     """The truncation strategy to use for the model response.
 
     - `auto`: If the context of this response and previous ones exceeds the model's
@@ -201,11 +202,11 @@ class ResponseCreateParamsBase(TypedDict, total=False):
     """
 
 
-ToolChoice: TypeAlias = Union[ToolChoiceOptions, ToolChoiceTypesParam, ToolChoiceFunctionParam]
+ToolChoice: TypeAlias = ToolChoiceOptions | ToolChoiceTypesParam | ToolChoiceFunctionParam
 
 
 class ResponseCreateParamsNonStreaming(ResponseCreateParamsBase, total=False):
-    stream: Optional[Literal[False]]
+    stream: Literal[False] | None
     """
     If set to true, the model response data will be streamed to the client as it is
     generated using

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Union
+from typing import TypeAlias
 
 from openai.types.chat.chat_completion_tool_param import ChatCompletionToolParam
-from typing_extensions import TypeAlias
 
 from .computer_tool_param import ComputerToolParam
 from .document_finder_tool_param import DocumentFinderToolParam
@@ -15,12 +14,6 @@ from .web_search_tool_param import WebSearchToolParam
 
 __all__ = ["ToolParam"]
 
-ToolParam: TypeAlias = Union[
-    FileSearchToolParam,
-    FunctionToolParam,
-    WebSearchToolParam,
-    ComputerToolParam,
-    DocumentFinderToolParam,
-]
+ToolParam: TypeAlias = FileSearchToolParam | FunctionToolParam | WebSearchToolParam | ComputerToolParam | DocumentFinderToolParam
 
-ParseableToolParam: TypeAlias = Union[ToolParam, ChatCompletionToolParam]
+ParseableToolParam: TypeAlias = ToolParam | ChatCompletionToolParam

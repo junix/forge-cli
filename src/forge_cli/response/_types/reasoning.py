@@ -1,14 +1,15 @@
-from typing import Optional
-from typing_extensions import Literal
+
+from typing import Literal
+
+from openai.types.shared import ReasoningEffort
 
 from ._models import BaseModel
-from openai.types.shared import ReasoningEffort
 
 __all__ = ["Reasoning"]
 
 
 class Reasoning(BaseModel):
-    effort: Optional[ReasoningEffort] = None
+    effort: ReasoningEffort | None = None
     """**o-series models only**
 
     Constrains effort on reasoning for
@@ -17,7 +18,7 @@ class Reasoning(BaseModel):
     result in faster responses and fewer tokens used on reasoning in a response.
     """
 
-    generate_summary: Optional[Literal["auto", "concise", "detailed"]] = None
+    generate_summary: Literal["auto", "concise", "detailed"] | None = None
     """**Deprecated:** use `summary` instead.
 
     A summary of the reasoning performed by the model. This can be useful for
@@ -26,8 +27,8 @@ class Reasoning(BaseModel):
     """
 
     # summary: Optional[Literal["auto", "concise", "detailed"]] = None
-    summary: Optional[Literal["auto", "concise", "detailed"]] = None
-    summary_detail: Optional[str] = None
+    summary: Literal["auto", "concise", "detailed"] | None = None
+    summary_detail: str | None = None
     """A summary of the reasoning performed by the model.
 
     This can be useful for debugging and understanding the model's reasoning

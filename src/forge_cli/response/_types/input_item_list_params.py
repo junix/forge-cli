@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import List
-from typing_extensions import Literal, TypedDict
+from typing import Literal
+
+from typing_extensions import TypedDict
 
 from .response_includable import ResponseIncludable
 
@@ -17,7 +18,7 @@ class InputItemListParams(TypedDict, total=False):
     before: str
     """An item ID to list items before, used in pagination."""
 
-    include: List[ResponseIncludable]
+    include: list[ResponseIncludable]
     """Additional fields to include in the response.
 
     See the `include` parameter for Response creation above for more information.

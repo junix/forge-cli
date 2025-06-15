@@ -1,6 +1,7 @@
 """Format specification for text output."""
 
 from pydantic import Field
+
 from ._models import BaseModel
 
 

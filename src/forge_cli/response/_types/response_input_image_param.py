@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Optional
-from typing_extensions import Literal, Required, TypedDict
+from typing import Literal, Required
+
+from typing_extensions import TypedDict
 
 __all__ = ["ResponseInputImageParam"]
 
@@ -18,10 +19,10 @@ class ResponseInputImageParam(TypedDict, total=False):
     type: Required[Literal["input_image"]]
     """The type of the input item. Always `input_image`."""
 
-    file_id: Optional[str]
+    file_id: str | None
     """The ID of the file to be sent to the model."""
 
-    image_url: Optional[str]
+    image_url: str | None
     """The URL of the image to be sent to the model.
 
     A fully qualified URL or base64 encoded image in a data URL.

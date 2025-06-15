@@ -1,9 +1,9 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Union
+
+from typing import Annotated, TypeAlias
 
 from openai._utils import PropertyInfo
-from typing_extensions import Annotated, TypeAlias
 
 from .response_audio_delta_event import ResponseAudioDeltaEvent
 from .response_audio_done_event import ResponseAudioDoneEvent
@@ -79,43 +79,6 @@ from .response_web_search_call_searching_event import (
 __all__ = ["ResponseStreamEvent"]
 
 ResponseStreamEvent: TypeAlias = Annotated[
-    Union[
-        ResponseAudioDeltaEvent,
-        ResponseAudioDoneEvent,
-        ResponseAudioTranscriptDeltaEvent,
-        ResponseAudioTranscriptDoneEvent,
-        ResponseCodeInterpreterCallCodeDeltaEvent,
-        ResponseCodeInterpreterCallCodeDoneEvent,
-        ResponseCodeInterpreterCallCompletedEvent,
-        ResponseCodeInterpreterCallInProgressEvent,
-        ResponseCodeInterpreterCallInterpretingEvent,
-        ResponseCompletedEvent,
-        ResponseContentPartAddedEvent,
-        ResponseContentPartDoneEvent,
-        ResponseCreatedEvent,
-        ResponseErrorEvent,
-        ResponseFileSearchCallCompletedEvent,
-        ResponseFileSearchCallInProgressEvent,
-        ResponseFileSearchCallSearchingEvent,
-        ResponseFunctionCallArgumentsDeltaEvent,
-        ResponseFunctionCallArgumentsDoneEvent,
-        ResponseInProgressEvent,
-        ResponseFailedEvent,
-        ResponseIncompleteEvent,
-        ResponseOutputItemAddedEvent,
-        ResponseOutputItemDoneEvent,
-        ResponseReasoningSummaryPartAddedEvent,
-        ResponseReasoningSummaryPartDoneEvent,
-        ResponseReasoningSummaryTextDeltaEvent,
-        ResponseReasoningSummaryTextDoneEvent,
-        ResponseRefusalDeltaEvent,
-        ResponseRefusalDoneEvent,
-        ResponseTextAnnotationDeltaEvent,
-        ResponseTextDeltaEvent,
-        ResponseTextDoneEvent,
-        ResponseWebSearchCallCompletedEvent,
-        ResponseWebSearchCallInProgressEvent,
-        ResponseWebSearchCallSearchingEvent,
-    ],
+    ResponseAudioDeltaEvent | ResponseAudioDoneEvent | ResponseAudioTranscriptDeltaEvent | ResponseAudioTranscriptDoneEvent | ResponseCodeInterpreterCallCodeDeltaEvent | ResponseCodeInterpreterCallCodeDoneEvent | ResponseCodeInterpreterCallCompletedEvent | ResponseCodeInterpreterCallInProgressEvent | ResponseCodeInterpreterCallInterpretingEvent | ResponseCompletedEvent | ResponseContentPartAddedEvent | ResponseContentPartDoneEvent | ResponseCreatedEvent | ResponseErrorEvent | ResponseFileSearchCallCompletedEvent | ResponseFileSearchCallInProgressEvent | ResponseFileSearchCallSearchingEvent | ResponseFunctionCallArgumentsDeltaEvent | ResponseFunctionCallArgumentsDoneEvent | ResponseInProgressEvent | ResponseFailedEvent | ResponseIncompleteEvent | ResponseOutputItemAddedEvent | ResponseOutputItemDoneEvent | ResponseReasoningSummaryPartAddedEvent | ResponseReasoningSummaryPartDoneEvent | ResponseReasoningSummaryTextDeltaEvent | ResponseReasoningSummaryTextDoneEvent | ResponseRefusalDeltaEvent | ResponseRefusalDoneEvent | ResponseTextAnnotationDeltaEvent | ResponseTextDeltaEvent | ResponseTextDoneEvent | ResponseWebSearchCallCompletedEvent | ResponseWebSearchCallInProgressEvent | ResponseWebSearchCallSearchingEvent,
     PropertyInfo(discriminator="type"),
 ]

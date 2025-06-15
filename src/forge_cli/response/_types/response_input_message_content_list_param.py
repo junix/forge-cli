@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from typing import List, Union
-from typing_extensions import TypeAlias
+from typing import TypeAlias
 
 from .response_input_file_param import ResponseInputFileParam
-from .response_input_text_param import ResponseInputTextParam
 from .response_input_image_param import ResponseInputImageParam
+from .response_input_text_param import ResponseInputTextParam
 
 __all__ = ["ResponseInputMessageContentListParam", "ResponseInputContentParam"]
 
-ResponseInputContentParam: TypeAlias = Union[ResponseInputTextParam, ResponseInputImageParam, ResponseInputFileParam]
+ResponseInputContentParam: TypeAlias = ResponseInputTextParam | ResponseInputImageParam | ResponseInputFileParam
 
-ResponseInputMessageContentListParam: TypeAlias = List[ResponseInputContentParam]
+ResponseInputMessageContentListParam: TypeAlias = list[ResponseInputContentParam]

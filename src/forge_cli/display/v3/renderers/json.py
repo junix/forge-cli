@@ -2,13 +2,13 @@
 
 import json
 import sys
-from typing import Any, Optional, TextIO
+from typing import Any, TextIO
 
 from pydantic import BaseModel, Field, validator
 from rich.console import Console
 from rich.live import Live
-from rich.syntax import Syntax
 from rich.panel import Panel
+from rich.syntax import Syntax
 
 from forge_cli.response._types.response import Response
 
@@ -23,7 +23,7 @@ class JsonDisplayConfig(BaseModel):
     include_metadata: bool = Field(False, description="Whether to include response metadata")
     include_usage: bool = Field(True, description="Whether to include token usage statistics")
     include_timing: bool = Field(False, description="Whether to include timing information")
-    output_file: Optional[str] = Field(None, description="File path to write JSON output (None for stdout)")
+    output_file: str | None = Field(None, description="File path to write JSON output (None for stdout)")
     append_mode: bool = Field(False, description="Whether to append to output file or overwrite")
     show_panel: bool = Field(True, description="Whether to show JSON in a panel with title")
     panel_title: str = Field("JSON Response", description="Title for the panel")
@@ -44,7 +44,7 @@ class JsonRenderer(BaseRenderer):
     Follows the v3 design principle of one simple render_response() method.
     """
 
-    def __init__(self, config: JsonDisplayConfig | None = None, output_stream: Optional[TextIO] = None):
+    def __init__(self, config: JsonDisplayConfig | None = None, output_stream: TextIO | None = None):
         """Initialize JSON renderer.
 
         Args:
@@ -54,12 +54,12 @@ class JsonRenderer(BaseRenderer):
         super().__init__()
         self._config = config or JsonDisplayConfig()
         self._output_stream = output_stream or sys.stdout
-        self._file_handle: Optional[TextIO] = None
+        self._file_handle: TextIO | None = None
         self._response_count = 0
 
         # Rich components
         self._console = Console(file=self._output_stream)
-        self._live: Optional[Live] = None
+        self._live: Live | None = None
         self._current_json = ""
 
         # Open output file if specified
@@ -68,7 +68,7 @@ class JsonRenderer(BaseRenderer):
                 mode = "a" if self._config.append_mode else "w"
                 self._file_handle = open(self._config.output_file, mode, encoding="utf-8")
                 self._console = Console(file=self._file_handle)
-            except Exception as e:
+            except Exception:
                 # Fallback to stdout
                 self._console = Console(file=sys.stdout)
 

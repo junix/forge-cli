@@ -1,8 +1,7 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import List
 
-from typing_extensions import Literal
+from typing import Literal
 
 from ._models import BaseModel
 from .response_item import ResponseItem
@@ -11,7 +10,7 @@ __all__ = ["ResponseItemList"]
 
 
 class ResponseItemList(BaseModel):
-    data: List[ResponseItem]
+    data: list[ResponseItem]
     """A list of items used to generate this response."""
 
     first_id: str

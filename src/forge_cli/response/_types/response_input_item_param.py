@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
-from typing import Union, Iterable, Optional
-from typing_extensions import Literal, Required, TypeAlias, TypedDict
+from collections.abc import Iterable
+from typing import Literal, Required, TypeAlias
+
+from typing_extensions import TypedDict
 
 from .easy_input_message_param import EasyInputMessageParam
-from .response_output_message_param import ResponseOutputMessageParam
-from .response_reasoning_item_param import ResponseReasoningItemParam
+from .response_computer_tool_call_output_screenshot_param import ResponseComputerToolCallOutputScreenshotParam
 from .response_computer_tool_call_param import ResponseComputerToolCallParam
+from .response_file_search_tool_call_param import ResponseFileSearchToolCallParam
 from .response_function_tool_call_param import ResponseFunctionToolCallParam
 from .response_function_web_search_param import ResponseFunctionWebSearchParam
-from .response_file_search_tool_call_param import ResponseFileSearchToolCallParam
 from .response_input_message_content_list_param import ResponseInputMessageContentListParam
-from .response_computer_tool_call_output_screenshot_param import ResponseComputerToolCallOutputScreenshotParam
+from .response_output_message_param import ResponseOutputMessageParam
+from .response_reasoning_item_param import ResponseReasoningItemParam
 
 __all__ = [
     "ResponseInputItemParam",
@@ -50,10 +52,10 @@ class ComputerCallOutputAcknowledgedSafetyCheck(TypedDict, total=False):
     id: Required[str]
     """The ID of the pending safety check."""
 
-    code: Optional[str]
+    code: str | None
     """The type of the pending safety check."""
 
-    message: Optional[str]
+    message: str | None
     """Details about the pending safety check."""
 
 
@@ -67,16 +69,16 @@ class ComputerCallOutput(TypedDict, total=False):
     type: Required[Literal["computer_call_output"]]
     """The type of the computer tool call output. Always `computer_call_output`."""
 
-    id: Optional[str]
+    id: str | None
     """The ID of the computer tool call output."""
 
-    acknowledged_safety_checks: Optional[Iterable[ComputerCallOutputAcknowledgedSafetyCheck]]
+    acknowledged_safety_checks: Iterable[ComputerCallOutputAcknowledgedSafetyCheck] | None
     """
     The safety checks reported by the API that have been acknowledged by the
     developer.
     """
 
-    status: Optional[Literal["in_progress", "completed", "incomplete"]]
+    status: Literal["in_progress", "completed", "incomplete"] | None
     """The status of the message input.
 
     One of `in_progress`, `completed`, or `incomplete`. Populated when input items
@@ -94,13 +96,13 @@ class FunctionCallOutput(TypedDict, total=False):
     type: Required[Literal["function_call_output"]]
     """The type of the function tool call output. Always `function_call_output`."""
 
-    id: Optional[str]
+    id: str | None
     """The unique ID of the function tool call output.
 
     Populated when this item is returned via API.
     """
 
-    status: Optional[Literal["in_progress", "completed", "incomplete"]]
+    status: Literal["in_progress", "completed", "incomplete"] | None
     """The status of the item.
 
     One of `in_progress`, `completed`, or `incomplete`. Populated when items are
@@ -112,20 +114,8 @@ class ItemReference(TypedDict, total=False):
     id: Required[str]
     """The ID of the item to reference."""
 
-    type: Optional[Literal["item_reference"]]
+    type: Literal["item_reference"] | None
     """The type of item to reference. Always `item_reference`."""
 
 
-ResponseInputItemParam: TypeAlias = Union[
-    EasyInputMessageParam,
-    Message,
-    ResponseOutputMessageParam,
-    ResponseFileSearchToolCallParam,
-    ResponseComputerToolCallParam,
-    ComputerCallOutput,
-    ResponseFunctionWebSearchParam,
-    ResponseFunctionToolCallParam,
-    FunctionCallOutput,
-    ResponseReasoningItemParam,
-    ItemReference,
-]
+ResponseInputItemParam: TypeAlias = EasyInputMessageParam | Message | ResponseOutputMessageParam | ResponseFileSearchToolCallParam | ResponseComputerToolCallParam | ComputerCallOutput | ResponseFunctionWebSearchParam | ResponseFunctionToolCallParam | FunctionCallOutput | ResponseReasoningItemParam | ItemReference

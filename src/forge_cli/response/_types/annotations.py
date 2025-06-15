@@ -1,17 +1,16 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Union, TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Annotated, Literal, TypeAlias
 
 from openai._utils import PropertyInfo
-from typing_extensions import Annotated, Literal, TypeAlias
 
 from ._models import BaseModel
 
 if TYPE_CHECKING:
     from message._types.annotations import (
         MessageAnnotationFileCitation,
-        MessageAnnotationURLCitation,
         MessageAnnotationFilePath,
+        MessageAnnotationURLCitation,
     )
 
 __all__ = [
@@ -276,8 +275,8 @@ class AnnotationFilePath(BaseModel):
 
 
 Annotation: TypeAlias = Annotated[
-    Union[AnnotationFileCitation, AnnotationURLCitation, AnnotationFilePath],
+    AnnotationFileCitation | AnnotationURLCitation | AnnotationFilePath,
     PropertyInfo(discriminator="type"),
 ]
 
-AnnotationList: TypeAlias = List[Annotation]
+AnnotationList: TypeAlias = list[Annotation]

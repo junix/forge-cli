@@ -1,6 +1,5 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Optional
 
 from ._models import BaseModel
 from .response_format_text_config import ResponseFormatTextConfig
@@ -9,7 +8,7 @@ __all__ = ["ResponseTextConfig"]
 
 
 class ResponseTextConfig(BaseModel):
-    format: Optional[ResponseFormatTextConfig] = None
+    format: ResponseFormatTextConfig | None = None
     """An object specifying the format that the model must output.
 
     Configuring `{ "type": "json_schema" }` enables Structured Outputs, which

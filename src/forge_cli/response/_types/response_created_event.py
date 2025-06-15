@@ -1,9 +1,9 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing_extensions import Literal
+from typing import Literal
 
-from .response import Response
 from ._models import BaseModel
+from .response import Response
 
 __all__ = ["ResponseCreatedEvent"]
 

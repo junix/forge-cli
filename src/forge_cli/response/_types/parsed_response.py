@@ -1,21 +1,21 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import TYPE_CHECKING, List, Union, Generic, TypeVar, Optional
-from typing_extensions import Annotated, TypeAlias
+from typing import TYPE_CHECKING, Annotated, Generic, TypeAlias, TypeVar
 
 from openai._utils import PropertyInfo
-from .response import Response
-from ._models import GenericModel
 from openai._utils._transform import PropertyInfo
-from .response_output_text import ResponseOutputText
-from .response_output_message import ResponseOutputMessage
-from .response_output_refusal import ResponseOutputRefusal
-from .response_reasoning_item import ResponseReasoningItem
+
+from ._models import GenericModel
+from .response import Response
 from .response_computer_tool_call import ResponseComputerToolCall
 from .response_document_finder_tool_call import ResponseDocumentFinderToolCall
+from .response_file_search_tool_call import ResponseFileSearchToolCall
 from .response_function_tool_call import ResponseFunctionToolCall
 from .response_function_web_search import ResponseFunctionWebSearch
-from .response_file_search_tool_call import ResponseFileSearchToolCall
+from .response_output_message import ResponseOutputMessage
+from .response_output_refusal import ResponseOutputRefusal
+from .response_output_text import ResponseOutputText
+from .response_reasoning_item import ResponseReasoningItem
 
 __all__ = ["ParsedResponse", "ParsedResponseOutputMessage", "ParsedResponseOutputText"]
 
@@ -28,20 +28,20 @@ ContentType = TypeVar("ContentType")
 
 
 class ParsedResponseOutputText(ResponseOutputText, GenericModel, Generic[ContentType]):
-    parsed: Optional[ContentType] = None
+    parsed: ContentType | None = None
 
 
 ParsedContent: TypeAlias = Annotated[
-    Union[ParsedResponseOutputText[ContentType], ResponseOutputRefusal],
+    ParsedResponseOutputText[ContentType] | ResponseOutputRefusal,
     PropertyInfo(discriminator="type"),
 ]
 
 
 class ParsedResponseOutputMessage(ResponseOutputMessage, GenericModel, Generic[ContentType]):
     if TYPE_CHECKING:
-        content: List[ParsedContent[ContentType]]  # type: ignore[assignment]
+        content: list[ParsedContent[ContentType]]  # type: ignore[assignment]
     else:
-        content: List[ParsedContent]
+        content: list[ParsedContent]
 
 
 class ParsedResponseFunctionToolCall(ResponseFunctionToolCall):
@@ -49,27 +49,19 @@ class ParsedResponseFunctionToolCall(ResponseFunctionToolCall):
 
 
 ParsedResponseOutputItem: TypeAlias = Annotated[
-    Union[
-        ParsedResponseOutputMessage[ContentType],
-        ParsedResponseFunctionToolCall,
-        ResponseFileSearchToolCall,
-        ResponseDocumentFinderToolCall,
-        ResponseFunctionWebSearch,
-        ResponseComputerToolCall,
-        ResponseReasoningItem,
-    ],
+    ParsedResponseOutputMessage[ContentType] | ParsedResponseFunctionToolCall | ResponseFileSearchToolCall | ResponseDocumentFinderToolCall | ResponseFunctionWebSearch | ResponseComputerToolCall | ResponseReasoningItem,
     PropertyInfo(discriminator="type"),
 ]
 
 
 class ParsedResponse(Response, GenericModel, Generic[ContentType]):
     if TYPE_CHECKING:
-        output: List[ParsedResponseOutputItem[ContentType]]  # type: ignore[assignment]
+        output: list[ParsedResponseOutputItem[ContentType]]  # type: ignore[assignment]
     else:
-        output: List[ParsedResponseOutputItem]
+        output: list[ParsedResponseOutputItem]
 
     @property
-    def output_parsed(self) -> Optional[ContentType]:
+    def output_parsed(self) -> ContentType | None:
         for output in self.output:
             if output.type == "message":
                 for content in output.content:

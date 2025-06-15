@@ -1,6 +1,7 @@
 """Text content provided as input to the model."""
 
 from pydantic import Field
+
 from ._models import BaseModel
 
 

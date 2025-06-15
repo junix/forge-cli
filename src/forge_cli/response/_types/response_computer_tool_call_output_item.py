@@ -1,7 +1,7 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import List, Optional
-from typing_extensions import Literal
+
+from typing import Literal
 
 from ._models import BaseModel
 from .response_computer_tool_call_output_screenshot import ResponseComputerToolCallOutputScreenshot
@@ -33,13 +33,13 @@ class ResponseComputerToolCallOutputItem(BaseModel):
     type: Literal["computer_call_output"]
     """The type of the computer tool call output. Always `computer_call_output`."""
 
-    acknowledged_safety_checks: Optional[List[AcknowledgedSafetyCheck]] = None
+    acknowledged_safety_checks: list[AcknowledgedSafetyCheck] | None = None
     """
     The safety checks reported by the API that have been acknowledged by the
     developer.
     """
 
-    status: Optional[Literal["in_progress", "completed", "incomplete"]] = None
+    status: Literal["in_progress", "completed", "incomplete"] | None = None
     """The status of the message input.
 
     One of `in_progress`, `completed`, or `incomplete`. Populated when input items

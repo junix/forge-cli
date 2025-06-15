@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Optional
-from typing_extensions import Literal, Required, TypedDict
+from collections.abc import Iterable
+from typing import Literal, Required
+
+from typing_extensions import TypedDict
 
 __all__ = ["ResponseReasoningItemParam", "Summary"]
 
@@ -28,7 +30,7 @@ class ResponseReasoningItemParam(TypedDict, total=False):
     type: Required[Literal["reasoning"]]
     """The type of the object. Always `reasoning`."""
 
-    encrypted_content: Optional[str]
+    encrypted_content: str | None
     """
     The encrypted content of the reasoning item - populated when a response is
     generated with `reasoning.encrypted_content` in the `include` parameter.

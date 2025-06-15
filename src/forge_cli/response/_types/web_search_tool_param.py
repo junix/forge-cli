@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Optional
-from typing_extensions import Literal, Required, TypedDict
+from typing import Literal, Required
+
+from typing_extensions import TypedDict
 
 __all__ = ["WebSearchToolParam", "UserLocation"]
 
@@ -12,19 +13,19 @@ class UserLocation(TypedDict, total=False):
     type: Required[Literal["approximate"]]
     """The type of location approximation. Always `approximate`."""
 
-    city: Optional[str]
+    city: str | None
     """Free text input for the city of the user, e.g. `San Francisco`."""
 
-    country: Optional[str]
+    country: str | None
     """
     The two-letter [ISO country code](https://en.wikipedia.org/wiki/ISO_3166-1) of
     the user, e.g. `US`.
     """
 
-    region: Optional[str]
+    region: str | None
     """Free text input for the region of the user, e.g. `California`."""
 
-    timezone: Optional[str]
+    timezone: str | None
     """
     The [IANA timezone](https://timeapi.io/documentation/iana-timezones) of the
     user, e.g. `America/Los_Angeles`.
@@ -45,5 +46,5 @@ class WebSearchToolParam(TypedDict, total=False):
     One of `low`, `medium`, or `high`. `medium` is the default.
     """
 
-    user_location: Optional[UserLocation]
+    user_location: UserLocation | None
     """The user's location."""

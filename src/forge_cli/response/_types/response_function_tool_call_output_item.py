@@ -1,7 +1,7 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Optional
-from typing_extensions import Literal
+
+from typing import Literal
 
 from ._models import BaseModel
 
@@ -21,7 +21,7 @@ class ResponseFunctionToolCallOutputItem(BaseModel):
     type: Literal["function_call_output"]
     """The type of the function tool call output. Always `function_call_output`."""
 
-    status: Optional[Literal["in_progress", "completed", "incomplete"]] = None
+    status: Literal["in_progress", "completed", "incomplete"] | None = None
     """The status of the item.
 
     One of `in_progress`, `completed`, or `incomplete`. Populated when items are

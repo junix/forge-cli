@@ -1,7 +1,7 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Union, Optional
-from typing_extensions import Literal
+
+from typing import Literal
 
 from ._models import BaseModel
 from .response_input_message_content_list import ResponseInputMessageContentList
@@ -10,7 +10,7 @@ __all__ = ["EasyInputMessage"]
 
 
 class EasyInputMessage(BaseModel):
-    content: Union[str, ResponseInputMessageContentList]
+    content: str | ResponseInputMessageContentList
     """
     Text, image, or audio input to the model, used to generate a response. Can also
     contain previous assistant responses.
@@ -22,5 +22,5 @@ class EasyInputMessage(BaseModel):
     One of `user`, `assistant`, `system`, or `developer`.
     """
 
-    type: Optional[Literal["message"]] = None
+    type: Literal["message"] | None = None
     """The type of the message input. Always `message`."""

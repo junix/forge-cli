@@ -5,18 +5,18 @@ in the SDK while maintaining backward compatibility.
 """
 
 import asyncio
-from typing import AsyncIterator, Dict, Any, List, Optional, Tuple
+from collections.abc import AsyncIterator
+from typing import Any
+
+from forge_cli.response._types import (
+    Request,
+    Response,
+    ResponseStreamEvent,
+)
 from forge_cli.response.adapters import (
     ResponseAdapter,
     StreamEventAdapter,
     ToolAdapter,
-)
-from forge_cli.response._types import (
-    Request,
-    Response,
-    FileSearchTool,
-    WebSearchTool,
-    ResponseStreamEvent,
 )
 
 
@@ -46,7 +46,7 @@ class TypedForgeSDK:
         # Convert to typed Response
         return ResponseAdapter.from_dict(response_data)
 
-    async def stream_response(self, request: Request) -> AsyncIterator[Tuple[str, ResponseStreamEvent]]:
+    async def stream_response(self, request: Request) -> AsyncIterator[tuple[str, ResponseStreamEvent]]:
         """Stream response with typed events."""
         # Convert request
         api_payload = request.as_openai_chat_request()
@@ -139,7 +139,7 @@ class BackwardCompatibleSDK(TypedForgeSDK):
 
     async def create_response_compat(
         self, input_messages: Any, model: str = "qwen-max-latest", **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Backward compatible method accepting dict inputs."""
         # Create typed request
         request = ResponseAdapter.create_request(input_messages=input_messages, model=model, **kwargs)

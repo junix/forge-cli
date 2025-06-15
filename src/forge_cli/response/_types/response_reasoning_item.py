@@ -1,8 +1,7 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import List, Optional
 
-from typing_extensions import Literal
+from typing import Literal
 
 from ._models import BaseModel
 
@@ -23,19 +22,19 @@ class ResponseReasoningItem(BaseModel):
     id: str
     """The unique identifier of the reasoning content."""
 
-    summary: List[Summary]
+    summary: list[Summary]
     """Reasoning text contents."""
 
     type: Literal["reasoning"]
     """The type of the object. Always `reasoning`."""
 
-    encrypted_content: Optional[str] = None
+    encrypted_content: str | None = None
     """
     The encrypted content of the reasoning item - populated when a response is
     generated with `reasoning.encrypted_content` in the `include` parameter.
     """
 
-    status: Optional[Literal["in_progress", "completed", "incomplete"]] = None
+    status: Literal["in_progress", "completed", "incomplete"] | None = None
     """The status of the item.
 
     One of `in_progress`, `completed`, or `incomplete`. Populated when items are

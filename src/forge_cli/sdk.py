@@ -19,7 +19,7 @@ import mimetypes
 import os
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any, Union, overload
+from typing import Any, Union
 
 import aiohttp
 from loguru import logger
@@ -30,9 +30,9 @@ from forge_cli.response._types import (
     InputMessage,
     Request,
     Response,
-    ResponseStreamEvent,
     WebSearchTool,
 )
+
 # Removed adapter imports - using typed objects directly
 
 # Use environment variable for server URL if available, otherwise default to localhost

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from typing import List, Union, Iterable
-from typing_extensions import Literal, Required, TypeAlias, TypedDict
+from collections.abc import Iterable
+from typing import Literal, Required, TypeAlias
+
+from typing_extensions import TypedDict
 
 __all__ = [
     "ResponseComputerToolCallParam",
@@ -86,7 +88,7 @@ class ActionDrag(TypedDict, total=False):
 
 
 class ActionKeypress(TypedDict, total=False):
-    keys: Required[List[str]]
+    keys: Required[list[str]]
     """The combination of keys the model is requesting to be pressed.
 
     This is an array of strings, each representing a key.
@@ -160,17 +162,7 @@ class ActionWait(TypedDict, total=False):
     """
 
 
-Action: TypeAlias = Union[
-    ActionClick,
-    ActionDoubleClick,
-    ActionDrag,
-    ActionKeypress,
-    ActionMove,
-    ActionScreenshot,
-    ActionScroll,
-    ActionType,
-    ActionWait,
-]
+Action: TypeAlias = ActionClick | ActionDoubleClick | ActionDrag | ActionKeypress | ActionMove | ActionScreenshot | ActionScroll | ActionType | ActionWait
 
 
 class PendingSafetyCheck(TypedDict, total=False):

@@ -1,7 +1,7 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Optional
-from typing_extensions import Literal
+
+from typing import Literal
 
 from ._models import BaseModel
 
@@ -18,10 +18,10 @@ class ResponseInputImage(BaseModel):
     type: Literal["input_image"]
     """The type of the input item. Always `input_image`."""
 
-    file_id: Optional[str] = None
+    file_id: str | None = None
     """The ID of the file to be sent to the model."""
 
-    image_url: Optional[str] = None
+    image_url: str | None = None
     """The URL of the image to be sent to the model.
 
     A fully qualified URL or base64 encoded image in a data URL.

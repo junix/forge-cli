@@ -4,22 +4,19 @@ import argparse
 import asyncio
 import os
 import sys
-from pathlib import Path
-from typing import Optional
-
-# Import the TestDataset loader
-from forge_cli.dataset import TestDataset
-
 
 # Use absolute imports from top-level directory
 from forge_cli.chat.controller import ChatController
 from forge_cli.config import SearchConfig
 
+# Import the TestDataset loader
+from forge_cli.dataset import TestDataset
+
 # Registry no longer needed - using v3 directly
 from forge_cli.processors.registry_typed import initialize_typed_registry
+from forge_cli.response._types import FileSearchTool, InputMessage, Request, WebSearchTool
 from forge_cli.sdk import astream_typed_response, async_get_vectorstore
 from forge_cli.stream.handler_typed import TypedStreamHandler
-from forge_cli.response._types import Request, FileSearchTool, WebSearchTool, InputMessage
 
 
 def create_display(config: SearchConfig) -> "Display":
@@ -34,7 +31,7 @@ def create_display(config: SearchConfig) -> "Display":
     # Choose renderer based on configuration
     if getattr(config, "json_output", False):
         # JSON output with Rich live updates
-        from forge_cli.display.v3.renderers.json import JsonRenderer, JsonDisplayConfig
+        from forge_cli.display.v3.renderers.json import JsonDisplayConfig, JsonRenderer
 
         json_config = JsonDisplayConfig(
             pretty_print=True,
@@ -50,7 +47,7 @@ def create_display(config: SearchConfig) -> "Display":
 
     elif not getattr(config, "use_rich", True):
         # Plain text output
-        from forge_cli.display.v3.renderers.plaintext import PlaintextRenderer, PlaintextDisplayConfig
+        from forge_cli.display.v3.renderers.plaintext import PlaintextDisplayConfig, PlaintextRenderer
 
         plain_config = PlaintextDisplayConfig(
             show_reasoning=getattr(config, "show_reasoning", True),
@@ -62,7 +59,7 @@ def create_display(config: SearchConfig) -> "Display":
 
     else:
         # Rich terminal UI (default)
-        from forge_cli.display.v3.renderers.rich import RichRenderer, RichDisplayConfig
+        from forge_cli.display.v3.renderers.rich import RichDisplayConfig, RichRenderer
 
         display_config = RichDisplayConfig(
             show_reasoning=getattr(config, "show_reasoning", True),

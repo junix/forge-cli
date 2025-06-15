@@ -2,10 +2,9 @@
 """Example usage of the v3 Rich renderer with the simplified display interface."""
 
 import asyncio
-from typing import List
 
 from forge_cli.display.v3.base import Display
-from forge_cli.display.v3.renderers.rich import RichRenderer, RichDisplayConfig
+from forge_cli.display.v3.renderers.rich import RichDisplayConfig, RichRenderer
 from forge_cli.response._types.response import Response
 from forge_cli.response._types.response_output_message import ResponseOutputMessage
 from forge_cli.response._types.response_output_text import ResponseOutputText

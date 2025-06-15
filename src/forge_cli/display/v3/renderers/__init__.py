@@ -1,8 +1,8 @@
 """V3 Display renderers - pure output formatting implementations."""
 
-from .rich import RichRenderer, RichDisplayConfig
-from .json import JsonRenderer, JsonDisplayConfig
-from .plaintext import PlaintextRenderer, PlaintextDisplayConfig
+from .json import JsonDisplayConfig, JsonRenderer
+from .plaintext import PlaintextDisplayConfig, PlaintextRenderer
+from .rich import RichDisplayConfig, RichRenderer
 
 __all__ = [
     "RichRenderer",

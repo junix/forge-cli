@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Union
+from typing import Literal, Required, TypeAlias
 
 from openai.types.shared_params.comparison_filter import ComparisonFilter
 from openai.types.shared_params.compound_filter import CompoundFilter
-from typing_extensions import Literal, Required, TypeAlias, TypedDict
+from typing_extensions import TypedDict
 
 __all__ = ["FileSearchToolParam", "Filters", "RankingOptions"]
 
-Filters: TypeAlias = Union[ComparisonFilter, CompoundFilter]
+Filters: TypeAlias = ComparisonFilter | CompoundFilter
 
 
 class RankingOptions(TypedDict, total=False):
@@ -29,10 +29,10 @@ class FileSearchToolParam(TypedDict, total=False):
     type: Required[Literal["file_search"]]
     """The type of the file search tool. Always `file_search`."""
 
-    vector_store_ids: Required[List[str]]
+    vector_store_ids: Required[list[str]]
     """The IDs of the vector stores to search."""
 
-    filters: Optional[Filters]
+    filters: Filters | None
     """A filter to apply."""
 
     max_num_results: int

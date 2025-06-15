@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Union, Iterable
-from typing_extensions import Literal, Required, TypeAlias, TypedDict
+from collections.abc import Iterable
+from typing import Literal, Required, TypeAlias
 
-from .response_output_text_param import ResponseOutputTextParam
+from typing_extensions import TypedDict
+
 from .response_output_refusal_param import ResponseOutputRefusalParam
+from .response_output_text_param import ResponseOutputTextParam
 
 __all__ = ["ResponseOutputMessageParam", "Content"]
 
-Content: TypeAlias = Union[ResponseOutputTextParam, ResponseOutputRefusalParam]
+Content: TypeAlias = ResponseOutputTextParam | ResponseOutputRefusalParam
 
 
 class ResponseOutputMessageParam(TypedDict, total=False):

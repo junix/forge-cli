@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing_extensions import Literal, Required, TypedDict
+from typing import Literal, Required
+
+from typing_extensions import TypedDict
 
 __all__ = ["ResponseFunctionWebSearchParam"]
 

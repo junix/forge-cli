@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Union
-from typing_extensions import Literal, Required, TypedDict
+from typing import Literal, Required
+
+from typing_extensions import TypedDict
 
 from .response_input_message_content_list_param import ResponseInputMessageContentListParam
 
@@ -11,7 +12,7 @@ __all__ = ["EasyInputMessageParam"]
 
 
 class EasyInputMessageParam(TypedDict, total=False):
-    content: Required[Union[str, ResponseInputMessageContentListParam]]
+    content: Required[str | ResponseInputMessageContentListParam]
     """
     Text, image, or audio input to the model, used to generate a response. Can also
     contain previous assistant responses.

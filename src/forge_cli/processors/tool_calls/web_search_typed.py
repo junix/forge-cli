@@ -1,7 +1,9 @@
 """Web search tool call processor with typed API support."""
 
 from typing import Any
+
 from forge_cli.response._types import ResponseFunctionWebSearch
+
 from .base_typed import BaseToolCallProcessor
 
 

@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Union
+from typing import TypeAlias
 
 from openai.types.shared_params.response_format_json_object import (
     ResponseFormatJSONObject,
 )
 from openai.types.shared_params.response_format_text import ResponseFormatText
-from typing_extensions import TypeAlias
 
 from .response_format_text_json_schema_config_param import (
     ResponseFormatTextJSONSchemaConfigParam,
@@ -16,8 +15,4 @@ from .response_format_text_json_schema_config_param import (
 
 __all__ = ["ResponseFormatTextConfigParam"]
 
-ResponseFormatTextConfigParam: TypeAlias = Union[
-    ResponseFormatText,
-    ResponseFormatTextJSONSchemaConfigParam,
-    ResponseFormatJSONObject,
-]
+ResponseFormatTextConfigParam: TypeAlias = ResponseFormatText | ResponseFormatTextJSONSchemaConfigParam | ResponseFormatJSONObject

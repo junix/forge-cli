@@ -1,9 +1,10 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import List, Union
-from typing_extensions import Literal, Annotated, TypeAlias
+
+from typing import Annotated, Literal, TypeAlias
 
 from openai._utils import PropertyInfo
+
 from ._models import BaseModel
 
 __all__ = ["ResponseCodeInterpreterToolCall", "Result", "ResultLogs", "ResultFiles", "ResultFilesFile"]
@@ -26,13 +27,13 @@ class ResultFilesFile(BaseModel):
 
 
 class ResultFiles(BaseModel):
-    files: List[ResultFilesFile]
+    files: list[ResultFilesFile]
 
     type: Literal["files"]
     """The type of the code interpreter file output. Always `files`."""
 
 
-Result: TypeAlias = Annotated[Union[ResultLogs, ResultFiles], PropertyInfo(discriminator="type")]
+Result: TypeAlias = Annotated[ResultLogs | ResultFiles, PropertyInfo(discriminator="type")]
 
 
 class ResponseCodeInterpreterToolCall(BaseModel):
@@ -42,7 +43,7 @@ class ResponseCodeInterpreterToolCall(BaseModel):
     code: str
     """The code to run."""
 
-    results: List[Result]
+    results: list[Result]
     """The results of the code interpreter tool call."""
 
     status: Literal["in_progress", "interpreting", "completed"]

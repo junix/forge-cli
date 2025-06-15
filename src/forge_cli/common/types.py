@@ -1,4 +1,4 @@
-from typing import Literal, Protocol, TypedDict, Union
+from typing import Callable, Literal, Protocol, TypedDict, Union
 
 
 # Forward reference for Annotation types, actual import might be needed if used directly
@@ -74,8 +74,8 @@ class DocumentFinderResult(BaseSearchResult):
 AnyCitable = TypedDict(
     "AnyCitable",
     {
-        "set_citation_id": callable | None,  # Simplified representation
-        "as_annotation": callable | None,
+        "set_citation_id": Callable[[int], None] | None,  # Simplified representation
+        "as_annotation": Callable[[], AnnotationUnion | None] | None,
         "file_id": str | None,
         "filename": str | None,
         "url": str | None,

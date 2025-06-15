@@ -1,7 +1,7 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Optional
-from typing_extensions import Literal
+
+from typing import Literal
 
 from ._models import BaseModel
 
@@ -12,11 +12,11 @@ class ResponseInputFile(BaseModel):
     type: Literal["input_file"]
     """The type of the input item. Always `input_file`."""
 
-    file_data: Optional[str] = None
+    file_data: str | None = None
     """The content of the file to be sent to the model."""
 
-    file_id: Optional[str] = None
+    file_id: str | None = None
     """The ID of the file to be sent to the model."""
 
-    filename: Optional[str] = None
+    filename: str | None = None
     """The name of the file to be sent to the model."""

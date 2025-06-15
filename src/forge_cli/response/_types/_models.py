@@ -2,24 +2,25 @@ from __future__ import annotations
 
 import inspect
 import os
+from collections.abc import Callable, Mapping, Sequence
 from datetime import date, datetime
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Generic,
-    Optional,
-    Tuple,
-    Type,
+    ClassVar,
+    Literal,
+    Protocol,
+    Required,
+    TypeGuard,
     TypeVar,
-    Union,
+    Unpack,
     cast,
-    Mapping,
+    final,
+    override,
 )
 
 import pydantic
 from openai._compat import (
-    PYDANTIC_V2,
     ConfigDict,
     field_get_default,
     get_args,
@@ -34,6 +35,15 @@ from openai._compat import (
     GenericModel as BaseGenericModel,
 )
 from openai._constants import RAW_RESPONSE_HEADER
+from openai._types import (
+    Body,
+    Headers,
+    HttpxRequestFiles,
+    ModelT,
+    NotGiven,
+    Query,
+    Timeout,
+)
 from openai._utils import (
     PropertyInfo,
     coerce_boolean,
@@ -43,7 +53,6 @@ from openai._utils import (
     is_list,
     is_mapping,
     is_type_alias_type,
-    json_safe,
     lru_cache,
     parse_date,
     parse_datetime,
@@ -52,29 +61,9 @@ from openai._utils import (
 )
 from pydantic.fields import FieldInfo
 from typing_extensions import (
-    ClassVar,
-    Literal,
     ParamSpec,
-    Protocol,
-    Required,
-    Sequence,
     TypedDict,
-    TypeGuard,
-    Unpack,
-    final,
-    override,
     runtime_checkable,
-)
-
-from openai._types import (
-    Body,
-    Headers,
-    HttpxRequestFiles,
-    IncEx,
-    ModelT,
-    NotGiven,
-    Query,
-    Timeout,
 )
 
 if TYPE_CHECKING:
@@ -92,7 +81,7 @@ _BaseModelT = TypeVar("_BaseModelT", bound="BaseModel")
 
 P = ParamSpec("P")
 
-ReprArgs = Sequence[Tuple[Optional[str], Any]]
+ReprArgs = Sequence[tuple[str | None, Any]]
 
 
 @runtime_checkable
@@ -107,7 +96,7 @@ class BaseModel(pydantic.BaseModel):
     )
 
     if TYPE_CHECKING:
-        _request_id: Optional[str] = None
+        _request_id: str | None = None
         """The ID of the request, returned via the X-Request-ID header. Useful for debugging requests and reporting issues to OpenAI.
 
         This will **only** be set for the top-level response object, it will not be defined for nested objects. For example:
@@ -206,7 +195,7 @@ class BaseModel(pydantic.BaseModel):
     @classmethod
     @override
     def construct(  # pyright: ignore[reportIncompatibleMethodOverride]
-        __cls: Type[ModelT],
+        __cls: type[ModelT],
         _fields_set: set[str] | None = None,
         **values: object,
     ) -> ModelT:
@@ -611,17 +600,17 @@ class FinalRequestOptions(pydantic.BaseModel):
     method: str
     url: str
     params: Query = {}
-    headers: Union[Headers, NotGiven] = NotGiven()
-    max_retries: Union[int, NotGiven] = NotGiven()
-    timeout: Union[float, Timeout, None, NotGiven] = NotGiven()
-    files: Union[HttpxRequestFiles, None] = None
-    idempotency_key: Union[str, None] = None
-    post_parser: Union[Callable[[Any], Any], NotGiven] = NotGiven()
+    headers: Headers | NotGiven = NotGiven()
+    max_retries: int | NotGiven = NotGiven()
+    timeout: float | Timeout | None | NotGiven = NotGiven()
+    files: HttpxRequestFiles | None = None
+    idempotency_key: str | None = None
+    post_parser: Callable[[Any], Any] | NotGiven = NotGiven()
 
     # It should be noted that we cannot use `json` here as that would override
     # a BaseModel method in an incompatible fashion.
-    json_data: Union[Body, None] = None
-    extra_json: Union[Mapping[str, Any], None] = None
+    json_data: Body | None = None
+    extra_json: Mapping[str, Any] | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 

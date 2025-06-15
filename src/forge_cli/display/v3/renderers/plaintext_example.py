@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Example usage of the Plaintext renderer for v3 display system."""
 
-from forge_cli.display.v3.renderers.plaintext import PlaintextRenderer, PlaintextDisplayConfig
 from forge_cli.display.v3.base import Display
+from forge_cli.display.v3.renderers.plaintext import PlaintextDisplayConfig, PlaintextRenderer
 
 
 def demo_plaintext_renderer():

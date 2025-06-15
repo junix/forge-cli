@@ -1,9 +1,10 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import List, Union
-from typing_extensions import Literal, Annotated, TypeAlias
+
+from typing import Annotated, Literal, TypeAlias
 
 from openai._utils import PropertyInfo
+
 from ._models import BaseModel
 
 __all__ = [
@@ -66,7 +67,7 @@ class ActionDragPath(BaseModel):
 
 
 class ActionDrag(BaseModel):
-    path: List[ActionDragPath]
+    path: list[ActionDragPath]
     """An array of coordinates representing the path of the drag action.
 
     Coordinates will appear as an array of objects, eg
@@ -87,7 +88,7 @@ class ActionDrag(BaseModel):
 
 
 class ActionKeypress(BaseModel):
-    keys: List[str]
+    keys: list[str]
     """The combination of keys the model is requesting to be pressed.
 
     This is an array of strings, each representing a key.
@@ -162,17 +163,7 @@ class ActionWait(BaseModel):
 
 
 Action: TypeAlias = Annotated[
-    Union[
-        ActionClick,
-        ActionDoubleClick,
-        ActionDrag,
-        ActionKeypress,
-        ActionMove,
-        ActionScreenshot,
-        ActionScroll,
-        ActionType,
-        ActionWait,
-    ],
+    ActionClick | ActionDoubleClick | ActionDrag | ActionKeypress | ActionMove | ActionScreenshot | ActionScroll | ActionType | ActionWait,
     PropertyInfo(discriminator="type"),
 ]
 
@@ -198,7 +189,7 @@ class ResponseComputerToolCall(BaseModel):
     call_id: str
     """An identifier used when responding to the tool call with output."""
 
-    pending_safety_checks: List[PendingSafetyCheck]
+    pending_safety_checks: list[PendingSafetyCheck]
     """The pending safety checks for the computer call."""
 
     status: Literal["in_progress", "completed", "incomplete"]
