@@ -13,27 +13,22 @@ class ReasoningProcessor(OutputProcessor):
         """Check if this processor can handle the item type."""
         return item_type == "reasoning"
 
-    def process(self, item: Any) -> dict[str, Any] | None:
+    def process(self, item: ResponseReasoningItem) -> dict[str, Any] | None:
         """Extract reasoning text from summary items."""
         reasoning_texts = []
 
-        # Handle typed ResponseReasoningItem only
-        if isinstance(item, ResponseReasoningItem):
-            # Extract from typed object
-            for summary in item.summary or []:
-                if hasattr(summary, "type") and summary.type in ["summary_text", "text"]:
-                    text = getattr(summary, "text", "")
-                    if text:
-                        reasoning_texts.append(text)
+        # Extract text from summary items
+        for summary in item.summary or []:
+            # Safely access text attribute
+            if hasattr(summary, "text") and summary.text:
+                reasoning_texts.append(summary.text)
 
-            return {
-                "type": "reasoning",
-                "content": "\n\n".join(reasoning_texts),
-                "status": item.status or "completed",
-                "id": item.id or "",
-            }
-
-        return None
+        return {
+            "type": "reasoning",
+            "content": "\n\n".join(reasoning_texts),
+            "status": item.status or "completed",
+            "id": item.id or "",
+        }
 
     def format(self, processed: dict[str, Any]) -> str:
         """Format reasoning for display as quoted text."""

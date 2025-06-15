@@ -3,7 +3,13 @@
 from abc import ABC, abstractmethod
 from typing import Any, Union
 
-from forge_cli.response._types import Response
+from forge_cli.response._types import (
+    Response,
+    ResponseFileSearchToolCall,
+    ResponseDocumentFinderToolCall,
+    ResponseFunctionWebSearch,
+    ResponseOutputItem,
+)
 
 
 class TypedOutputProcessor(ABC):
@@ -28,19 +34,17 @@ class TypedOutputProcessor(ABC):
         """
         pass
 
-    def extract_item_type(self, item: Any) -> str:
+    def extract_item_type(self, item: ResponseOutputItem) -> str:
         """
         Extract item type from typed item.
 
         Args:
-            item: Typed object with type attribute
+            item: Typed ResponseOutputItem
 
         Returns:
             The item type string
         """
-        if hasattr(item, "type"):
-            return str(item.type)
-        return ""
+        return str(item.type)
 
 
 
@@ -52,22 +56,16 @@ class TypedToolProcessor(TypedOutputProcessor):
         """Return the tool type this processor handles."""
         pass
 
-    def extract_queries(self, item: Any) -> list[str]:
+    def extract_queries(self, item: Union[ResponseFileSearchToolCall, ResponseDocumentFinderToolCall, ResponseFunctionWebSearch]) -> list[str]:
         """Extract queries from typed tool call."""
-        if hasattr(item, "queries") and item.queries:
-            return list(item.queries)
-        return []
+        return list(item.queries) if item.queries else []
 
-    def extract_results(self, item: Any) -> list[Any]:
+    def extract_results(self, item: Union[ResponseFileSearchToolCall, ResponseDocumentFinderToolCall, ResponseFunctionWebSearch]) -> list[Any]:
         """Extract results from typed tool call."""
-        if hasattr(item, "results") and item.results:
-            return list(item.results)
-        return []
+        return list(item.results) if item.results else []
 
-    def extract_status(self, item: Any) -> str:
+    def extract_status(self, item: Union[ResponseFileSearchToolCall, ResponseDocumentFinderToolCall, ResponseFunctionWebSearch]) -> str:
         """Extract status from typed tool call."""
-        if hasattr(item, "status"):
-            return str(item.status)
-        return "unknown"
+        return str(item.status)
 
 

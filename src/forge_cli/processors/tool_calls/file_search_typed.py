@@ -1,6 +1,7 @@
 """File search tool call processor with typed API support."""
 
 from typing import Any
+from forge_cli.response._types import ResponseFileSearchToolCall
 from .base_typed import BaseToolCallProcessor
 
 
@@ -18,16 +19,16 @@ class FileSearchProcessor(BaseToolCallProcessor):
 
     def _add_tool_specific_data(
         self,
-        item: Any,
+        item: ResponseFileSearchToolCall,
         processed: dict[str, Any],
     ) -> None:
         """Add file search specific data."""
         # Extract file_id if searching specific file
-        if hasattr(item, "file_id"):
+        if item.file_id:
             processed["file_id"] = str(item.file_id)
 
         # Extract vector store IDs if available
-        if hasattr(item, "vector_store_ids"):
+        if item.vector_store_ids:
             processed["vector_store_ids"] = list(item.vector_store_ids)
 
     def _add_tool_specific_formatting(self, processed: dict[str, Any], parts: list[str]) -> None:
@@ -42,12 +43,13 @@ class FileSearchProcessor(BaseToolCallProcessor):
         if vector_store_ids:
             parts.append(f"🗄️ 向量存储: {', '.join(vector_store_ids)}")
 
-    def extract_file_mappings(self, item: Any) -> dict[str, str]:
+    def extract_file_mappings(self, item: ResponseFileSearchToolCall) -> dict[str, str]:
         """Extract file ID to filename mappings from results."""
         mappings = {}
 
         results = self.extract_results(item)
         for result in results:
+            # Results should have file_id and filename attributes
             if hasattr(result, "file_id") and hasattr(result, "filename"):
                 mappings[result.file_id] = result.filename
 

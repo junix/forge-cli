@@ -1,6 +1,7 @@
 """Web search tool call processor with typed API support."""
 
 from typing import Any
+from forge_cli.response._types import ResponseFunctionWebSearch
 from .base_typed import BaseToolCallProcessor
 
 
@@ -18,16 +19,17 @@ class WebSearchProcessor(BaseToolCallProcessor):
 
     def _add_tool_specific_data(
         self,
-        item: Any,
+        item: ResponseFunctionWebSearch,
         processed: dict[str, Any],
     ) -> None:
         """Add web search specific data."""
-        # Extract location info
-        if hasattr(item, "country"):
-            processed["country"] = str(item.country) if item.country else None
-
-        if hasattr(item, "city"):
-            processed["city"] = str(item.city) if item.city else None
+        # Extract location info from parameters if available
+        if hasattr(item, "parameters") and item.parameters:
+            params = item.parameters
+            if hasattr(params, "country") and params.country:
+                processed["country"] = str(params.country)
+            if hasattr(params, "city") and params.city:
+                processed["city"] = str(params.city)
 
     def _add_tool_specific_formatting(self, processed: dict[str, Any], parts: list[str]) -> None:
         """Add web search specific formatting."""
@@ -44,7 +46,7 @@ class WebSearchProcessor(BaseToolCallProcessor):
             if location_parts:
                 parts.append(f"📍 位置: {', '.join(location_parts)}")
 
-    def extract_urls(self, item: Any) -> list[str]:
+    def extract_urls(self, item: ResponseFunctionWebSearch) -> list[str]:
         """Extract URLs from search results."""
         urls = []
 

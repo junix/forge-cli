@@ -18,33 +18,28 @@ class MessageProcessor(OutputProcessor):
         """Check if this processor can handle the item type."""
         return item_type == "message"
 
-    def process(self, item: Any) -> dict[str, Any] | None:
+    def process(self, item: ResponseOutputMessage) -> dict[str, Any] | None:
         """Extract text and annotations from message content."""
-        # Handle typed ResponseOutputMessage only
-        if isinstance(item, ResponseOutputMessage):
-            if item.role != "assistant":
-                return None
+        if item.role != "assistant":
+            return None
 
-            full_text = ""
-            all_annotations = []
+        full_text = ""
+        all_annotations = []
 
-            for content_item in item.content or []:
-                if isinstance(content_item, ResponseOutputText) or (
-                    hasattr(content_item, "type") and content_item.type == "output_text"
-                ):
-                    full_text = content_item.text or ""
-                    all_annotations = content_item.annotations or []
-                    break
+        # Find the first text content item
+        for content_item in item.content or []:
+            if isinstance(content_item, ResponseOutputText):
+                full_text = content_item.text or ""
+                all_annotations = content_item.annotations or []
+                break
 
-            return {
-                "type": "message",
-                "text": full_text,
-                "annotations": all_annotations,
-                "id": item.id or "",
-                "status": item.status or "completed",
-            }
-
-        return None
+        return {
+            "type": "message",
+            "text": full_text,
+            "annotations": all_annotations,
+            "id": item.id or "",
+            "status": item.status or "completed",
+        }
 
     def format(self, processed: dict[str, Any]) -> str:
         """Format message with text and citations."""
