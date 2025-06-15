@@ -19,30 +19,42 @@ class ChatController:
         self.commands = CommandRegistry()
         self.running = False
 
+    def _prepare_tool_config(self, tool_type: str, config: SearchConfig) -> dict | None:
+        """Helper method to prepare individual tool configuration."""
+        if tool_type == "file-search":
+            if "file-search" in config.enabled_tools and config.vec_ids:
+                return {
+                    "type": "file_search",
+                    "vector_store_ids": config.vec_ids,
+                    "max_num_results": config.max_results,
+                }
+        elif tool_type == "web-search":
+            if "web-search" in config.enabled_tools:
+                tool_config = {"type": "web_search"}
+                location_info = config.get_web_location()
+                if location_info:
+                    # This structure can be adapted by both prepare_tools and prepare_typed_tools
+                    tool_config["location_info"] = location_info
+                return tool_config
+        return None
+
     def prepare_tools(self) -> list[dict[str, str | bool | list[str]]]:
         """Prepare tools configuration based on config."""
         tools = []
 
         # File search tool
-        if "file-search" in self.config.enabled_tools and self.config.vec_ids:
-            tools.append(
-                {
-                    "type": "file_search",
-                    "vector_store_ids": self.config.vec_ids,
-                    "max_num_results": self.config.max_results,
-                }
-            )
+        file_search_config = self._prepare_tool_config("file-search", self.config)
+        if file_search_config:
+            tools.append(file_search_config)
 
         # Web search tool
-        if "web-search" in self.config.enabled_tools:
-            web_tool = {"type": "web_search"}
-
-            # Add location if provided
-            location = self.config.get_web_location()
-            if location:
-                web_tool["user_location"] = {"type": "approximate", **location}
-
-            tools.append(web_tool)
+        web_search_config = self._prepare_tool_config("web-search", self.config)
+        if web_search_config:
+            # Adapt location_info for dict-based tool
+            if "location_info" in web_search_config:
+                location = web_search_config.pop("location_info")
+                web_search_config["user_location"] = {"type": "approximate", **location}
+            tools.append(web_search_config)
 
         return tools
 
@@ -53,20 +65,17 @@ class ChatController:
         tools = []
 
         # File search tool
-        if "file-search" in self.config.enabled_tools and self.config.vec_ids:
-            tools.append(
-                FileSearchTool(
-                    type="file_search",
-                    vector_store_ids=self.config.vec_ids,
-                    max_num_results=self.config.max_results,
-                )
-            )
+        file_search_config = self._prepare_tool_config("file-search", self.config)
+        if file_search_config:
+            tools.append(FileSearchTool(**file_search_config))
 
         # Web search tool
-        if "web-search" in self.config.enabled_tools:
-            tool_params = {"type": "web_search"}
-            location = self.config.get_web_location()
-            if location:
+        web_search_config = self._prepare_tool_config("web-search", self.config)
+        if web_search_config:
+            # Adapt location_info for WebSearchTool
+            tool_params = {"type": web_search_config["type"]}
+            if "location_info" in web_search_config:
+                location = web_search_config["location_info"]
                 if "country" in location:
                     tool_params["country"] = location["country"]
                 if "city" in location:
@@ -379,50 +388,50 @@ class ChatController:
 
         return request
 
+    def _extract_text_from_content_item(self, content_item: any) -> str | None:
+        """Extract text from a single content item (dict or typed object)."""
+        if isinstance(content_item, str):
+            return content_item
+        if isinstance(content_item, dict):
+            if content_item.get("type") == "output_text":
+                return content_item.get("text", "")
+            if content_item.get("type") == "text":
+                return content_item.get("text", "")
+        # Check for typed content part (e.g., from ..response._types.ContentPart)
+        elif hasattr(content_item, "type") and content_item.type == "text" and hasattr(content_item, "text"):
+            return content_item.text
+        return None
+
     def extract_text_from_message(self, message_item: dict[str, str | int | float | bool | list | dict]) -> str | None:
         """Extract text content from a message item."""
-        # Handle different content formats
         content = message_item.get("content", [])
 
-        # If content is a string, return it directly
         if isinstance(content, str):
             return content
 
-        # If content is a list, look for text items
         if isinstance(content, list):
-            for content_item in content:
-                if isinstance(content_item, dict):
-                    # Look for output_text type
-                    if content_item.get("type") == "output_text":
-                        return content_item.get("text", "")
-                    # Also check for plain text type
-                    elif content_item.get("type") == "text":
-                        return content_item.get("text", "")
-                elif isinstance(content_item, str):
-                    # If content item is just a string
-                    return content_item
-
+            for item_part in content:
+                text = self._extract_text_from_content_item(item_part)
+                if text:
+                    return text
         return None
 
     def extract_text_from_typed_response(self, response: "Response") -> str | None:
         """Extract text content from a typed response object."""
         from ..response._types import ResponseOutputMessage
 
-        # Check if response has output attribute
         if hasattr(response, "output") and response.output:
             for item in response.output:
-                # Check if it's a message type
                 if hasattr(item, "type") and item.type == "message":
-                    # For typed ResponseOutputMessage
                     if isinstance(item, ResponseOutputMessage):
                         if hasattr(item, "content") and item.content:
-                            # Extract text from content
-                            for content_item in item.content:
-                                if hasattr(content_item, "type") and content_item.type == "text":
-                                    if hasattr(content_item, "text"):
-                                        return content_item.text
-                    # For dict-like message
+                            for content_part in item.content:
+                                text = self._extract_text_from_content_item(content_part)
+                                if text:
+                                    return text
                     elif isinstance(item, dict):
-                        return self.extract_text_from_message(item)
-
+                        # If it's a dict-like message, use the refactored extract_text_from_message
+                        text = self.extract_text_from_message(item)
+                        if text:
+                            return text
         return None

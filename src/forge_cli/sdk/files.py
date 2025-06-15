@@ -2,10 +2,11 @@ import asyncio
 import mimetypes
 from pathlib import Path
 
-import aiohttp
+import aiohttp # Keep for FormData, can be removed if FormData is handled differently or http_client handles it
 from loguru import logger
 
 from .config import BASE_URL
+from .http_client import async_make_request
 
 
 async def async_upload_file(
@@ -53,15 +54,18 @@ async def async_upload_file(
     if skip_exists:
         form_data.add_field("skip_exists", "true")
 
-    # Upload the file (aiohttp automatically sets Content-Type with boundary for FormData)
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, data=form_data) as response:
-            if response.status != 200:
-                error_text = await response.text()
-                raise Exception(f"Upload failed with status {response.status}: {error_text}")
+    status_code, response_data = await async_make_request("POST", url, data=form_data)
 
-            result = await response.json()
-            return result
+    if status_code == 200 and isinstance(response_data, dict):
+        return response_data
+    # Non-200 errors including JSON parsing failures for 200 status are raised by async_make_request
+    # If response_data is str for 200, it means JSON parsing failed in async_make_request
+    elif status_code == 200 and isinstance(response_data, str):
+         raise Exception(f"Upload failed: Server returned 200 but response was not valid JSON. Response: {response_data}")
+    # For other status codes, async_make_request would have raised an exception.
+    # If it didn't (e.g. a case not covered), raise a generic error.
+    else:
+        raise Exception(f"Upload failed with status {status_code}. Response: {response_data}")
 
 
 async def async_check_task_status(task_id: str) -> dict[str, str | int | float | bool | list | dict]:
@@ -76,14 +80,15 @@ async def async_check_task_status(task_id: str) -> dict[str, str | int | float |
     """
     url = f"{BASE_URL}/v1/tasks/{task_id}"
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status != 200:
-                error_text = await response.text()
-                raise Exception(f"Task status check failed with status {response.status}: {error_text}")
+    status_code, response_data = await async_make_request("GET", url)
 
-            result = await response.json()
-            return result
+    if status_code == 200 and isinstance(response_data, dict):
+        return response_data
+    elif status_code == 200 and isinstance(response_data, str):
+        raise Exception(f"Task status check failed: Server returned 200 but response was not valid JSON. Response: {response_data}")
+    else:
+        # Errors are raised by async_make_request, but as a fallback:
+        raise Exception(f"Task status check failed with status {status_code}. Response: {response_data}")
 
 
 async def async_wait_for_task_completion(
@@ -127,23 +132,31 @@ async def async_fetch_file(file_id: str) -> dict[str, str | int | float | bool |
     Returns:
         Dict containing file details or None if not found
     """
-    url = f"{BASE_URL}/v1/files/{file_id}/content"  # Fixed: Use correct endpoint
+    url = f"{BASE_URL}/v1/files/{file_id}/content"
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 404:
-                    logger.warning(f"File with ID {file_id} not found")
-                    return None
-                elif response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Fetch file failed with status {response.status}: {error_text}")
-                    return None
+        status_code, response_data = await async_make_request("GET", url)
 
-                result = await response.json()
-                return result
+        if status_code == 200 and isinstance(response_data, dict):
+            return response_data
+        elif status_code == 404:
+            # Handled by async_make_request logging, no need to log again here.
+            return None
+        elif status_code == 200 and isinstance(response_data, str):
+            # This case implies JSON parsing failed in async_make_request for a 200 response
+            logger.error(f"Fetch file {file_id} failed: Server returned 200 but response was not valid JSON. Content: {response_data}")
+            return None
+        else:
+            # For other status codes, async_make_request would have raised an exception.
+            # If we reach here for other non-200 cases, it's unexpected.
+            # Specific logging for non-200/404 already done by async_make_request if it didn't raise.
+            # However, async_make_request is designed to raise for unhandled non-200/404.
+            # This path should ideally not be hit if async_make_request works as specified.
+            logger.error(f"Fetch file {file_id} returned unhandled status {status_code}. Data: {response_data}")
+            return None
     except Exception as e:
-        logger.error(f"Error fetching file: {str(e)}")
+        # Exceptions from async_make_request (like network errors or specific non-200s) are caught here.
+        logger.error(f"Error fetching file {file_id}: {str(e)}")
         return None
 
 
@@ -160,18 +173,22 @@ async def async_delete_file(file_id: str) -> bool:
     url = f"{BASE_URL}/v1/files/{file_id}"
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.delete(url) as response:
-                if response.status == 404:
-                    logger.warning(f"File with ID {file_id} not found")
-                    return False
-                elif response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Delete file failed with status {response.status}: {error_text}")
-                    return False
+        status_code, response_data = await async_make_request("DELETE", url)
 
-                result = await response.json()
-                return result.get("deleted", False)
+        if status_code == 200 and isinstance(response_data, dict):
+            return response_data.get("deleted", False)
+        elif status_code == 404:
+            # Handled by async_make_request logging.
+            return False
+        elif status_code == 200 and isinstance(response_data, str):
+            logger.error(f"Delete file {file_id} failed: Server returned 200 but response was not valid JSON. Content: {response_data}")
+            return False
+        else:
+            # async_make_request should raise for other error statuses.
+            # This path implies an issue if reached for non-200/404 without an exception.
+            logger.error(f"Delete file {file_id} returned unhandled status {status_code}. Data: {response_data}")
+            return False
     except Exception as e:
-        logger.error(f"Error deleting file: {str(e)}")
+        # Captures exceptions raised by async_make_request
+        logger.error(f"Error deleting file {file_id}: {str(e)}")
         return False
