@@ -228,10 +228,22 @@ class RichRenderer(BaseRenderer):
                 md_parts.append(f"- 🛠️ {item.type.replace('_', ' ').title()} ({item.status}){detail_str}")
             elif item.type == "reasoning":
                 if hasattr(item, "summary") and item.summary:
-                    texts = [s.text.strip() for s in item.summary if hasattr(s, "text") and s.text]
-                    if texts:
-                        for txt in texts:
-                            md_parts.extend([f"> {subline}" for subline in txt.splitlines()])
+                    # Combine all reasoning lines into a single continuous Markdown
+                    # blockquote so that Rich renders it as one cohesive block instead
+                    # of multiple quote paragraphs.
+                    quoted_lines: list[str] = []
+                    for summary in item.summary:
+                        if hasattr(summary, "text") and summary.text:
+                            for line in summary.text.strip().splitlines():
+                                # Prefix each line with '> '. If the line is empty we
+                                # still add a lone '>' to preserve paragraph spacing
+                                # inside the same quote block.
+                                if line.strip():
+                                    quoted_lines.append(f"> {line}")
+                                else:
+                                    quoted_lines.append(">")
+                    if quoted_lines:
+                        md_parts.append("\n".join(quoted_lines))
 
         # References section
         citations = self._extract_all_citations(response)
