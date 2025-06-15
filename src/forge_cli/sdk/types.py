@@ -1,4 +1,15 @@
+from .common_types import DeleteResponse # New import
 from .file_types import File
-from .vectorstore_types import Vectorstore
+from .task_types import TaskStatus
+from .vectorstore_types import Vectorstore, VectorStoreSummary
+from .vectorstore_query_types import VectorStoreQueryResponse, VectorStoreQueryResultItem
 
-__all__ = ["File", "Vectorstore"]
+__all__ = [
+    "DeleteResponse", # Added
+    "File",
+    "TaskStatus",
+    "Vectorstore",
+    "VectorStoreSummary",
+    "VectorStoreQueryResponse",
+    "VectorStoreQueryResultItem"
+]
