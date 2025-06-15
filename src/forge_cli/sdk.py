@@ -356,159 +356,6 @@ async def create_stream_callback(stream: bool = True, debug: bool = False):
     return stream_callback
 
 
-@overload
-async def astream_response(
-    input_messages: str | list[dict[str, str]],
-    model: str = "qwen-max",
-    effort: str = "low",
-    store: bool = True,
-    temperature: float = 0.7,
-    max_output_tokens: int = 1000,
-    tools: list[dict[str, str | int | float | bool | list | dict]] = None,
-    debug: bool = False,
-    typed: bool = False,
-) -> AsyncIterator[tuple[str, dict[str, Any] | None]]: ...
-
-
-@overload
-async def astream_response(
-    input_messages: str | list[dict[str, str]],
-    model: str = "qwen-max",
-    effort: str = "low",
-    store: bool = True,
-    temperature: float = 0.7,
-    max_output_tokens: int = 1000,
-    tools: list[dict[str, str | int | float | bool | list | dict]] = None,
-    debug: bool = False,
-    typed: bool = True,
-) -> AsyncIterator[tuple[str, ResponseStreamEvent | None]]: ...
-
-
-async def astream_response(
-    input_messages: str | list[dict[str, str]],
-    model: str = "qwen-max",
-    effort: str = "low",
-    store: bool = True,
-    temperature: float = 0.7,
-    max_output_tokens: int = 1000,
-    tools: list[dict[str, str | int | float | bool | list | dict]] = None,
-    debug: bool = False,
-    typed: bool = False,
-):
-    """
-    Asynchronously stream a response using the Knowledge Forge API, yielding SSE events.
-    This is an alternative to the callback approach that's easier to use in many cases.
-
-    Args:
-        input_messages: String or list of message objects with role and content
-        model: The model to use for generating the response
-        effort: The effort level for the response ("low", "medium", "high")
-        store: Whether to store the response in the database
-        temperature: The temperature for response generation
-        max_output_tokens: The maximum number of tokens to generate
-        tools: Optional list of tools to use for the response
-        typed: If True, yields typed ResponseStreamEvent objects (requires response._types)
-
-    Yields:
-        Tuples of (event_type, event_data) representing SSE events.
-        If typed=True, event_data will be ResponseStreamEvent objects.
-    """
-    # Typed API is now always available
-    url = f"{BASE_URL}/v1/responses"
-
-    # Validate and normalize input messages
-    normalized_messages = validate_input_messages(input_messages)
-
-    # Prepare request payload
-    payload = {
-        "model": model,
-        "effort": effort,
-        "store": store,
-        "temperature": temperature,
-        "max_output_tokens": max_output_tokens,
-        "input": normalized_messages,
-    }
-
-    if tools:
-        payload["tools"] = tools
-
-    # Initialize current event type
-    current_event_type = ""
-
-    if debug:
-        logger.debug(f"Streaming response with payload:\n{json.dumps(payload, indent=2, ensure_ascii=False)}")
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    error_msg = f"Response creation failed with status {response.status}: {error_text}"
-                    logger.error(error_msg)
-                    yield "error", {"message": error_msg}
-                    return
-
-                # Process the SSE stream
-                async for line in response.content:
-                    line = line.decode("utf-8").strip()
-
-                    if not line:
-                        continue
-
-                    # Process event type
-                    if line.startswith("event:"):
-                        current_event_type = line[6:].strip()
-
-                        # If this is the "done" event, we're finished
-                        if current_event_type == "done":
-                            yield "done", None
-                            break
-
-                        # Yield the event type without data
-                        yield current_event_type, None
-                        continue
-
-                    # Process data
-                    if line.startswith("data:"):
-                        data_str = line[5:].strip()
-                        if not data_str:
-                            continue
-
-                        # Parse JSON data
-                        if data_str.startswith("{") or data_str.startswith("["):
-                            try:
-                                data = json.loads(data_str)
-
-                                # Yield typed event if requested
-                                if typed:
-                                    try:
-                                        typed_event = StreamEventAdapter.parse_event(
-                                            {"type": current_event_type, **data}
-                                        )
-                                        yield current_event_type, typed_event
-                                    except Exception:
-                                        # Fallback to dict if typing fails
-                                        yield current_event_type, data
-                                else:
-                                    yield current_event_type, data
-
-                                # If this is the completed event, also yield the final response
-                                if current_event_type == "response.completed":
-                                    if typed:
-                                        yield "final_response", typed_event if "typed_event" in locals() else data
-                                    else:
-                                        yield "final_response", data
-                            except json.JSONDecodeError:
-                                error_msg = f"Failed to parse JSON data: {data_str}"
-                                logger.error(error_msg)
-                                yield "error", {"message": error_msg}
-
-    except Exception as e:
-        error_msg = f"Error creating response: {str(e)}"
-        logger.error(error_msg)
-        yield "error", {"message": error_msg}
-
-
 async def async_create_response(
     input_messages: str | list[dict[str, str]],
     model: str = "qwen-max",
@@ -1071,49 +918,127 @@ async def astream_typed_response(
     # Import Response adapter for conversion
     from forge_cli.response.adapters import ResponseAdapter
 
-    # Convert Request to proper format for astream_response
-    # The Request object uses 'input' but astream_response expects 'input_messages'
+    # Convert Request to API format
     request_dict = request.model_dump(exclude_none=True)
-
-    # Map Request fields to astream_response parameters
-    async for event_type, event_data in astream_response(
-        input_messages=request_dict.get("input", []),
-        model=request_dict.get("model", "qwen-max"),
-        effort=request_dict.get("effort", "low"),
-        store=request_dict.get("store", True),
-        temperature=request_dict.get("temperature", 0.7),
-        max_output_tokens=request_dict.get("max_output_tokens", 1000),
-        tools=request_dict.get("tools", None),
-        debug=debug,
-        typed=False,  # Get raw dict data to convert to Response
-    ):
-        # Events that contain full response snapshots according to ADR-004
-        SNAPSHOT_EVENT_TYPES = {
-            "response.created",
-            "response.in_progress",
-            "response.completed",
-            "response.output_text.delta",
-            "response.output_text.done",
-            "response.reasoning_summary_text.delta",
-            "response.reasoning_summary_text.done",
-            "response.file_search_call.completed",
-            "response.web_search_call.completed",
-            "response.function_call.completed",
-        }
-
-        if event_data and isinstance(event_data, dict) and event_type in SNAPSHOT_EVENT_TYPES:
-            try:
-                # Convert snapshot data to Response object
-                response = ResponseAdapter.from_dict(event_data)
-                yield event_type, response
-            except Exception as e:
-                if debug:
-                    logger.debug(f"Could not convert event data to Response for event {event_type}: {e}")
-                # For events that don't have full response data, yield None
-                yield event_type, None
+    
+    # Convert input messages to API format
+    input_messages = []
+    for msg in request_dict.get("input", []):
+        if isinstance(msg, dict):
+            input_messages.append(msg)
+        elif hasattr(msg, 'model_dump'):
+            input_messages.append(msg.model_dump())
         else:
-            # Non-snapshot events or empty data
-            yield event_type, None
+            input_messages.append({"role": "user", "content": str(msg)})
+
+    # Prepare request payload
+    payload = {
+        "model": request_dict.get("model", "qwen-max"),
+        "effort": request_dict.get("effort", "low"),
+        "store": request_dict.get("store", True),
+        "temperature": request_dict.get("temperature", 0.7),
+        "max_output_tokens": request_dict.get("max_output_tokens", 1000),
+        "input": input_messages,
+    }
+
+    # Convert tools to API format
+    if request_dict.get("tools"):
+        tools = []
+        for tool in request_dict["tools"]:
+            if isinstance(tool, dict):
+                tools.append(tool)
+            elif hasattr(tool, 'model_dump'):
+                tools.append(tool.model_dump())
+            else:
+                tools.append(tool)
+        payload["tools"] = tools
+
+    url = f"{BASE_URL}/v1/responses"
+    current_event_type = ""
+
+    if debug:
+        logger.debug(f"Streaming typed response with payload:\n{json.dumps(payload, indent=2, ensure_ascii=False)}")
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    error_msg = f"Response creation failed with status {response.status}: {error_text}"
+                    logger.error(error_msg)
+                    yield "error", None
+                    return
+
+                # Process the SSE stream
+                async for line in response.content:
+                    line = line.decode("utf-8").strip()
+
+                    if not line:
+                        continue
+
+                    # Process event type
+                    if line.startswith("event:"):
+                        current_event_type = line[6:].strip()
+
+                        # If this is the "done" event, we're finished
+                        if current_event_type == "done":
+                            yield "done", None
+                            break
+
+                        continue
+
+                    # Process data
+                    if line.startswith("data:"):
+                        data_str = line[5:].strip()
+                        if not data_str:
+                            continue
+
+                        # Parse JSON data
+                        if data_str.startswith("{") or data_str.startswith("["):
+                            try:
+                                data = json.loads(data_str)
+
+                                # Events that contain full response snapshots according to ADR-004
+                                SNAPSHOT_EVENT_TYPES = {
+                                    "response.created",
+                                    "response.in_progress",
+                                    "response.completed",
+                                    "response.output_text.delta",
+                                    "response.output_text.done",
+                                    "response.reasoning_summary_text.delta",
+                                    "response.reasoning_summary_text.done",
+                                    "response.file_search_call.completed",
+                                    "response.web_search_call.completed",
+                                    "response.function_call.completed",
+                                }
+
+                                if data and isinstance(data, dict) and current_event_type in SNAPSHOT_EVENT_TYPES:
+                                    try:
+                                        # Convert snapshot data to Response object
+                                        response_obj = ResponseAdapter.from_dict(data)
+                                        yield current_event_type, response_obj
+                                    except Exception as e:
+                                        if debug:
+                                            logger.debug(f"Could not convert event data to Response for event {current_event_type}: {e}")
+                                        # For events that don't have full response data, yield None
+                                        yield current_event_type, None
+                                else:
+                                    # Non-snapshot events or empty data
+                                    yield current_event_type, None
+
+                                # If this is the completed event, also yield the final response
+                                if current_event_type == "response.completed":
+                                    yield "final_response", response_obj if 'response_obj' in locals() else None
+
+                            except json.JSONDecodeError:
+                                error_msg = f"Failed to parse JSON data: {data_str}"
+                                logger.error(error_msg)
+                                yield "error", None
+
+    except Exception as e:
+        error_msg = f"Error creating typed response: {str(e)}"
+        logger.error(error_msg)
+        yield "error", None
 
 
 def create_typed_request(

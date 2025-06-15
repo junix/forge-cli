@@ -263,15 +263,33 @@ class ChatController:
         final_content = None
 
         try:
-            # Import SDK
-            from ..sdk import astream_response
+            # Import typed SDK
+            from ..sdk import astream_typed_response
+            from ..response._types import Request, InputMessage
+
+            # Convert dict request to typed Request
+            input_messages = []
+            if isinstance(request.get("input_messages"), list):
+                for msg in request["input_messages"]:
+                    if isinstance(msg, dict) and "role" in msg and "content" in msg:
+                        input_messages.append(InputMessage(role=msg["role"], content=msg["content"]))
+            elif isinstance(request.get("input_messages"), str):
+                input_messages = [InputMessage(role="user", content=request["input_messages"])]
+
+            typed_request = Request(
+                input=input_messages,
+                model=request.get("model", "qwen-max"),
+                tools=request.get("tools", []),
+                temperature=request.get("temperature", 0.7),
+                max_output_tokens=request.get("max_output_tokens", 2000),
+                effort=request.get("effort", "low"),
+            )
 
             # Stream the response
             if self.config.debug:
-                print(f"DEBUG: Request keys: {list(request.keys())}")
-                print(f"DEBUG: Request: {json.dumps(request, indent=2)[:500]}...")
+                print(f"DEBUG: Typed Request: {typed_request.model_dump()}")
 
-            event_stream = astream_response(**request)
+            event_stream = astream_typed_response(typed_request, debug=self.config.debug)
             response = await handler.handle_stream(event_stream, content)
 
             if response:
