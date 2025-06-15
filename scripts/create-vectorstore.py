@@ -29,7 +29,7 @@ import os
 from typing import Any
 
 # Import SDK functions
-from sdk import (
+from forge_cli.sdk import (
     async_create_vectorstore,
     async_get_vectorstore,
     async_join_files_to_vectorstore,
@@ -75,8 +75,8 @@ async def create_vector_store_async(
         if result:
             # Success - print the result
             print("\nVector store creation successful:")
-            print(f"ID: {result.get('id')}")
-            print(f"Name: {result.get('name')}")
+            print(f"ID: {result.id}")
+            print(f"Name: {result.name}")
             print(f"Description: {description}")
             if file_ids:
                 print(f"Associated files: {', '.join(file_ids)}")
@@ -84,7 +84,7 @@ async def create_vector_store_async(
             # Print the full JSON response if verbose
             if args.verbose:
                 print("\nFull server response:")
-                print(json.dumps(result, indent=2, ensure_ascii=False))
+                print(result.model_dump_json(indent=2, exclude_none=True, ensure_ascii=False))
         else:
             print("Vector store creation failed. Check server logs for details.")
 
@@ -112,7 +112,7 @@ async def add_files_to_vectorstore_async(vector_store_id: str, file_ids: list[st
             # Print the full JSON response if verbose
             if args.verbose:
                 print("\nUpdated vector store:")
-                print(json.dumps(result, indent=2, ensure_ascii=False))
+                print(result.model_dump_json(indent=2, exclude_none=True, ensure_ascii=False))
         else:
             print("Failed to add files to vector store.")
 
@@ -135,15 +135,14 @@ async def get_vectorstore_async(vector_store_id: str) -> None:
 
         if result:
             print("\nVector store details:")
-            print(f"ID: {result.get('id')}")
-            print(f"Name: {result.get('name')}")
-            print(f"Created at: {result.get('created_at')}")
+            print(f"ID: {result.id}")
+            print(f"Name: {result.name}")
+            print(f"Created at: {result.created_at}")
 
             # Display metadata if available
-            metadata = result.get("metadata", {})
-            if metadata:
-                if "description" in metadata:
-                    print(f"Description: {metadata['description']}")
+            metadata = result.metadata or {}
+            if metadata.get("description"):
+                print(f"Description: {metadata.get('description')}")
 
                 # Display other metadata
                 other_metadata = {k: v for k, v in metadata.items() if k != "description"}
@@ -153,7 +152,7 @@ async def get_vectorstore_async(vector_store_id: str) -> None:
                         print(f"  {key}: {value}")
 
             # Display associated files
-            file_ids = result.get("file_ids", [])
+            file_ids = result.file_ids or []
             if file_ids:
                 print(f"Associated files ({len(file_ids)}):")
                 for file_id in file_ids:
@@ -164,7 +163,7 @@ async def get_vectorstore_async(vector_store_id: str) -> None:
             # Print the full JSON response if verbose
             if args.verbose:
                 print("\nFull server response:")
-                print(json.dumps(result, indent=2, ensure_ascii=False))
+                print(result.model_dump_json(indent=2, exclude_none=True, ensure_ascii=False))
         else:
             print(f"Failed to fetch vector store with ID: {vector_store_id}")
 
