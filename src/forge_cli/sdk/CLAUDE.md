@@ -66,22 +66,19 @@ async for event_type, response_snapshot in astream_typed_response(request):
 
 ## Core Modules
 
-### Response Generation (response.py & typed_api.py)
+### Response Generation (typed_api.py)
 
-**Legacy API Functions:**
-
-- `async_create_response()` - Create responses with streaming support
-- `async_fetch_response()` - Retrieve responses by ID
-- `validate_input_messages()` - Input validation and normalization
-- `create_stream_callback()` - Streaming callback creation
-
-**Modern Typed API Functions:**
+**Core Typed API Functions:**
 
 - `async_create_typed_response()` - Type-safe response creation
 - `astream_typed_response()` - Typed streaming with Response snapshots
 - `create_typed_request()` - Request object creation helper
 - `create_file_search_tool()` - File search tool factory
 - `create_web_search_tool()` - Web search tool factory
+
+**Response Utilities (response.py):**
+
+- `async_fetch_response()` - Retrieve existing responses by ID
 
 ### File Management (files.py)
 
@@ -134,35 +131,40 @@ async for event_type, response_snapshot in astream_typed_response(request):
 ### Basic Response Generation
 
 ```python
-from forge_cli.sdk import async_create_response
+from forge_cli.sdk import async_create_typed_response, create_typed_request
 
-# Simple text generation
-response = await async_create_response(
+# Simple text generation with typed API
+request = create_typed_request(
     input_messages="Explain machine learning",
     model="qwen-max-latest",
     effort="medium",
     temperature=0.7
 )
 
+response = await async_create_typed_response(request)
 if response:
     print(response.output_text)
-    print(f"Citations: {len(response.citations)}")
+    print(f"Citations: {len(response.collect_citable_items())}")
 ```
 
 ### Streaming Responses
 
 ```python
-from forge_cli.sdk import async_create_response, create_stream_callback
+from forge_cli.sdk import astream_typed_response, create_typed_request
 
-# Create streaming callback
-callback = await create_stream_callback(stream=True, debug=False)
-
-# Stream response with real-time updates
-response = await async_create_response(
+# Create typed request for streaming
+request = create_typed_request(
     input_messages="Tell me about AI",
-    callback=callback,
     model="qwen-max-latest"
 )
+
+# Stream response with real-time updates
+async for event_type, response_snapshot in astream_typed_response(request, debug=False):
+    if event_type == "response.output_text.delta" and response_snapshot:
+        print(response_snapshot.output_text, end="", flush=True)
+    elif event_type == "response.completed":
+        print(f"\nFinal response: {response_snapshot.output_text}")
+        break
 ```
 
 ### File Operations
@@ -178,9 +180,9 @@ result = await async_upload_file(
 )
 
 # Wait for processing completion
-if result.get("task_id"):
+if result.task_id:
     final_status = await async_wait_for_task_completion(
-        result["task_id"],
+        result.task_id,
         poll_interval=2,
         max_attempts=60
     )
@@ -219,35 +221,40 @@ await async_join_files_to_vectorstore(
 )
 ```
 
-### Modern Typed API Usage
+### Complete Typed API Workflow
 
 ```python
 from forge_cli.sdk import (
     create_typed_request,
     async_create_typed_response,
     astream_typed_response,
-    create_file_search_tool
+    create_file_search_tool,
+    create_web_search_tool
 )
 
-# Create typed request with tools
+# Create typed request with multiple tools
 request = create_typed_request(
-    input_messages="What information is in my documents?",
+    input_messages="What information is in my documents, and what are the latest industry trends?",
     model="qwen-max-latest",
-    tools=[create_file_search_tool(["vs_123", "vs_456"])],
+    tools=[
+        create_file_search_tool(["vs_123", "vs_456"], max_search_results=10),
+        create_web_search_tool()
+    ],
     effort="high",
     temperature=0.3
 )
 
 # Non-streaming typed response
 response = await async_create_typed_response(request)
-print(response.output_text)
+print(f"Response: {response.output_text}")
+print(f"Citations: {len(response.collect_citable_items())}")
 
-# Streaming typed response with snapshots
+# Or streaming typed response with real-time updates
 async for event_type, response_snapshot in astream_typed_response(request):
     if event_type == "response.output_text.delta" and response_snapshot:
         print(response_snapshot.output_text, end="", flush=True)
     elif event_type == "response.completed":
-        print(f"\nFinal response: {response_snapshot.output_text}")
+        print(f"\nCompleted! Citations: {len(response_snapshot.collect_citable_items())}")
         break
 ```
 
@@ -281,14 +288,15 @@ sdk_config.BASE_URL = "https://your-custom-endpoint.com"
 The SDK provides comprehensive error handling with detailed logging:
 
 ```python
-from forge_cli.sdk import async_create_response
+from forge_cli.sdk import async_create_typed_response, create_typed_request
 from loguru import logger
 
 try:
-    response = await async_create_response(
+    request = create_typed_request(
         input_messages="Your query",
-        debug=True  # Enable detailed logging
+        model="qwen-max-latest"
     )
+    response = await async_create_typed_response(request, debug=True)
     if response is None:
         logger.error("Response creation failed")
 except Exception as e:
@@ -319,26 +327,40 @@ from .types import Response
 from .utils import get_response_text
 
 # Use absolute imports from outside the SDK
-from forge_cli.sdk import async_create_response, async_upload_file
+from forge_cli.sdk import async_create_typed_response, create_typed_request, async_upload_file
 ```
 
-## Migration Guide
+## Current API Design
 
-### From Dict-Based to Typed API
+The SDK now uses exclusively typed APIs for all operations:
 
-**Old Pattern:**
-
-```python
-response = await async_create_response("query", tools=[{"type": "file_search"}])
-text = response.output_text if response else ""
-```
-
-**New Pattern:**
+**Response Creation:**
 
 ```python
-request = create_typed_request("query", tools=[create_file_search_tool(["vs_123"])])
+# Create request with type validation
+request = create_typed_request(
+    input_messages="Your query",
+    model="qwen-max-latest",
+    tools=[create_file_search_tool(["vs_123"])],
+    effort="medium"
+)
+
+# Get response
 response = await async_create_typed_response(request)
-text = response.output_text  # Type-safe access
+text = response.output_text  # Type-safe access with IDE autocomplete
+```
+
+**Streaming:**
+
+```python
+# Stream with real-time snapshots
+async for event_type, response_snapshot in astream_typed_response(request):
+    if event_type == "response.output_text.delta":
+        # Process incremental updates
+        pass
+    elif event_type == "response.completed":
+        # Final response ready
+        break
 ```
 
 ## Related Components
@@ -348,4 +370,4 @@ text = response.output_text  # Type-safe access
 - **Stream Handler** (`src/forge_cli/stream/`) - Processes SDK streaming responses
 - **Configuration** (`src/forge_cli/config.py`) - CLI configuration that extends SDK config
 
-The SDK serves as the foundation for all Knowledge Forge API interactions, providing a robust, type-safe, and feature-complete Python client library.
+The SDK serves as the foundation for all Knowledge Forge API interactions, providing a robust, type-safe, and feature-complete Python client library with comprehensive Pydantic validation and modern async patterns.
