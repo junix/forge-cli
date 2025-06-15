@@ -5,6 +5,7 @@ import asyncio
 from ..config import SearchConfig
 from ..display.v3.base import Display
 from ..models.conversation import ConversationState
+from ..response._types.tool import Tool
 from ..stream.handler_typed import TypedStreamHandler
 from .commands import CommandRegistry
 
@@ -15,7 +16,7 @@ class ChatController:
     def __init__(self, config: SearchConfig, display: Display):
         self.config = config
         self.display = display
-        self.conversation = ConversationState(model=config.model, tools=self.prepare_tools())
+        self.conversation = ConversationState(model=config.model, tools=self.prepare_typed_tools())
         self.commands = CommandRegistry()
         self.running = False
 
@@ -58,7 +59,7 @@ class ChatController:
 
         return tools
 
-    def prepare_typed_tools(self) -> list:
+    def prepare_typed_tools(self) -> list[Tool]:
         """Prepare typed tools configuration based on config."""
         from ..response._types import FileSearchTool, WebSearchTool
 
@@ -73,13 +74,17 @@ class ChatController:
         web_search_config = self._prepare_tool_config("web-search", self.config)
         if web_search_config:
             # Adapt location_info for WebSearchTool
+            from ..response._types.web_search_tool import UserLocation
+            
             tool_params = {"type": web_search_config["type"]}
             if "location_info" in web_search_config:
                 location = web_search_config["location_info"]
-                if "country" in location:
-                    tool_params["country"] = location["country"]
-                if "city" in location:
-                    tool_params["city"] = location["city"]
+                user_location = UserLocation(
+                    type="approximate",
+                    country=location.get("country"),
+                    city=location.get("city"),
+                )
+                tool_params["user_location"] = user_location
             tools.append(WebSearchTool(**tool_params))
 
         return tools

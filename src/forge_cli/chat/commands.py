@@ -305,7 +305,7 @@ class NewCommand(ChatCommand):
         # Create new conversation
         from ..models.conversation import ConversationState
 
-        controller.conversation = ConversationState(model=controller.config.model, tools=controller.prepare_tools())
+        controller.conversation = ConversationState(model=controller.config.model, tools=controller.prepare_typed_tools())
 
         controller.display.show_status("🆕 Started new conversation.")
         return True

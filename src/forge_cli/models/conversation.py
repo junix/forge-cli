@@ -9,6 +9,7 @@ from pathlib import Path
 # Import proper types from response system
 from ..response._types.response_input_message_item import ResponseInputMessageItem
 from ..response._types.response_usage import InputTokensDetails, OutputTokensDetails, ResponseUsage
+from ..response._types.tool import Tool
 
 
 @dataclass
@@ -20,7 +21,7 @@ class ConversationState:
     session_id: str = field(default_factory=lambda: f"session_{uuid.uuid4().hex[:12]}")
     created_at: float = field(default_factory=time.time)
     model: str = "qwen-max-latest"
-    tools: list[dict] = field(default_factory=list)
+    tools: list[Tool] = field(default_factory=list)
     metadata: dict[str, str | int | float | bool] = field(default_factory=dict)
     # Use proper ResponseUsage instead of manual tracking
     usage: ResponseUsage | None = None
@@ -56,9 +57,27 @@ class ConversationState:
         self.add_message(message)
         return message
 
-    def to_api_format(self) -> list[ResponseInputMessageItem]:
-        """Return messages in proper API format (already typed)."""
-        return self.messages
+    def to_api_format(self) -> list[dict[str, str]]:
+        """Convert messages to API format (dict with role and content)."""
+        api_messages = []
+        for msg in self.messages:
+            # Extract text content from ResponseInputText objects
+            content_parts = []
+            for content_item in msg.content:
+                # Handle both Pydantic objects and dict formats
+                if hasattr(content_item, 'type') and content_item.type == "input_text":
+                    content_parts.append(content_item.text)
+                elif isinstance(content_item, dict) and content_item.get("type") == "input_text":
+                    content_parts.append(content_item.get("text", ""))
+            
+            content_str = " ".join(content_parts)
+            
+            api_messages.append({
+                "role": msg.role,
+                "content": content_str,
+            })
+        
+        return api_messages
 
     def clear(self) -> None:
         """Clear conversation history but keep configuration."""
@@ -93,7 +112,7 @@ class ConversationState:
             "session_id": self.session_id,
             "created_at": self.created_at,
             "model": self.model,
-            "tools": self.tools,
+            "tools": [tool.model_dump() for tool in self.tools],
             "metadata": self.metadata,
             "usage": self.usage.model_dump() if self.usage else None,
             "messages": [msg.model_dump() for msg in self.messages],
@@ -126,11 +145,47 @@ class ConversationState:
                 output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
             )
 
+        # Handle tools data - convert dicts to typed Tool objects
+        tools = []
+        tools_data = data.get("tools", [])
+        if tools_data:
+            from ..response._types import (
+                FileSearchTool,
+                WebSearchTool,
+                FunctionTool,
+                ComputerTool,
+                DocumentFinderTool,
+            )
+            from ..response._types.file_reader_tool import FileReaderTool
+            
+            for tool_data in tools_data:
+                if isinstance(tool_data, dict):
+                    tool_type = tool_data.get("type")
+                    if tool_type == "file_search":
+                        tools.append(FileSearchTool.model_validate(tool_data))
+                    elif tool_type in ["web_search", "web_search_preview", "web_search_preview_2025_03_11"]:
+                        tools.append(WebSearchTool.model_validate(tool_data))
+                    elif tool_type == "function":
+                        tools.append(FunctionTool.model_validate(tool_data))
+                    elif tool_type == "computer_use_preview":
+                        tools.append(ComputerTool.model_validate(tool_data))
+                    elif tool_type == "document_finder":
+                        tools.append(DocumentFinderTool.model_validate(tool_data))
+                    elif tool_type == "file_reader":
+                        tools.append(FileReaderTool.model_validate(tool_data))
+                    else:
+                        # For unknown tool types, we could either skip or try a generic approach
+                        # For now, let's skip unknown tools with a note
+                        continue
+                else:
+                    # Already a Tool object, keep as is
+                    tools.append(tool_data)
+
         conversation = cls(
             session_id=data["session_id"],
             created_at=data["created_at"],
             model=data["model"],
-            tools=data.get("tools", []),
+            tools=tools,
             metadata=data.get("metadata", {}),
             usage=usage,
         )
