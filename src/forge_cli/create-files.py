@@ -179,7 +179,7 @@ async def delete_file_async(file_id: str) -> DeleteResponse | None:
 
     Args:
         file_id: The ID of the file to delete
-        
+
     Returns:
         DeleteResponse object if successful, None otherwise
     """
