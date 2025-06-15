@@ -8,7 +8,16 @@ if TYPE_CHECKING:
 
 
 class ChatCommand(ABC):
-    """Base class for chat commands."""
+    """Abstract base class for chat commands.
+
+    This class defines the interface for all chat commands. Each command
+    must implement the `execute` method.
+
+    Attributes:
+        name (str): The primary name of the command (e.g., "help").
+        description (str): A short description of what the command does.
+        aliases (list[str]): A list of alternative names for the command.
+    """
 
     name: str = ""
     description: str = ""
@@ -16,56 +25,92 @@ class ChatCommand(ABC):
 
     @abstractmethod
     async def execute(self, args: str, controller: "ChatController") -> bool:
-        """
-        Execute the command.
+        """Executes the command.
+
+        This method is called when the user issues the command. It receives the
+        command arguments and a reference to the chat controller.
 
         Args:
-            args: Command arguments
-            controller: Chat controller instance
+            args: A string containing the arguments passed to the command.
+            controller: An instance of `ChatController` to interact with the
+                chat session.
 
         Returns:
-            True to continue chat, False to exit
+            bool: True if the chat session should continue, False if it should exit.
         """
         pass
 
 
 class ExitCommand(ChatCommand):
-    """Exit the chat session."""
+    """Exits the chat session.
+
+    This command terminates the current chat interaction.
+    """
 
     name = "exit"
     description = "Exit the chat"
     aliases = ["quit", "bye", "q"]
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Exit the chat."""
+        """Executes the exit command.
+
+        Args:
+            args: Command arguments (not used by this command).
+            controller: The `ChatController` instance.
+
+        Returns:
+            False, indicating the chat session should end.
+        """
         if not controller.config.quiet:
             controller.display.show_status("👋 Goodbye! Thanks for chatting.")
         return False
 
 
 class ClearCommand(ChatCommand):
-    """Clear conversation history."""
+    """Clears the conversation history.
+
+    This command removes all messages from the current chat session.
+    """
 
     name = "clear"
     description = "Clear conversation history"
     aliases = ["cls", "reset"]
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Clear the conversation."""
+        """Executes the clear command.
+
+        Args:
+            args: Command arguments (not used by this command).
+            controller: The `ChatController` instance.
+
+        Returns:
+            True, indicating the chat session should continue.
+        """
         controller.conversation.clear()
         controller.display.show_status("🧹 Conversation history cleared.")
         return True
 
 
 class HelpCommand(ChatCommand):
-    """Show available commands."""
+    """Shows available commands.
+
+    Displays a table of all registered commands, their aliases, and descriptions.
+    """
 
     name = "help"
     description = "Show this help message"
     aliases = ["h", "?"]
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Show help message."""
+        """Executes the help command.
+
+        Args:
+            args: Command arguments (not used by this command).
+            controller: The `ChatController` instance.
+
+        Returns:
+            True, indicating the chat session should continue.
+        """
         from rich.align import Align
         from rich.table import Table
 
@@ -93,14 +138,27 @@ class HelpCommand(ChatCommand):
 
 
 class SaveCommand(ChatCommand):
-    """Save conversation to file."""
+    """Saves the current conversation to a file.
+
+    The conversation is saved in JSON format. If no filename is provided,
+    a default filename with a timestamp is used.
+    """
 
     name = "save"
     description = "Save conversation to file"
     aliases = ["s"]
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Save the conversation."""
+        """Executes the save command.
+
+        Args:
+            args: The filename to save the conversation to. If empty, a
+                default filename is generated.
+            controller: The `ChatController` instance.
+
+        Returns:
+            True, indicating the chat session should continue.
+        """
         from pathlib import Path
 
         # Determine filename
@@ -128,14 +186,26 @@ class SaveCommand(ChatCommand):
 
 
 class LoadCommand(ChatCommand):
-    """Load conversation from file."""
+    """Loads a conversation from a file.
+
+    The conversation is loaded from a JSON file. If the specified file is not
+    found, it attempts to load the file with a `.json` extension.
+    """
 
     name = "load"
     description = "Load conversation from file"
     aliases = ["l"]
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Load a conversation."""
+        """Executes the load command.
+
+        Args:
+            args: The filename to load the conversation from.
+            controller: The `ChatController` instance.
+
+        Returns:
+            True, indicating the chat session should continue.
+        """
         from pathlib import Path
 
         if not args.strip():
@@ -178,14 +248,26 @@ class LoadCommand(ChatCommand):
 
 
 class HistoryCommand(ChatCommand):
-    """Show conversation history."""
+    """Shows the conversation history.
+
+    Displays the last N messages from the current conversation.
+    Defaults to showing the last 10 messages if N is not specified.
+    """
 
     name = "history"
     description = "Show conversation history"
     aliases = ["hist"]
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Show conversation history."""
+        """Executes the history command.
+
+        Args:
+            args: The number of messages to show. Defaults to 10.
+            controller: The `ChatController` instance.
+
+        Returns:
+            True, indicating the chat session should continue.
+        """
         if not controller.conversation.messages:
             controller.display.show_status("No conversation history yet.")
             return True
@@ -212,14 +294,27 @@ class HistoryCommand(ChatCommand):
 
 
 class ModelCommand(ChatCommand):
-    """Show or change the model."""
+    """Shows or changes the language model.
+
+    If no arguments are provided, displays the current model and available models.
+    If a model name is provided as an argument, switches to that model.
+    """
 
     name = "model"
     description = "Show or change the model"
     aliases = ["m"]
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Show or change model."""
+        """Executes the model command.
+
+        Args:
+            args: The name of the model to switch to. If empty, displays
+                current and available models.
+            controller: The `ChatController` instance.
+
+        Returns:
+            True, indicating the chat session should continue.
+        """
         if not args.strip():
             # Show current model
             controller.display.show_status(f"🤖 Current model: {controller.config.model}")
@@ -235,14 +330,29 @@ class ModelCommand(ChatCommand):
 
 
 class ToolsCommand(ChatCommand):
-    """Show or manage tools."""
+    """Shows or manages available tools.
+
+    If no arguments are provided, displays the currently enabled tools and
+    available tools.
+    Tools can be enabled or disabled using `add` or `remove` subcommands.
+    For example: `/tools add file-search` or `/tools remove web-search`.
+    """
 
     name = "tools"
     description = "Show or manage tools"
     aliases = ["t"]
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Show or manage tools."""
+        """Executes the tools command.
+
+        Args:
+            args: The subcommand and tool name (e.g., "add file-search").
+                If empty, displays current and available tools.
+            controller: The `ChatController` instance.
+
+        Returns:
+            True, indicating the chat session should continue.
+        """
         if not args.strip():
             # Show current tools
             if controller.config.enabled_tools:
@@ -288,14 +398,26 @@ class ToolsCommand(ChatCommand):
 
 
 class NewCommand(ChatCommand):
-    """Start a new conversation."""
+    """Starts a new conversation.
+
+    This command clears the current conversation and starts a fresh one.
+    It provides a tip to save the current conversation if it's not empty.
+    """
 
     name = "new"
     description = "Start a new conversation"
     aliases = ["n"]
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Start new conversation."""
+        """Executes the new command.
+
+        Args:
+            args: Command arguments (not used by this command).
+            controller: The `ChatController` instance.
+
+        Returns:
+            True, indicating the chat session should continue.
+        """
         # Save current conversation if it has messages
         if controller.conversation.messages:
             controller.display.show_status(
@@ -312,7 +434,16 @@ class NewCommand(ChatCommand):
 
 
 class ToggleToolCommand(ChatCommand):
-    """Generic command to enable or disable a tool."""
+    """Generic command to enable or disable a specific tool.
+
+    This command is used to create specific commands for enabling or disabling
+    tools like "web-search" or "file-search".
+
+    Attributes:
+        tool_name (str): The internal name of the tool (e.g., "web-search").
+        action (str): Either "enable" or "disable".
+        tool_display_name (str): A user-friendly name for the tool.
+    """
 
     def __init__(
         self,
@@ -322,6 +453,15 @@ class ToggleToolCommand(ChatCommand):
         description: str,
         aliases: list[str],
     ):
+        """Initializes the ToggleToolCommand.
+
+        Args:
+            tool_name: The internal name of the tool.
+            action: "enable" or "disable".
+            command_name: The name of the command (e.g., "/enable-web-search").
+            description: A short description of the command.
+            aliases: A list of alternative names for the command.
+        """
         self.tool_name = tool_name
         self.action = action
         self.name = command_name # From ChatCommand
@@ -333,7 +473,15 @@ class ToggleToolCommand(ChatCommand):
 
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Enable or disable the specified tool."""
+        """Enables or disables the specified tool based on the `action`.
+
+        Args:
+            args: Command arguments (not used by this command).
+            controller: The `ChatController` instance.
+
+        Returns:
+            True, indicating the chat session should continue.
+        """
         enabled_tools = controller.config.enabled_tools
 
         if self.action == "enable":
@@ -356,9 +504,21 @@ class ToggleToolCommand(ChatCommand):
 
 
 class CommandRegistry:
-    """Registry for chat commands."""
+    """Manages and provides access to chat commands.
+
+    This class holds a registry of all available chat commands,
+    mapping command names and aliases to their respective `ChatCommand` objects.
+    It also handles parsing user input to identify commands and arguments.
+
+    Attributes:
+        commands (dict[str, ChatCommand]): A dictionary mapping primary command
+            names to `ChatCommand` instances.
+        aliases (dict[str, str]): A dictionary mapping command aliases to
+            primary command names.
+    """
 
     def __init__(self):
+        """Initializes the CommandRegistry and registers default commands."""
         self.commands: dict[str, ChatCommand] = {}
         self.aliases: dict[str, str] = {}
 
@@ -366,7 +526,7 @@ class CommandRegistry:
         self._register_default_commands()
 
     def _register_default_commands(self):
-        """Register all default commands."""
+        """Registers all predefined default chat commands."""
         default_commands = [
             ExitCommand(),
             ClearCommand(),
@@ -413,7 +573,11 @@ class CommandRegistry:
             self.register(cmd)
 
     def register(self, command: ChatCommand) -> None:
-        """Register a command and its aliases."""
+        """Registers a new command and its aliases.
+
+        Args:
+            command: The `ChatCommand` instance to register.
+        """
         self.commands[command.name] = command
 
         # Register aliases
@@ -421,7 +585,14 @@ class CommandRegistry:
             self.aliases[alias] = command.name
 
     def get_command(self, name: str) -> ChatCommand | None:
-        """Get command by name or alias."""
+        """Retrieves a command by its name or one of its aliases.
+
+        Args:
+            name: The name or alias of the command to retrieve.
+
+        Returns:
+            The `ChatCommand` instance if found, otherwise None.
+        """
         # Direct lookup
         if name in self.commands:
             return self.commands[name]
@@ -433,11 +604,20 @@ class CommandRegistry:
         return None
 
     def parse_command(self, input_text: str) -> tuple[str | None, str]:
-        """
-        Parse command and arguments from user input.
+        """Parses user input to extract a command and its arguments.
+
+        Commands are expected to start with a forward slash `/`.
+        If the input starts with `//`, it's treated as a literal message
+        starting with `/`, not a command.
+
+        Args:
+            input_text: The raw text input from the user.
 
         Returns:
-            Tuple of (command_name, arguments) or (None, original_text) if not a command
+            A tuple containing:
+                - The command name (str) if a command is found, otherwise None.
+                - The arguments string (str) if a command is found, otherwise the
+                  original input text (or the text after `//` if escaped).
         """
         if not input_text.startswith("/"):
             return None, input_text
