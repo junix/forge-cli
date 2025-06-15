@@ -131,7 +131,7 @@ async def _process_message(self, message: str):
     stream = astream_response(
         input_messages=messages,
         model=self.config.model,
-        tools=self._get_enabled_tools(),
+        tools=self._get_enabled_tools(), # This would now also potentially include 'code-analyzer'
         **self._get_api_params()
     )
     
@@ -270,6 +270,12 @@ def _build_command_registry(self) -> Dict[str, Command]:
             description="Toggle file search",
             handler=self._cmd_toggle_file
         ),
+        "analyze": Command( # Or a more suitable short command
+            name="analyze",
+            aliases=["ca", "code"],
+            description="Toggle code analyzer tool",
+            handler=self._cmd_toggle_code_analyzer # Assumes a new handler _cmd_toggle_code_analyzer
+        ),
         # Advanced commands
         "export": Command(
             name="export",
@@ -296,7 +302,7 @@ async def _cmd_tools(self, args: List[str]):
     if not args or args[0] == "list":
         # Show current tools
         enabled = self.controller.config.tools
-        available = ["file-search", "web-search", "file-reader"]
+        available = ["file-search", "web-search", "file-reader", "code-analyzer"]
         
         self.display.show_info("Available tools:")
         for tool in available:
