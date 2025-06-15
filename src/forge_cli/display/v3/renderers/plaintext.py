@@ -85,14 +85,15 @@ class PlaintextRenderer(BaseRenderer):
             "model": "green",
             "id": "dim white",
             "separator": "dim blue",
-            "content": "white",
+            "content": "white",  # 正式文本用白色
             "tool_icon": "yellow",
-            "tool_name": "bold blue",
-            "tool_status_completed": "green",
-            "tool_status_in_progress": "yellow",
-            "tool_status_failed": "red",
-            "reasoning": "italic dim yellow",
-            "reasoning_header": "bold yellow",
+            "tool_name": "bold magenta",  # 工具名称用洋红色，更活泼
+            "tool_status_completed": "bold green",
+            "tool_status_in_progress": "bold yellow",
+            "tool_status_failed": "bold red",
+            "tool_details": "cyan",  # 工具细节用青色
+            "reasoning": "italic dark_green",  # 推理文本用暗绿色斜体
+            "reasoning_header": "bold dark_green",
             "citation_ref": "bold cyan",
             "citation_source": "blue",
             "citation_text": "dim",
@@ -162,24 +163,55 @@ class PlaintextRenderer(BaseRenderer):
         text = Text()
 
         # Add status header
-        if self._config.show_status_header:
-            self._add_status_header(text, response)
-            self._add_separator(text)
+        # if self._config.show_status_header:
 
-        # Add response content
-        self._add_response_content(text, response)
+        # Process output items in their original order to preserve event sequence
+        for item in response.output:
+            if item.type == "message":
+                # Handle message content
+                for content in item.content:
+                    if content.type == "output_text":
+                        # Add the text content with white color
+                        self._add_formatted_text(text, content.text, style=self._styles["content"])
+                        # Add inline annotations if available
+                        if content.annotations and self._config.show_citations:
+                            self._add_inline_annotations(text, content.annotations)
+                    elif content.type == "output_refusal":
+                        text.append("⚠️  Response Refused: ", style=self._styles["warning"])
+                        text.append(f"{content.refusal}\n", style=self._styles["error"])
 
-        # Add tool information
-        if self._config.show_tool_details:
-            self._add_tool_information(text, response)
+            elif item.type == "reasoning" and self._config.show_reasoning:
+                # Handle reasoning content with dark green italic style
+                if hasattr(item, "summary") and item.summary:
+                    # text.append("🤔 ", style=self._styles["reasoning_header"])
+                    # text.append("AI Thinking Process", style=self._styles["reasoning_header"])
+                    text.append("\n", style="")
 
-        # Add reasoning if available and enabled
-        if self._config.show_reasoning:
-            self._add_reasoning_content(text, response)
+                    for summary in item.summary:
+                        if hasattr(summary, "text") and summary.text:
+                            # Add reasoning text with dark green italic style
+                            reasoning_lines = summary.text.split("\n")
+                            for line in reasoning_lines:
+                                if line.strip():
+                                    indent = "" * self._config.indent_size
+                                    text.append(f"{indent}{line.strip()}\n", style=self._styles["reasoning"])
+                                else:
+                                    text.append("\n")
+                    text.append("\n")
 
-        # Add citations if available and enabled
+            elif (
+                item.type in ["file_search_call", "web_search_call", "document_finder_call", "file_reader_call"]
+                and self._config.show_tool_details
+            ):
+                # Handle tool calls with colorful display
+                self._add_tool_item(text, item)
+
+        # Add citations section at the end if enabled
         if self._config.show_citations:
-            self._add_citation_content(text, response)
+            citations = self._extract_all_citations(response)
+            if citations:
+                self._add_separator(text, "SOURCES")
+                self._add_citation_list(text, citations)
 
         # Add usage statistics if enabled
         if self._config.show_usage and response.usage:
@@ -198,17 +230,17 @@ class PlaintextRenderer(BaseRenderer):
         text.append(f"{response.id[:12]}...", style=self._styles["id"])
 
         if response.status:
-            text.append(" │ Status: ", style=self._styles["info"])
+            #     text.append(" │ Status: ", style=self._styles["info"])
             status_style = self._get_status_style(response.status)
             status_icon = self._get_status_icon(response.status)
             text.append(f"{status_icon} {response.status.upper()}", style=status_style)
 
-        if response.model:
-            text.append(" │ Model: ", style=self._styles["info"])
-            text.append(f"{response.model}", style=self._styles["model"])
+        # if response.model:
+        #     text.append(" │ Model: ", style=self._styles["info"])
+        #     text.append(f"{response.model}", style=self._styles["model"])
 
         # Render count for streaming feedback
-        text.append(" │ Updates: ", style=self._styles["info"])
+        text.append(" │ # ", style=self._styles["info"])
         text.append(f"{self._render_count}", style=self._styles["warning"])
 
         text.append("\n")
@@ -231,40 +263,75 @@ class PlaintextRenderer(BaseRenderer):
         text.append(separator_line, style=self._styles["separator"])
         text.append("\n")
 
-    def _add_response_content(self, text: Text, response: Response) -> None:
-        """Add the main response content."""
-        content_added = False
+    def _get_tool_details(self, tool_item: Any) -> str:
+        """Get concise details for a tool item."""
+        tool_type = tool_item.type
 
-        for item in response.output:
-            if item.type == "message":
-                # Handle message content
-                for content in item.content:
-                    if content.type == "output_text":
-                        if not content_added:
-                            self._add_separator(text, "RESPONSE")
-                            content_added = True
+        if tool_type == "file_search_call":
+            # Show query and result count
+            parts = []
+            if hasattr(tool_item, "query") and tool_item.query:
+                query = tool_item.query[:40] + "..." if len(tool_item.query) > 40 else tool_item.query
+                parts.append(f'"{query}"')
+            elif hasattr(tool_item, "queries") and tool_item.queries:
+                if len(tool_item.queries) == 1:
+                    query = (
+                        tool_item.queries[0][:40] + "..." if len(tool_item.queries[0]) > 40 else tool_item.queries[0]
+                    )
+                    parts.append(f'"{query}"')
+                else:
+                    parts.append(f"{len(tool_item.queries)} queries")
 
-                        # Add the text content with simple formatting
-                        self._add_formatted_text(text, content.text)
-                        text.append("\n")
+            if hasattr(tool_item, "results") and tool_item.results:
+                parts.append(f"found {len(tool_item.results)} results")
 
-                        # Add inline annotations if available
-                        if content.annotations and self._config.show_citations:
-                            self._add_inline_annotations(text, content.annotations)
+            return " → ".join(parts) if parts else "initializing"
 
-                    elif content.type == "output_refusal":
-                        if not content_added:
-                            self._add_separator(text, "RESPONSE")
-                            content_added = True
+        elif tool_type == "web_search_call":
+            # Show search query and results
+            if hasattr(tool_item, "queries") and tool_item.queries:
+                query = tool_item.queries[0][:50] + "..." if len(tool_item.queries[0]) > 50 else tool_item.queries[0]
+                if hasattr(tool_item, "results") and tool_item.results:
+                    return f'"{query}" → {len(tool_item.results)} results'
+                else:
+                    return f'searching "{query}"'
+            return "initializing"
 
-                        text.append("⚠️  Response Refused: ", style=self._styles["warning"])
-                        text.append(f"{content.refusal}\n", style=self._styles["error"])
+        elif tool_type == "document_finder_call":
+            # Show query and document count
+            parts = []
+            if hasattr(tool_item, "query") and tool_item.query:
+                query = tool_item.query[:40] + "..." if len(tool_item.query) > 40 else tool_item.query
+                parts.append(f'"{query}"')
 
-        if content_added:
-            text.append("\n")
+            if hasattr(tool_item, "results") and tool_item.results:
+                doc_count = len(tool_item.results)
+                parts.append(f"found {doc_count} document{'s' if doc_count != 1 else ''}")
 
-    def _add_formatted_text(self, text: Text, content: str) -> None:
+            return " → ".join(parts) if parts else "initializing"
+
+        elif tool_type == "file_reader_call":
+            # Show file name and status
+            if hasattr(tool_item, "file_name") and tool_item.file_name:
+                name = tool_item.file_name[:35] + "..." if len(tool_item.file_name) > 35 else tool_item.file_name
+                if hasattr(tool_item, "content") and tool_item.content:
+                    return f'"{name}" → loaded ({len(tool_item.content)} chars)'
+                else:
+                    return f'reading "{name}"'
+            elif hasattr(tool_item, "file_id") and tool_item.file_id:
+                return f"file:{tool_item.file_id[:12]}..."
+            return "loading file"
+
+        # Default: show result count if available
+        if hasattr(tool_item, "results") and tool_item.results:
+            return f"{len(tool_item.results)} results"
+        return ""
+
+    def _add_formatted_text(self, text: Text, content: str, style: str = None) -> None:
         """Add formatted text content with simple markdown-like styling."""
+        if style is None:
+            style = self._styles["content"]
+
         lines = content.split("\n")
 
         for line in lines:
@@ -290,7 +357,7 @@ class PlaintextRenderer(BaseRenderer):
             elif line.startswith("- ") or line.startswith("* "):
                 indent = " " * self._config.indent_size
                 text.append(f"{indent}• ", style=self._styles["citation_ref"])
-                text.append(line[2:], style=self._styles["content"])
+                text.append(line[2:], style=style)
                 text.append("\n")
             # Handle numbered lists
             elif line and line[0].isdigit() and ". " in line:
@@ -298,16 +365,19 @@ class PlaintextRenderer(BaseRenderer):
                 parts = line.split(". ", 1)
                 text.append(f"{indent}{parts[0]}. ", style=self._styles["citation_ref"])
                 if len(parts) > 1:
-                    text.append(parts[1], style=self._styles["content"])
+                    text.append(parts[1], style=style)
                 text.append("\n")
             # Regular text with bold/italic handling
             else:
-                formatted_line = self._apply_inline_formatting(line)
+                formatted_line = self._apply_inline_formatting(line, base_style=style)
                 text.append(formatted_line)
                 text.append("\n")
 
-    def _apply_inline_formatting(self, line: str) -> Text:
+    def _apply_inline_formatting(self, line: str, base_style: str = None) -> Text:
         """Apply simple inline formatting like **bold** and *italic*."""
+        if base_style is None:
+            base_style = self._styles["content"]
+
         result = Text()
         i = 0
 
@@ -316,7 +386,7 @@ class PlaintextRenderer(BaseRenderer):
             if i < len(line) - 3 and line[i : i + 2] == "**":
                 end = line.find("**", i + 2)
                 if end != -1:
-                    result.append(line[i + 2 : end], style="bold white")
+                    result.append(line[i + 2 : end], style="bold " + base_style)
                     i = end + 2
                     continue
 
@@ -324,7 +394,7 @@ class PlaintextRenderer(BaseRenderer):
             if i < len(line) - 2 and line[i] == "*" and line[i + 1] != "*":
                 end = line.find("*", i + 1)
                 if end != -1:
-                    result.append(line[i + 1 : end], style="italic dim white")
+                    result.append(line[i + 1 : end], style="italic " + base_style)
                     i = end + 1
                     continue
 
@@ -337,109 +407,64 @@ class PlaintextRenderer(BaseRenderer):
                     continue
 
             # Regular character
-            result.append(line[i], style=self._styles["content"])
+            result.append(line[i], style=base_style)
             i += 1
 
         return result
 
-    def _add_tool_information(self, text: Text, response: Response) -> None:
-        """Add tool execution information."""
-        tool_items = []
+    def _add_tool_item(self, text: Text, tool_item: Any) -> None:
+        """Add a single tool execution item with colorful display."""
+        # Tool icon
+        tool_icon = self._get_tool_icon(tool_item.type)
+        text.append(f"{tool_icon} ", style=self._styles["tool_icon"])
 
-        for item in response.output:
-            if hasattr(item, "status") and hasattr(item, "type"):
-                if item.type in ["file_search_call", "web_search_call", "document_finder_call", "file_reader_call"]:
-                    tool_items.append(item)
+        # Tool name with vibrant color
+        tool_name = tool_item.type.replace("_call", "").replace("_", " ").title()
+        text.append(f"{tool_name}", style=self._styles["tool_name"])
+        text.append(" → ", style=self._styles["separator"])
 
-        if tool_items:
-            self._add_separator(text, "TOOLS")
+        # Status with appropriate color and icon
+        status_style = self._get_tool_status_style(tool_item.status)
+        status_icon = self._get_tool_status_icon(tool_item.status)
+        text.append(f"{status_icon} {tool_item.status}", style=status_style)
 
-            for tool_item in tool_items:
-                # Tool icon and name
-                tool_icon = self._get_tool_icon(tool_item.type)
-                text.append(f"{tool_icon} ", style=self._styles["tool_icon"])
+        # Tool-specific details with cyan color
+        details = self._get_tool_details(tool_item)
+        if details:
+            text.append(" • ", style=self._styles["separator"])
+            text.append(details, style=self._styles["tool_details"])
 
-                tool_name = tool_item.type.replace("_", " ").title()
-                text.append(f"{tool_name}: ", style=self._styles["tool_name"])
+        text.append("\n\n")
 
-                # Status with color
-                status_style = self._get_tool_status_style(tool_item.status)
-                status_icon = self._get_tool_status_icon(tool_item.status)
-                text.append(f"{status_icon} {tool_item.status}", style=status_style)
+    def _add_citation_list(self, text: Text, citations: list[dict[str, Any]]) -> None:
+        """Add citation list with proper formatting."""
+        for i, citation in enumerate(citations, 1):
+            # Citation reference number
+            text.append(f"[{i}] ", style=self._styles["citation_ref"])
 
-                # Additional info
-                details = []
-                if hasattr(tool_item, "queries") and tool_item.queries:
-                    details.append(f"Queries: {len(tool_item.queries)}")
-                if hasattr(tool_item, "results") and tool_item.results:
-                    details.append(f"Results: {len(tool_item.results)}")
+            # Source information
+            source = citation.get("file_name", citation.get("url", "Unknown"))
+            text.append(f"{source}", style=self._styles["citation_source"])
 
-                if details:
-                    text.append(" │ ", style=self._styles["separator"])
-                    text.append(" │ ".join(details), style="dim")
-
-                text.append("\n")
+            # Page number if available
+            if citation.get("page_number"):
+                text.append(f" (page {citation['page_number']})", style="dim")
 
             text.append("\n")
 
-    def _add_reasoning_content(self, text: Text, response: Response) -> None:
-        """Add reasoning content if available."""
-        reasoning_found = False
+            # Quote if available
+            if citation.get("text"):
+                quote = citation["text"]
+                if len(quote) > self._config.max_text_preview:
+                    quote = quote[: self._config.max_text_preview - 3] + "..."
 
-        for item in response.output:
-            if hasattr(item, "type") and item.type == "reasoning":
-                if hasattr(item, "summary") and item.summary:
-                    if not reasoning_found:
-                        self._add_separator(text, "REASONING")
-                        reasoning_found = True
+                indent = " " * (self._config.indent_size + 2)
+                text.append(f'{indent}"{quote}"\n', style=self._styles["citation_text"])
 
-                    text.append("🤔 AI Thinking Process:\n", style=self._styles["reasoning_header"])
-
-                    for summary in item.summary:
-                        if hasattr(summary, "text") and summary.text:
-                            # Add reasoning text with indentation
-                            reasoning_lines = summary.text.split("\n")
-                            for line in reasoning_lines:
-                                if line.strip():
-                                    indent = " " * self._config.indent_size
-                                    text.append(f"{indent}{line.strip()}\n", style=self._styles["reasoning"])
-                                else:
-                                    text.append("\n")
-
-        if reasoning_found:
             text.append("\n")
 
-    def _add_citation_content(self, text: Text, response: Response) -> None:
-        """Add citations information."""
-        citations = self._extract_all_citations(response)
-
-        if citations:
-            self._add_separator(text, "SOURCES")
-
-            for i, citation in enumerate(citations, 1):
-                # Citation reference number
-                text.append(f"[{i}] ", style=self._styles["citation_ref"])
-
-                # Source information
-                source = citation.get("file_name", citation.get("url", "Unknown"))
-                text.append(f"{source}", style=self._styles["citation_source"])
-
-                # Page number if available
-                if citation.get("page_number"):
-                    text.append(f" (page {citation['page_number']})", style="dim")
-
-                text.append("\n")
-
-                # Quote if available
-                if citation.get("text"):
-                    quote = citation["text"]
-                    if len(quote) > 100:
-                        quote = quote[:97] + "..."
-
-                    indent = " " * (self._config.indent_size + 2)
-                    text.append(f'{indent}"{quote}"\n', style=self._styles["citation_text"])
-
-                text.append("\n")
+    # Remove old methods that are no longer needed
+    # The functionality has been integrated into the main flow
 
     def _add_inline_annotations(self, text: Text, annotations: list[Any]) -> None:
         """Add inline annotation references."""
@@ -455,19 +480,32 @@ class PlaintextRenderer(BaseRenderer):
 
     def _add_usage_content(self, text: Text, response: Response) -> None:
         """Add usage statistics."""
-        usage = response.usage
-        self._add_separator(text, "USAGE")
 
-        text.append("📊 Token Usage: ", style=self._styles["usage_label"])
-        text.append("Input: ", style=self._styles["usage_label"])
+        # self._add_status_header(text, response)
+
+        usage = response.usage
+        # self._add_separator(text, "USAGE")
+
+        # text.append("📊 Token Usage: ", style=self._styles["usage_label"])
+        # Render count for streaming feedback
+
+        #     text.append(" │ Status: ", style=self._styles["info"])
+        icons = {
+            "completed": ("   ", self._styles["status_completed"]),
+            "in_progress": (" 󰜎 ", self._styles["status_in_progress"]),
+            "failed": ("   ", self._styles["status_failed"]),
+            "incomplete": ("  ", self._styles["status_default"]),
+        }
+        icon, style = icons.get(response.status, ("  ", self._styles["status_default"]))
+        text.append(icon, style=style)
+
+        text.append("# ", style=self._styles["info"])
+        text.append(f"{self._render_count}", style=self._styles["warning"])
+        text.append(" ⇓ ", style=self._styles["usage_label"])
         text.append(f"{usage.input_tokens or 0}", style=self._styles["usage"])
-        text.append(" │ ", style=self._styles["separator"])
-        text.append("Output: ", style=self._styles["usage_label"])
+        text.append(" ⇑ ", style=self._styles["usage_label"])
         text.append(f"{usage.output_tokens or 0}", style=self._styles["usage"])
-        text.append(" │ ", style=self._styles["separator"])
-        text.append("Total: ", style=self._styles["usage_label"])
-        text.append(f"{usage.total_tokens or 0}", style="bold " + self._styles["usage"])
-        text.append("\n\n")
+        text.append("\n")
 
     def _extract_all_citations(self, response: Response) -> list[dict[str, Any]]:
         """Extract all citations from response annotations."""
@@ -533,8 +571,8 @@ class PlaintextRenderer(BaseRenderer):
         return {
             "completed": self._styles["tool_status_completed"],
             "in_progress": self._styles["tool_status_in_progress"],
-            "searching": self._styles["info"],
-            "interpreting": self._styles["info"],
+            "searching": self._styles["tool_status_in_progress"],
+            "interpreting": self._styles["tool_status_in_progress"],
             "failed": self._styles["tool_status_failed"],
         }.get(status, "white")
 
