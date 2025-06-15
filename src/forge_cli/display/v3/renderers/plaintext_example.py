@@ -55,9 +55,10 @@ This renderer is perfect for environments where you want rich formatting but pre
                         annotations=[
                             SimpleNamespace(
                                 type="file_citation",
-                                file_name="demo_document.pdf",
-                                page_number=1,
-                                text="This is a sample citation from the demo document",
+                                file_id="file_demo_123",
+                                filename="demo_document.pdf",
+                                index=1,
+                                snippet="This is a sample citation from the demo document",
                             )
                         ],
                     )

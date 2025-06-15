@@ -193,9 +193,7 @@ class ChatController:
 
                     # Use prompt_toolkit with auto-completion
                     loop = asyncio.get_event_loop()
-                    future = loop.run_in_executor(
-                        None, lambda: session.prompt(FormattedText([("class:prompt", "You: ")]))
-                    )
+                    future = loop.run_in_executor(None, lambda: session.prompt(FormattedText([("class:prompt", " ")])))
                     user_input = await future
                     return user_input.strip()
                 except ImportError:

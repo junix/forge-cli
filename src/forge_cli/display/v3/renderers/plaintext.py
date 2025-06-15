@@ -271,61 +271,47 @@ class PlaintextRenderer(BaseRenderer):
             # Show query and result count
             parts = []
             if hasattr(tool_item, "query") and tool_item.query:
-                query = tool_item.query[:40] + "..." if len(tool_item.query) > 40 else tool_item.query
-                parts.append(f'"{query}"')
+                parts.append(f' {query}')
             elif hasattr(tool_item, "queries") and tool_item.queries:
-                if len(tool_item.queries) == 1:
-                    query = (
-                        tool_item.queries[0][:40] + "..." if len(tool_item.queries[0]) > 40 else tool_item.queries[0]
-                    )
-                    parts.append(f'"{query}"')
-                else:
-                    parts.append(f"{len(tool_item.queries)} queries")
-
+                query = " ".join(" {query}" for query in tool_item.queries)
+                parts.append(f' {query}')
             if hasattr(tool_item, "results") and tool_item.results:
                 parts.append(f"found {len(tool_item.results)} results")
 
-            return " → ".join(parts) if parts else "initializing"
+            return " • ".join(parts) if parts else ""
 
         elif tool_type == "web_search_call":
             # Show search query and results
             if hasattr(tool_item, "queries") and tool_item.queries:
-                query = tool_item.queries[0][:50] + "..." if len(tool_item.queries[0]) > 50 else tool_item.queries[0]
-                if hasattr(tool_item, "results") and tool_item.results:
-                    return f'"{query}" → {len(tool_item.results)} results'
-                else:
-                    return f'searching "{query}"'
-            return "initializing"
+                query = " ".join(" {query}" for query in tool_item.queries)
+                parts.append(f'󰜏 {query}')
+            if hasattr(tool_item, "results") and tool_item.results:
+                parts.append(f"found {len(tool_item.results)} results")
+
+            return " • ".join(parts) if parts else ""
 
         elif tool_type == "document_finder_call":
             # Show query and document count
             parts = []
             if hasattr(tool_item, "query") and tool_item.query:
-                query = tool_item.query[:40] + "..." if len(tool_item.query) > 40 else tool_item.query
-                parts.append(f'"{query}"')
-
+                parts.append(f'󰈞 {tool_item.query}')
             if hasattr(tool_item, "results") and tool_item.results:
                 doc_count = len(tool_item.results)
                 parts.append(f"found {doc_count} document{'s' if doc_count != 1 else ''}")
 
-            return " → ".join(parts) if parts else "initializing"
+            return " • ".join(parts) if parts else ""
 
         elif tool_type == "file_reader_call":
             # Show file name and status
+            parts = []
             if hasattr(tool_item, "file_name") and tool_item.file_name:
-                name = tool_item.file_name[:35] + "..." if len(tool_item.file_name) > 35 else tool_item.file_name
-                if hasattr(tool_item, "content") and tool_item.content:
-                    return f'"{name}" → loaded ({len(tool_item.content)} chars)'
-                else:
-                    return f'reading "{name}"'
+                parts.append(f'󰑇 {tool_item.file_name}')
             elif hasattr(tool_item, "file_id") and tool_item.file_id:
-                return f"file:{tool_item.file_id[:12]}..."
-            return "loading file"
+                parts.append(f"󰻾 {tool_item.file_id}")
+            return " • ".join(parts) if parts else ""
 
-        # Default: show result count if available
-        if hasattr(tool_item, "results") and tool_item.results:
-            return f"{len(tool_item.results)} results"
-        return ""
+        else:
+            return ""
 
     def _add_formatted_text(self, text: Text, content: str, style: str = None) -> None:
         """Add formatted text content with simple markdown-like styling."""
@@ -412,6 +398,16 @@ class PlaintextRenderer(BaseRenderer):
 
         return result
 
+
+    def status_icon(self, status: str) -> tuple[str, str]:
+        """Get icon for status."""
+        return {
+            "completed": ("  ", self._styles["status_completed"]),
+            "in_progress": (" 󰜎 ", self._styles["status_in_progress"]),
+            "failed": ("  ", self._styles["status_failed"]),
+            "incomplete": ("  ", self._styles["status_default"]),
+        }.get(status, ("  ", "white"))
+
     def _add_tool_item(self, text: Text, tool_item: Any) -> None:
         """Add a single tool execution item with colorful display."""
         # Tool icon
@@ -421,12 +417,12 @@ class PlaintextRenderer(BaseRenderer):
         # Tool name with vibrant color
         tool_name = tool_item.type.replace("_call", "").replace("_", " ").title()
         text.append(f"{tool_name}", style=self._styles["tool_name"])
-        text.append(" → ", style=self._styles["separator"])
+        text.append(" • ", style=self._styles["separator"])
 
-        # Status with appropriate color and icon
-        status_style = self._get_tool_status_style(tool_item.status)
-        status_icon = self._get_tool_status_icon(tool_item.status)
-        text.append(f"{status_icon} {tool_item.status}", style=status_style)
+        # Status with appropriate color and icon using the pattern
+        icon, style = self.status_icon(tool_item.status)
+        text.append(icon, style=style)
+        # text.append(tool_item.status, style=style)
 
         # Tool-specific details with cyan color
         details = self._get_tool_details(tool_item)
@@ -442,17 +438,40 @@ class PlaintextRenderer(BaseRenderer):
             # Citation reference number
             text.append(f"[{i}] ", style=self._styles["citation_ref"])
 
-            # Source information
-            source = citation.get("file_name", citation.get("url", "Unknown"))
-            text.append(f"{source}", style=self._styles["citation_source"])
-
-            # Page number if available
-            if citation.get("page_number"):
-                text.append(f" (page {citation['page_number']})", style="dim")
+            # Source information based on citation type
+            if citation.get("type") == "file_citation":
+                source = citation.get("file_name") or citation.get("file_id", "Unknown File")
+                text.append(f"{source}", style=self._styles["citation_source"])
+                
+                # Page/index number if available
+                if citation.get("page_number") is not None:
+                    text.append(f" (index {citation['page_number']})", style="dim")
+                    
+            elif citation.get("type") == "url_citation":
+                # Show title with URL
+                title = citation.get("title", "Web Page")
+                url = citation.get("url", "")
+                if url:
+                    # Extract domain for compact display
+                    try:
+                        from urllib.parse import urlparse
+                        domain = urlparse(url).netloc
+                        if domain.startswith("www."):
+                            domain = domain[4:]
+                        text.append(f"{title}", style=self._styles["citation_source"])
+                        text.append(f" ({domain})", style="dim")
+                    except:
+                        text.append(f"{title}", style=self._styles["citation_source"])
+                else:
+                    text.append(f"{title}", style=self._styles["citation_source"])
+            else:
+                # Fallback for unknown types
+                source = citation.get("file_name", citation.get("url", "Unknown"))
+                text.append(f"{source}", style=self._styles["citation_source"])
 
             text.append("\n")
 
-            # Quote if available
+            # Quote/snippet if available
             if citation.get("text"):
                 quote = citation["text"]
                 if len(quote) > self._config.max_text_preview:
@@ -490,13 +509,9 @@ class PlaintextRenderer(BaseRenderer):
         # Render count for streaming feedback
 
         #     text.append(" │ Status: ", style=self._styles["info"])
-        icons = {
-            "completed": ("   ", self._styles["status_completed"]),
-            "in_progress": (" 󰜎 ", self._styles["status_in_progress"]),
-            "failed": ("   ", self._styles["status_failed"]),
-            "incomplete": ("  ", self._styles["status_default"]),
-        }
-        icon, style = icons.get(response.status, ("  ", self._styles["status_default"]))
+        text.append("\n")
+
+        icon, style = self.status_icon(response.status)
         text.append(icon, style=style)
 
         text.append("# ", style=self._styles["info"])
@@ -519,19 +534,24 @@ class PlaintextRenderer(BaseRenderer):
                             if annotation.type in ["file_citation", "url_citation"]:
                                 citation_data = {
                                     "type": annotation.type,
-                                    "text": getattr(annotation, "text", ""),
+                                    "text": getattr(annotation, "snippet", ""),  # Use snippet instead of text
                                 }
 
                                 if annotation.type == "file_citation":
                                     citation_data.update(
                                         {
                                             "file_id": getattr(annotation, "file_id", ""),
-                                            "file_name": getattr(annotation, "file_name", ""),
-                                            "page_number": getattr(annotation, "page_number", None),
+                                            "file_name": getattr(annotation, "filename", ""),  # Use filename instead of file_name
+                                            "page_number": getattr(annotation, "index", None),  # Use index instead of page_number
                                         }
                                     )
                                 elif annotation.type == "url_citation":
-                                    citation_data["url"] = getattr(annotation, "url", "")
+                                    citation_data.update(
+                                        {
+                                            "url": getattr(annotation, "url", ""),
+                                            "title": getattr(annotation, "title", ""),
+                                        }
+                                    )
 
                                 citations.append(citation_data)
 
@@ -648,3 +668,9 @@ class PlaintextRenderer(BaseRenderer):
         status_text.append("ℹ️  Status: ", style=self._styles["info"])
         status_text.append(message, style=self._styles["content"])
         self._console.print(status_text)
+
+    def show_status_rich(self, content: Any) -> None:
+        """Show Rich content (tables, panels, etc) directly."""
+        # For plaintext renderer, we'll display Rich objects directly
+        # since we're using Rich console anyway
+        self._console.print(content)
