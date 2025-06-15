@@ -38,33 +38,30 @@ sdk/
 5. **Backward Compatibility**: Support for both legacy and modern APIs
 6. **Modular Design**: Separate modules for different API domains
 
-### API Evolution
+### Typed API Architecture
 
-The SDK supports two API styles during the migration period:
+The SDK now exclusively uses typed APIs for type safety and better developer experience:
 
-#### Legacy Dict-Based API (response.py)
-
-```python
-# Legacy approach - still supported
-response = await async_create_response(
-    input_messages="Your query",
-    model="qwen-max-latest"
-)
-if response:
-    print(response.output_text)
-```
-
-#### Modern Typed API (typed_api.py) - Recommended
+#### Typed API (typed_api.py) - Current Standard
 
 ```python
-# Modern typed approach - recommended
+# Create typed request with validation
 request = create_typed_request(
     input_messages="Your query",
     model="qwen-max-latest",
     tools=[create_file_search_tool(["vs_123"])]
 )
+
+# Get complete response
 response = await async_create_typed_response(request)
 print(response.output_text)
+
+# Or stream responses with real-time updates
+async for event_type, response_snapshot in astream_typed_response(request):
+    if event_type == "response.output_text.delta" and response_snapshot:
+        print(response_snapshot.output_text, end="", flush=True)
+    elif event_type == "response.completed":
+        break
 ```
 
 ## Core Modules
