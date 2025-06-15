@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from .v2.base import Display
+from .v3.base import Display
 
 
 class DisplayRegistry:
@@ -80,14 +80,14 @@ class DisplayRegistry:
 
 
 def initialize_default_displays():
-    """Initialize the default display implementations using v2 directly."""
-    # Import v2 components
-    from .v2.base import Display
-    from .v2.renderers.json import JsonRenderer
-    from .v2.renderers.plain import PlainRenderer
-    from .v2.renderers.rich import RichRenderer
+    """Initialize the default display implementations using v3."""
+    # Import v3 components
+    from .v3.base import Display
+    from .v3.renderers.json import JsonRenderer
+    from .v3.renderers.plain import PlainRenderer
+    from .v3.renderers.rich import RichRenderer
 
-    # Helper function to create v2 displays
+    # Helper function to create v3 displays
     def create_json_display(**kwargs):
         config = kwargs.get("config", {})
         chat_active = getattr(config, "chat_mode", False) or getattr(config, "chat", False)

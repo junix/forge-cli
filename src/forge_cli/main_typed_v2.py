@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Main CLI entry point using typed API v2 with full typed support.
+Main CLI entry point using typed API with full typed support.
 
 This version uses:
 - astream_typed_response for type-safe streaming
@@ -26,7 +26,7 @@ from loguru import logger
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description="Knowledge Forge CLI - Typed API v2",
+        description="Knowledge Forge CLI - Typed API",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -89,7 +89,7 @@ async def run_single_query(args: argparse.Namespace, config: SearchConfig) -> No
     """Run a single query with typed API."""
     # Create display
     format_type = "json" if args.json else args.format
-    display = create_display("v2", format=format_type, config=config)
+    display = create_display(format=format_type, config=config)
 
     # Create stream handler
     handler = TypedStreamHandler(display, debug=args.debug)
@@ -152,7 +152,7 @@ async def run_single_query(args: argparse.Namespace, config: SearchConfig) -> No
 async def run_chat_mode(args: argparse.Namespace, config: SearchConfig) -> None:
     """Run interactive chat mode with typed API."""
     # Create display
-    display = create_display("v2", format="rich", config=config)
+    display = create_display(format="rich", config=config)
 
     # Create chat controller with typed API
     controller = ChatController(
