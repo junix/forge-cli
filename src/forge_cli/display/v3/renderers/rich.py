@@ -146,11 +146,7 @@ class RichRenderer(BaseRenderer):
         # Build content components
         content_parts = []
 
-        # Add status header
-        status_info = self._create_status_header(response)
-        content_parts.append(status_info)
-
-        # Add response content
+        # Add response content (message body)
         response_content = self._create_response_body(response)
         if response_content:
             content_parts.append(response_content)
@@ -172,39 +168,42 @@ class RichRenderer(BaseRenderer):
             if citation_content:
                 content_parts.append(citation_content)
 
-        # Add usage statistics if enabled
-        if self._config.show_usage and response.usage:
-            usage_content = self._create_usage_content(response)
-            content_parts.append(usage_content)
-
         # Combine all content
         if content_parts:
             combined_content = Group(*content_parts)
         else:
             combined_content = Text("No content available", style="dim italic")
 
+        # Create the new title format: full_id / status / ↑ input ↓ output
+        title_parts = []
+        
+        # Full message ID
+        title_parts.append(response.id)
+        
+        # Status
+        if response.status:
+            title_parts.append(response.status)
+        
+        # Usage information with arrows
+        if response.usage:
+            usage_part = f"↑ {response.usage.input_tokens or 0} ↓ {response.usage.output_tokens or 0}"
+            title_parts.append(usage_part)
+        
+        panel_title = " / ".join(title_parts)
+
         # Determine panel style based on response status
         border_style, title_style = self._get_panel_style(response)
 
         return Panel(
             combined_content,
-            title=f"[{title_style}]Knowledge Forge Response[/{title_style}]",
+            title=f"[{title_style}]{panel_title}[/{title_style}]",
             border_style=border_style,
             padding=(1, 2),
         )
 
-    def _create_flat_markdown_content(self, response: Response) -> Markdown:
-        """Build a packed Markdown object with no nested Rich containers."""
+    def _create_flat_markdown_content(self, response: Response) -> Panel:
+        """Build a Panel with markdown content and the new title format."""
         md_parts: list[str] = []
-
-        # Status line
-        status_fragments: list[str] = []
-        status_fragments.append(f"**ID:** {response.id[:12]}…")
-        if response.status:
-            status_fragments.append(f"**Status:** {response.status}")
-        if response.model:
-            status_fragments.append(f"**Model:** {response.model}")
-        md_parts.append(" | ".join(status_fragments))
 
         # Iterate through output items maintaining order
         for item in response.output:
@@ -261,12 +260,35 @@ class RichRenderer(BaseRenderer):
                     ref_lines.append(f"{idx}. {url}{quote}")
             md_parts.append("\n".join(ref_lines))
 
-        # Usage stats
-        if self._config.show_usage and response.usage:
-            u = response.usage
-            md_parts.append(f"📊 **Usage:** Input {u.input_tokens or 0} | Output {u.output_tokens or 0} | Total {u.total_tokens or 0}")
+        # Create markdown content
+        markdown_content = Markdown("\n\n".join(md_parts))
 
-        return Markdown("\n\n".join(md_parts))
+        # Create the new title format: full_id / status / ↑ input ↓ output
+        title_parts = []
+        
+        # Full message ID
+        title_parts.append(response.id)
+        
+        # Status
+        if response.status:
+            title_parts.append(response.status)
+        
+        # Usage information with arrows
+        if response.usage:
+            usage_part = f"↑ {response.usage.input_tokens or 0} ↓ {response.usage.output_tokens or 0}"
+            title_parts.append(usage_part)
+        
+        panel_title = " / ".join(title_parts)
+
+        # Determine panel style based on response status
+        border_style, title_style = self._get_panel_style(response)
+
+        return Panel(
+            markdown_content,
+            title=f"[{title_style}]{panel_title}[/{title_style}]",
+            border_style=border_style,
+            padding=(1, 2),
+        )
 
     def _create_status_header(self, response: Response) -> Text:
         """Create status header with response information."""
