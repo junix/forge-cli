@@ -8,6 +8,7 @@ from typing import Any, Literal
 from ..display.v3.base import Display
 from ..processors.registry_typed import default_typed_registry, initialize_typed_registry
 from ..response._types import Response
+
 # Removed MigrationHelper - using typed Response directly
 
 # Tool status type alias
@@ -100,7 +101,6 @@ class StreamState:
                         if hasattr(result, "file_id") and hasattr(result, "filename"):
                             self.file_id_to_name[result.file_id] = result.filename
 
-
     def _extract_reasoning_typed(self, response: Response) -> None:
         """Extract reasoning from typed Response."""
         for item in response.output:
@@ -112,7 +112,6 @@ class StreamState:
                         if hasattr(summary_item, "text"):
                             texts.append(summary_item.text)
                     self.current_reasoning = " ".join(texts)
-
 
 
 class TypedStreamHandler:
@@ -158,7 +157,7 @@ class TypedStreamHandler:
             if event_data is not None and isinstance(event_data, Response):
                 # Update state from Response
                 state.update_from_snapshot(event_data)
-                
+
                 # Render the complete Response snapshot using v3 display
                 self.display.handle_response(event_data)
 
@@ -171,7 +170,7 @@ class TypedStreamHandler:
             elif event_type == "error":
                 # Stream error
                 error_msg = "Stream error occurred"
-                if event_data and hasattr(event_data, 'message'):
+                if event_data and hasattr(event_data, "message"):
                     error_msg = event_data.message
                 self.display.show_error(error_msg)
                 break

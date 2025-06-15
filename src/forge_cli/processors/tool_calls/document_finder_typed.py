@@ -1,8 +1,10 @@
 """Document finder tool call processor with typed API support."""
 
-from typing import Any, cast, List
+from typing import Any
+
 from forge_cli.common.types import ProcessedToolCallData
 from forge_cli.response._types import ResponseDocumentFinderToolCall
+
 from .base_typed import BaseToolCallProcessor
 
 
@@ -27,22 +29,18 @@ class DocumentFinderProcessor(BaseToolCallProcessor):
         # Add count parameter
         if hasattr(item, "count") and item.count is not None:
             processed["count"] = item.count
-        
+
         # Add queries if available
         if hasattr(item, "queries") and item.queries:
             processed["queries"] = list(item.queries)
 
-    def _add_tool_specific_formatting(
-        self, 
-        processed: ProcessedToolCallData, 
-        parts: list[str]
-    ) -> None:
+    def _add_tool_specific_formatting(self, processed: ProcessedToolCallData, parts: list[str]) -> None:
         """Add document finder specific formatting."""
         # Add count if specified
         count = processed.get("count")
         if count is not None:
             parts.append(f"🔢 返回数量: {count}")
-        
+
         # Add queries if available
         queries = processed.get("queries", [])
         if queries:
@@ -53,7 +51,7 @@ class DocumentFinderProcessor(BaseToolCallProcessor):
                 for i, query in enumerate(queries, 1):
                     parts.append(f"  {i}. {query}")
 
-    def extract_results(self, item: ResponseDocumentFinderToolCall) -> List[Any]:
+    def extract_results(self, item: ResponseDocumentFinderToolCall) -> list[Any]:
         """Extract results from document finder tool call."""
         # Document finder doesn't have inline results like file search
         # Results would be in a separate event or through a results property

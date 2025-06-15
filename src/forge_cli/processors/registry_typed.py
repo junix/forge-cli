@@ -1,6 +1,7 @@
 """Central registry for output processors with typed API support."""
 
-from typing import Any, Union
+from typing import Any
+
 from .base import OutputProcessor
 from .base_typed import TypedOutputProcessor
 
@@ -9,9 +10,9 @@ class TypedProcessorRegistry:
     """Central registry for output processors supporting typed items only."""
 
     def __init__(self):
-        self._processors: dict[str, Union[OutputProcessor, TypedOutputProcessor]] = {}
+        self._processors: dict[str, OutputProcessor | TypedOutputProcessor] = {}
 
-    def register(self, output_type: str, processor: Union[OutputProcessor, TypedOutputProcessor]) -> None:
+    def register(self, output_type: str, processor: OutputProcessor | TypedOutputProcessor) -> None:
         """
         Register a processor for an output type.
 
@@ -21,7 +22,7 @@ class TypedProcessorRegistry:
         """
         self._processors[output_type] = processor
 
-    def get_processor(self, output_type: str) -> Union[OutputProcessor, TypedOutputProcessor, None]:
+    def get_processor(self, output_type: str) -> OutputProcessor | TypedOutputProcessor | None:
         """
         Get processor for output type.
 
@@ -108,7 +109,6 @@ class TypedProcessorRegistry:
         return None
 
 
-
 # Create and populate default typed registry
 default_typed_registry = TypedProcessorRegistry()
 
@@ -118,10 +118,10 @@ def initialize_typed_registry():
     # Import here to avoid circular imports
     from .message import MessageProcessor
     from .reasoning import ReasoningProcessor
-    from .tool_calls.file_search_typed import FileSearchProcessor as TypedFileSearchProcessor
-    from .tool_calls.web_search_typed import WebSearchProcessor as TypedWebSearchProcessor
     from .tool_calls.document_finder_typed import DocumentFinderProcessor as TypedDocumentFinderProcessor
     from .tool_calls.file_reader_typed import FileReaderProcessor as TypedFileReaderProcessor
+    from .tool_calls.file_search_typed import FileSearchProcessor as TypedFileSearchProcessor
+    from .tool_calls.web_search_typed import WebSearchProcessor as TypedWebSearchProcessor
 
     # Register processors that already support both dict and typed
     default_typed_registry.register("reasoning", ReasoningProcessor())

@@ -1,8 +1,10 @@
 """File search tool call processor with typed API support."""
 
-from typing import Any, cast, List
-from forge_cli.common.types import ProcessedFileSearchData, FileSearchResult
+from typing import Any, cast
+
+from forge_cli.common.types import FileSearchResult, ProcessedFileSearchData
 from forge_cli.response._types import ResponseFileSearchToolCall
+
 from .base_typed import BaseToolCallProcessor
 
 
@@ -48,9 +50,9 @@ class FileSearchProcessor(BaseToolCallProcessor):
         """Extract file ID to filename mappings from results."""
         mappings = {}
 
-        results: List[Any] = self.extract_results(item)
+        results: list[Any] = self.extract_results(item)
         for result_dict in results:
-            if isinstance(result_dict, dict): # Ensure it's a dictionary
+            if isinstance(result_dict, dict):  # Ensure it's a dictionary
                 # Cast to FileSearchResult to inform the type checker of the expected structure
                 result = cast(FileSearchResult, result_dict)
                 file_id = result.get("file_id")

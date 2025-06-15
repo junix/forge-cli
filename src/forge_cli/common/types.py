@@ -1,15 +1,22 @@
-from typing import Protocol, Optional, Union, List, TypedDict, Literal
+from typing import Literal, Protocol, TypedDict, Union
+
 
 # Forward reference for Annotation types, actual import might be needed if used directly
 # For now, assume they are defined elsewhere and will be imported by consumers
 class AnnotationFileCitation: ...
+
+
 class AnnotationURLCitation: ...
+
+
 class AnnotationFilePath: ...
+
 
 AnnotationUnion = Union[AnnotationFileCitation, AnnotationURLCitation, AnnotationFilePath]
 
+
 class Citable(Protocol):
-    citation_id: Optional[int] # Assuming citation_id is an attribute
+    citation_id: int | None  # Assuming citation_id is an attribute
 
     def set_citation_id(self, citation_id: int) -> None:
         # In a real protocol, you might not define the body,
@@ -18,13 +25,13 @@ class Citable(Protocol):
         # For now, let's assume result types will have this method.
         ...
 
-    def as_annotation(self) -> Optional[AnnotationUnion]:
-        ...
+    def as_annotation(self) -> AnnotationUnion | None: ...
 
     # Common data fields (optional, include if consistently present)
     # text: Optional[str] = None
     # snippet: Optional[str] = None
     # type: Optional[str] = None # e.g. 'file_result', 'web_result'
+
 
 # Using TypedDicts for specific result item structures
 # These will structurally match the Citable protocol where methods are concerned,
@@ -33,11 +40,13 @@ class Citable(Protocol):
 # actual class instances that these TypedDicts represent, not on the TypedDicts themselves.
 # The protocol is more for functions that expect objects matching this shape.
 
+
 class BaseSearchResult(TypedDict, total=False):
-    citation_id: Optional[int]
+    citation_id: int | None
     # text: Optional[str] # Example common field
     # snippet: Optional[str] # Example common field
     # type: str # Example: 'file_result'
+
 
 class FileSearchResult(BaseSearchResult):
     file_id: str
@@ -47,73 +56,85 @@ class FileSearchResult(BaseSearchResult):
     # text: Optional[str] # from a chunk of the file
     # score: Optional[float]
 
+
 class WebSearchResult(BaseSearchResult):
     url: str
     title: str
-    snippet: Optional[str] # Snippet is more common for web results
+    snippet: str | None  # Snippet is more common for web results
     # score: Optional[float]
 
+
 class DocumentFinderResult(BaseSearchResult):
-    document_id: str # Or similar identifier
+    document_id: str  # Or similar identifier
     # text: Optional[str]
     # score: Optional[float]
 
+
 # A generic result type for lists, if specific type is not known
-AnyCitable = TypedDict('AnyCitable', {
-    'set_citation_id': Optional[callable], # Simplified representation
-    'as_annotation': Optional[callable],
-    'file_id': Optional[str],
-    'filename': Optional[str],
-    'url': Optional[str],
-    'title': Optional[str],
-    'snippet': Optional[str],
-    'document_id': Optional[str],
-    'text': Optional[str],
-    'type': Optional[str], # To discriminate if needed
-    'citation_id': Optional[int]
-}, total=False)
+AnyCitable = TypedDict(
+    "AnyCitable",
+    {
+        "set_citation_id": callable | None,  # Simplified representation
+        "as_annotation": callable | None,
+        "file_id": str | None,
+        "filename": str | None,
+        "url": str | None,
+        "title": str | None,
+        "snippet": str | None,
+        "document_id": str | None,
+        "text": str | None,
+        "type": str | None,  # To discriminate if needed
+        "citation_id": int | None,
+    },
+    total=False,
+)
+
 
 # Type for the 'processed' dictionary in FileSearchProcessor
 class ProcessedFileSearchData(TypedDict, total=False):
-    type: Literal["file_search"] # from BaseToolCallProcessor
-    tool_name: str # from BaseToolCallProcessor
+    type: Literal["file_search"]  # from BaseToolCallProcessor
+    tool_name: str  # from BaseToolCallProcessor
     status: str  # from BaseToolCallProcessor
-    action_text: str # from BaseToolCallProcessor
-    queries: List[str] # from BaseToolCallProcessor
-    results_count: Optional[int] # from BaseToolCallProcessor
-    error_message: Optional[str] # from BaseToolCallProcessor
-    file_id: Optional[str] # Specific to file search
-    vector_store_ids: Optional[List[str]] # Specific to file search
+    action_text: str  # from BaseToolCallProcessor
+    queries: list[str]  # from BaseToolCallProcessor
+    results_count: int | None  # from BaseToolCallProcessor
+    error_message: str | None  # from BaseToolCallProcessor
+    file_id: str | None  # Specific to file search
+    vector_store_ids: list[str] | None  # Specific to file search
     # Potentially other fields from BaseToolCallProcessor's process method
-    raw_item: Optional[AnyCitable] # Or the specific ResponseFileSearchToolCall type
+    raw_item: AnyCitable | None  # Or the specific ResponseFileSearchToolCall type
 
-class ProcessedWebSearchData(TypedDict, total=False): # Define similarly
+
+class ProcessedWebSearchData(TypedDict, total=False):  # Define similarly
     type: Literal["web_search"]
     tool_name: str
     status: str
     action_text: str
-    queries: List[str]
-    results_count: Optional[int]
-    error_message: Optional[str]
-    raw_item: Optional[AnyCitable] # Or ResponseFunctionWebSearch
+    queries: list[str]
+    results_count: int | None
+    error_message: str | None
+    raw_item: AnyCitable | None  # Or ResponseFunctionWebSearch
 
-class ProcessedDocumentFinderData(TypedDict, total=False): # Define similarly
+
+class ProcessedDocumentFinderData(TypedDict, total=False):  # Define similarly
     type: Literal["document_finder"]
     tool_name: str
     status: str
     action_text: str
-    queries: List[str]
-    results_count: Optional[int]
-    error_message: Optional[str]
-    raw_item: Optional[AnyCitable] # Or ResponseDocumentFinderToolCall
+    queries: list[str]
+    results_count: int | None
+    error_message: str | None
+    raw_item: AnyCitable | None  # Or ResponseDocumentFinderToolCall
+
 
 # For MessageProcessor
 class ProcessedMessage(TypedDict):
     type: Literal["message"]
     text: str
-    annotations: List[AnnotationUnion] # Or List[Annotation] if Annotation is already the union
+    annotations: list[AnnotationUnion]  # Or List[Annotation] if Annotation is already the union
     id: str
     status: str
+
 
 # Generic processed tool call data type
 class ProcessedToolCallData(TypedDict, total=False):
@@ -121,14 +142,14 @@ class ProcessedToolCallData(TypedDict, total=False):
     tool_name: str
     status: str
     action_text: str
-    queries: List[str]
-    results_count: Optional[int]
-    error_message: Optional[str]
-    raw_item: Optional[AnyCitable]
+    queries: list[str]
+    results_count: int | None
+    error_message: str | None
+    raw_item: AnyCitable | None
     # Additional tool-specific fields can be added by specific processors
-    file_id: Optional[str]
-    doc_ids: Optional[List[str]]
-    query: Optional[str]
-    navigation: Optional[str]
-    vector_store_ids: Optional[List[str]]
-    count: Optional[int]
+    file_id: str | None
+    doc_ids: list[str] | None
+    query: str | None
+    navigation: str | None
+    vector_store_ids: list[str] | None
+    count: int | None

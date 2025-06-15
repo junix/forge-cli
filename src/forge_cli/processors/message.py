@@ -5,10 +5,11 @@ from typing import Any
 from forge_cli.common.types import ProcessedMessage
 from forge_cli.response._types.annotations import AnnotationList
 from forge_cli.response._types.response_output_message import ResponseOutputMessage
+
 from ..response._types import (
     AnnotationFileCitation,
     AnnotationURLCitation,
-    ResponseOutputText, # ResponseOutputMessage is imported directly
+    ResponseOutputText,  # ResponseOutputMessage is imported directly
 )
 from .base import OutputProcessor
 
@@ -38,7 +39,7 @@ class MessageProcessor(OutputProcessor):
         return ProcessedMessage(
             type="message",
             text=full_text,
-            annotations=all_annotations, # type: ignore # AnnotationList vs List[AnnotationUnion]
+            annotations=all_annotations,  # type: ignore # AnnotationList vs List[AnnotationUnion]
             id=item.id or "",
             status=item.status or "completed",
         )
@@ -114,7 +115,6 @@ class MessageProcessor(OutputProcessor):
                         "title": title,
                     }
                 )
-
 
         return citations
 

@@ -1,18 +1,17 @@
 """Base processor with typed API support."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Union
+from typing import Any
 
+from forge_cli.display.v3.base import Display
+from forge_cli.models.state import StreamState
 from forge_cli.response._types import (
-    Response,
-    ResponseFileSearchToolCall,
     ResponseDocumentFinderToolCall,
+    ResponseFileSearchToolCall,
     ResponseFunctionWebSearch,
     ResponseOutputItem,
 )
 from forge_cli.response._types.response_output_item import ResponseOutputItem
-from forge_cli.models.state import StreamState
-from forge_cli.display.v3.base import Display
 
 
 class TypedOutputProcessor(ABC):
@@ -50,7 +49,6 @@ class TypedOutputProcessor(ABC):
         return str(item.type)
 
 
-
 class TypedToolProcessor(TypedOutputProcessor):
     """Base class for tool processors with typed API support."""
 
@@ -59,18 +57,22 @@ class TypedToolProcessor(TypedOutputProcessor):
         """Return the tool type this processor handles."""
         pass
 
-    def extract_queries(self, item: Union[ResponseFileSearchToolCall, ResponseDocumentFinderToolCall, ResponseFunctionWebSearch]) -> list[str]:
+    def extract_queries(
+        self, item: ResponseFileSearchToolCall | ResponseDocumentFinderToolCall | ResponseFunctionWebSearch
+    ) -> list[str]:
         """Extract queries from typed tool call."""
         return list(item.queries) if item.queries else []
 
-    def extract_results(self, item: Union[ResponseFileSearchToolCall, ResponseDocumentFinderToolCall, ResponseFunctionWebSearch]) -> list[Any]:
+    def extract_results(
+        self, item: ResponseFileSearchToolCall | ResponseDocumentFinderToolCall | ResponseFunctionWebSearch
+    ) -> list[Any]:
         """Extract results from typed tool call."""
         # Access 'results' safely as it might be dynamically added
-        results_attr = getattr(item, 'results', None)
+        results_attr = getattr(item, "results", None)
         return list(results_attr) if results_attr else []
 
-    def extract_status(self, item: Union[ResponseFileSearchToolCall, ResponseDocumentFinderToolCall, ResponseFunctionWebSearch]) -> str:
+    def extract_status(
+        self, item: ResponseFileSearchToolCall | ResponseDocumentFinderToolCall | ResponseFunctionWebSearch
+    ) -> str:
         """Extract status from typed tool call."""
         return str(item.status)
-
-

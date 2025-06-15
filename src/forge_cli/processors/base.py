@@ -15,7 +15,9 @@ class OutputProcessor(ABC):
         pass
 
     @abstractmethod
-    def process(self, item: ResponseOutputItem) -> dict[str, Any] | None: # Keep dict[str, Any] for now, subclasses will refine
+    def process(
+        self, item: ResponseOutputItem
+    ) -> dict[str, Any] | None:  # Keep dict[str, Any] for now, subclasses will refine
         """
         Process the output item and return processed data.
 

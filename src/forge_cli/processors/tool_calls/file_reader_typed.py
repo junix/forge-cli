@@ -1,8 +1,10 @@
 """File reader tool call processor with typed API support."""
 
-from typing import Any, List
+from typing import Any
+
 from forge_cli.common.types import ProcessedToolCallData
 from forge_cli.response._types import ResponseFunctionFileReader
+
 from .base_typed import BaseToolCallProcessor
 
 
@@ -28,20 +30,16 @@ class FileReaderProcessor(BaseToolCallProcessor):
         # Add document IDs
         if hasattr(item, "doc_ids") and item.doc_ids:
             processed["doc_ids"] = list(item.doc_ids)
-        
+
         # Add query if available
         if hasattr(item, "query") and item.query:
             processed["query"] = item.query
-        
+
         # Add navigation info if available
         if hasattr(item, "navigation") and item.navigation:
             processed["navigation"] = item.navigation
 
-    def _add_tool_specific_formatting(
-        self, 
-        processed: ProcessedToolCallData, 
-        parts: list[str]
-    ) -> None:
+    def _add_tool_specific_formatting(self, processed: ProcessedToolCallData, parts: list[str]) -> None:
         """Add file reader specific formatting."""
         # Add document IDs
         doc_ids = processed.get("doc_ids", [])
@@ -54,18 +52,18 @@ class FileReaderProcessor(BaseToolCallProcessor):
                     parts.append(f"  • {doc_id}")
                 if len(doc_ids) > 3:
                     parts.append(f"  • ... 还有 {len(doc_ids) - 3} 个")
-        
+
         # Add query if available
         query = processed.get("query")
         if query:
             parts.append(f"❓ 查询: {query}")
-        
-        # Add navigation info if available  
+
+        # Add navigation info if available
         navigation = processed.get("navigation")
         if navigation:
             parts.append(f"🧭 导航: {navigation}")
 
-    def extract_results(self, item: ResponseFunctionFileReader) -> List[Any]:
+    def extract_results(self, item: ResponseFunctionFileReader) -> list[Any]:
         """Extract results from file reader tool call."""
         # Check if item has _results attribute (private attribute pattern)
         if hasattr(item, "_results") and item._results:
@@ -78,7 +76,7 @@ class FileReaderProcessor(BaseToolCallProcessor):
     def extract_file_mappings(self, item: ResponseFunctionFileReader) -> dict[str, str]:
         """Extract file ID to filename mappings from results."""
         mappings = {}
-        
+
         # File reader typically deals with document IDs rather than file IDs
         # But we can still extract any file references from results
         results = self.extract_results(item)
@@ -88,5 +86,5 @@ class FileReaderProcessor(BaseToolCallProcessor):
                 filename = result.get("filename") or result.get("doc_name")
                 if file_id and filename:
                     mappings[file_id] = filename
-        
+
         return mappings

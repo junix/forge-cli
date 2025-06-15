@@ -1,8 +1,6 @@
 """Chat controller for managing interactive conversations."""
 
 import asyncio
-import json
-from typing import Any
 
 from ..config import SearchConfig
 from ..display.v3.base import Display
@@ -51,6 +49,7 @@ class ChatController:
     def prepare_typed_tools(self) -> list:
         """Prepare typed tools configuration based on config."""
         from ..response._types import FileSearchTool, WebSearchTool
+
         tools = []
 
         # File search tool
@@ -293,8 +292,8 @@ class ChatController:
 
         try:
             # Import typed SDK
+            from ..response._types import InputMessage, Request
             from ..sdk import astream_typed_response
-            from ..response._types import Request, InputMessage
 
             # Convert dict request to typed Request
             input_messages = []
@@ -307,7 +306,7 @@ class ChatController:
 
             # Use typed tools
             typed_tools = self.prepare_typed_tools()
-            
+
             typed_request = Request(
                 input=input_messages,
                 model=request.get("model", "qwen-max"),
@@ -406,11 +405,11 @@ class ChatController:
                     return content_item
 
         return None
-    
+
     def extract_text_from_typed_response(self, response: "Response") -> str | None:
         """Extract text content from a typed response object."""
-        from ..response._types import Response, ResponseOutputMessage
-        
+        from ..response._types import ResponseOutputMessage
+
         # Check if response has output attribute
         if hasattr(response, "output") and response.output:
             for item in response.output:
@@ -427,5 +426,5 @@ class ChatController:
                     # For dict-like message
                     elif isinstance(item, dict):
                         return self.extract_text_from_message(item)
-        
+
         return None

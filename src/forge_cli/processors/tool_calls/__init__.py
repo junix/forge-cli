@@ -10,6 +10,6 @@ __all__ = [
     "BaseToolCallProcessor",
     "FileSearchProcessor",
     "DocumentFinderProcessor",
-    "WebSearchProcessor", 
+    "WebSearchProcessor",
     "FileReaderProcessor",
 ]
