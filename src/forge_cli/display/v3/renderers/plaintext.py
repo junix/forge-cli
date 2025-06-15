@@ -271,11 +271,11 @@ class PlaintextRenderer(BaseRenderer):
             # Show query and result count
             parts = []
             if hasattr(tool_item, "query") and tool_item.query:
-                parts.append(f" {query}")
+                parts.append(f'{ICONS["query"]}"{tool_item.query}"')
             elif hasattr(tool_item, "queries") and tool_item.queries:
                 # Use pack_queries for beautiful display
                 shortened_queries = [q[:30] + "..." if len(q) > 30 else q for q in tool_item.queries]
-                packed = pack_queries(*[f'"{{q}}"' for q in shortened_queries])
+                packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
                 parts.append(packed)
             if hasattr(tool_item, "results") and tool_item.results:
                 parts.append(f"found {len(tool_item.results)} results")
@@ -286,10 +286,12 @@ class PlaintextRenderer(BaseRenderer):
             # Show search query and results
             parts = []
             if hasattr(tool_item, "queries") and tool_item.queries:
-                query = " ".join(" {query}" for query in tool_item.queries)
+                # Use pack_queries for consistent display
+                shortened_queries = [q[:30] + "..." if len(q) > 30 else q for q in tool_item.queries]
+                packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
                 parts.append(packed)
-            # if hasattr(tool_item, "results") and tool_item.results:
-            #     parts.append(f"found {len(tool_item.results)} results")
+            if hasattr(tool_item, "results") and tool_item.results:
+                parts.append(f"found {len(tool_item.results)} results")
 
             return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
@@ -298,7 +300,9 @@ class PlaintextRenderer(BaseRenderer):
             parts = []
             if hasattr(tool_item, "queries") and tool_item.queries:
                 # Show all queries
-                queries_text = " ".join(f'"{q}"' for q in tool_item.queries)
+                # Use pack_queries for consistent display
+                shortened_queries = [q[:25] + "..." if len(q) > 25 else q for q in tool_item.queries]
+                packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
                 parts.append(packed)
             elif hasattr(tool_item, "query") and tool_item.query:
                 # Fallback to single query if present
