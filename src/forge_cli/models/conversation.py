@@ -33,10 +33,12 @@ class ConversationState:
 
     def add_user_message(self, content: str) -> ResponseInputMessageItem:
         """Add a user message using proper typed API."""
+        from ..response._types.response_input_text import ResponseInputText
+
         message = ResponseInputMessageItem(
             id=f"user_{uuid.uuid4().hex[:8]}",
             role="user",
-            content=[{"type": "text", "text": content}],  # Proper content format
+            content=[ResponseInputText(type="input_text", text=content)],
         )
         self.add_message(message)
         return message
@@ -45,11 +47,13 @@ class ConversationState:
         """Add an assistant message using proper typed API."""
         # Note: Assistant messages need proper handling since they don't fit the input message format
         # This might need adjustment based on how assistant messages are actually handled
-        # For now, creating a compatible structure
+        # For now, creating a compatible structure using system role
+        from ..response._types.response_input_text import ResponseInputText
+
         message = ResponseInputMessageItem(
             id=assistant_id or f"assistant_{uuid.uuid4().hex[:8]}",
             role="system",  # Using system role as assistant isn't in the enum
-            content=[{"type": "text", "text": content}],
+            content=[ResponseInputText(type="input_text", text=content)],
         )
         self.add_message(message)
         return message
@@ -112,7 +116,7 @@ class ConversationState:
         usage_data = data.get("usage")
         if usage_data:
             usage = ResponseUsage.model_validate(usage_data)
-        
+
         # Handle backward compatibility with old token fields
         elif any(key in data for key in ["total_input_tokens", "total_output_tokens", "total_tokens"]):
             # Convert old format to new ResponseUsage
@@ -138,15 +142,17 @@ class ConversationState:
             # Handle both old and new message formats
             if "role" in msg_data and "content" in msg_data and isinstance(msg_data["content"], str):
                 # Old format - convert to new format
+                from ..response._types.response_input_text import ResponseInputText
+
                 message = ResponseInputMessageItem(
                     id=msg_data.get("id", f"{msg_data['role']}_{uuid.uuid4().hex[:8]}"),
                     role=msg_data["role"] if msg_data["role"] in ["user", "system", "developer"] else "user",
-                    content=[{"type": "text", "text": msg_data["content"]}],
+                    content=[ResponseInputText(type="input_text", text=msg_data["content"])],
                 )
             else:
                 # New format - use Pydantic validation
                 message = ResponseInputMessageItem.model_validate(msg_data)
-            
+
             conversation.add_message(message)
 
         return conversation
@@ -161,10 +167,13 @@ class ConversationState:
         def get_text_content(msg: ResponseInputMessageItem) -> str:
             text_parts = []
             for content_item in msg.content:
-                if isinstance(content_item, dict) and content_item.get("type") == "text":
+                # Handle both Pydantic objects and dict formats
+                if hasattr(content_item, 'type') and content_item.type == "input_text":
+                    text_parts.append(content_item.text)
+                elif isinstance(content_item, dict) and content_item.get("type") == "input_text":
                     text_parts.append(content_item.get("text", ""))
             return " ".join(text_parts)
-        
+
         estimated_tokens = sum(len(get_text_content(msg)) // 4 for msg in self.messages)
 
         while estimated_tokens > max_tokens and len(self.messages) > 2:
@@ -179,11 +188,14 @@ class ConversationState:
             # Extract text content from the new message format
             text_content = []
             for content_item in msg.content:
-                if isinstance(content_item, dict) and content_item.get("type") == "text":
+                # Handle both Pydantic objects and dict formats
+                if hasattr(content_item, 'type') and content_item.type == "input_text":
+                    text_content.append(content_item.text)
+                elif isinstance(content_item, dict) and content_item.get("type") == "input_text":
                     text_content.append(content_item.get("text", ""))
-            
+
             content_str = " ".join(text_content)
-            
+
             if msg.role == "user":
                 lines.append(f"\n**You**: {content_str}")
             elif msg.role == "system":
