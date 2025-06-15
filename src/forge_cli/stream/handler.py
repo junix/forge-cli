@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator
 from typing import Any, Literal
 from dataclasses import dataclass, field
 
-from ..display.v2.base import Display
+from ..display.v3.base import Display
 from ..response._types import ResponseStatus
 from ..processors.registry import default_registry
 

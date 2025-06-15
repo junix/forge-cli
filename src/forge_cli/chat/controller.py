@@ -4,7 +4,7 @@ import asyncio
 import json
 
 from ..config import SearchConfig
-from ..display.v2.base import Display
+from ..display.v3.base import Display
 from ..models.conversation import ConversationState
 from ..stream.handler import StreamHandler
 from .commands import CommandRegistry

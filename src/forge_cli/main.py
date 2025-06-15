@@ -16,28 +16,38 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Use absolute imports from top-level directory
 from forge_cli.chat.controller import ChatController
 from forge_cli.config import SearchConfig
-from forge_cli.display.registry import DisplayRegistry, initialize_default_displays
-from forge_cli.display.v2.base import Display
+# Registry no longer needed - using v3 directly
+from forge_cli.display.v3.base import Display
 from forge_cli.processors.registry_typed import initialize_typed_registry
 from forge_cli.sdk import astream_typed_response, async_get_vectorstore
 from forge_cli.stream.handler_typed import TypedStreamHandler
 from forge_cli.response._types import Request, FileSearchTool, WebSearchTool, InputMessage
 
 
-def create_display(config: SearchConfig) -> Display:
-    """Create appropriate display based on configuration using the display registry."""
-    # Initialize default displays if not already done
-    initialize_default_displays()
+def create_display(config: SearchConfig) -> "Display":
+    """Create appropriate display based on configuration using v3 architecture."""
+    # Import v3 components
+    from forge_cli.display.v3.base import Display
+    from forge_cli.display.v3.renderers.rich import RichRenderer, RichDisplayConfig
 
-    # Get the v2 display directly from registry
-    try:
-        return DisplayRegistry.get_display_for_config(config)
-    except (ValueError, ImportError):
-        # Fallback to v2 plain renderer if there's an error
-        from forge_cli.display.v2.renderers.plain import PlainRenderer
+    # Create display config for rich renderer
+    display_config = RichDisplayConfig(
+        show_reasoning=getattr(config, "show_reasoning", True),
+        show_citations=True,
+        show_tool_details=True,
+        show_usage=not getattr(config, "quiet", False),
+        show_metadata=getattr(config, "debug", False),
+    )
 
-        renderer = PlainRenderer()
-        return Display(renderer)
+    # Determine if we're in chat mode
+    in_chat_mode = getattr(config, "chat_mode", False) or getattr(config, "chat", False)
+
+    # Create renderer
+    renderer = RichRenderer(config=display_config, in_chat_mode=in_chat_mode)
+
+    # Create v3 display
+    mode = "chat" if in_chat_mode else "default"
+    return Display(renderer, mode=mode)
 
 
 def prepare_request(config: SearchConfig, question: str, conversation_history: list[dict] = None) -> Request:

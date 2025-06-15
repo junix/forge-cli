@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from ..display.v2.base import Display
+from ..display.v3.base import Display
 from ..processors.registry_typed import default_typed_registry, initialize_typed_registry
 from ..response._types import Response
 from ..response.adapters import MigrationHelper
@@ -203,43 +203,24 @@ class TypedStreamHandler:
                 # Update from snapshot for snapshot-based streaming
                 if event_data:
                     state.update_from_snapshot(event_data)
-                    self._process_output_items(state)
+                    # In v3, we render the complete Response snapshot
+                    if isinstance(event_data, Response):
+                        self.display.handle_response(event_data)
 
             elif event_type == "response.output_text.delta":
-                # Update from snapshot and extract text
+                # Update from snapshot and render complete response
                 if event_data:
                     state.update_from_snapshot(event_data)
-                    text = self._extract_text(event_data)
-                    if text:
-                        # Include metadata with usage statistics
-                        event_data_with_metadata = {
-                            "text": text,
-                            "metadata": {
-                                "event_count": state.event_count,
-                                "event_type": event_type,
-                                "usage": state.usage,
-                            }
-                        }
-                        self.display.handle_event("text_delta", event_data_with_metadata)
+                    # In v3, we render the complete Response snapshot
+                    if isinstance(event_data, Response):
+                        self.display.handle_response(event_data)
 
             elif event_type.startswith("response.reasoning_summary_text."):
-                # Handle reasoning events
-                if event_type == "response.reasoning_summary_text.delta" and event_data:
-                    if self.debug:
-                        print(f"DEBUG: Reasoning event data: {event_data}")
-                    # First delta indicates start
-                    if not getattr(state, "reasoning_started", False):
-                        self.display.handle_event("reasoning_start", {})
-                        state.reasoning_started = True
-                    # Extract reasoning text
-                    reasoning_text = self._extract_reasoning_text(event_data)
-                    if self.debug and reasoning_text:
-                        print(f"DEBUG: Extracted reasoning text: {reasoning_text[:100]}...")
-                    if reasoning_text:
-                        self.display.handle_event("reasoning_delta", {"text": reasoning_text})
-                elif event_type == "response.reasoning_summary_text.done":
-                    self.display.handle_event("reasoning_done", {})
-                    state.reasoning_started = False
+                # Handle reasoning events - in v3, just render the complete response
+                if event_data:
+                    state.update_from_snapshot(event_data)
+                    if isinstance(event_data, Response):
+                        self.display.handle_response(event_data)
 
             elif "searching" in event_type or "in_progress" in event_type:
                 self._handle_tool_search(event_type, event_data, state, current_time - last_event_time)
@@ -250,7 +231,9 @@ class TypedStreamHandler:
             elif event_type == "response.completed":
                 if event_data:
                     state.update_from_snapshot(event_data)
-                    self._finalize_response(state)
+                    # Final response snapshot
+                    if isinstance(event_data, Response):
+                        self.display.handle_response(event_data)
 
             elif event_type == "done":
                 break
@@ -316,19 +299,7 @@ class TypedStreamHandler:
                             return summary.get("text", "")
         return ""
 
-    def _process_output_items(self, state: StreamState) -> None:
-        """Process output items using appropriate processors."""
-        for item in state.output_items:
-            # Determine item type
-            if hasattr(item, "type"):
-                item_type = item.type
-            elif isinstance(item, dict):
-                item_type = item.get("type", "")
-            else:
-                continue
-
-            # Process item using typed registry
-            self.processor_registry.process_item(item, state, self.display)
+    # _process_output_items removed - v3 handles complete Response snapshots
 
     def _handle_tool_search(
         self, event_type: str, data: dict[str, Any] | Response | None, state: StreamState, query_time: float
@@ -360,8 +331,8 @@ class TypedStreamHandler:
                 tool_state.queries = queries
                 tool_state.query = ", ".join(queries)
 
-        # Update display
-        self.display.handle_event("tool_status", {"tool_type": tool_type, **tool_state.to_display_info()})
+        # In v3, we rely on the response snapshot to show tool status
+        # The rich renderer will extract tool information from the response object
 
     def _handle_tool_complete(
         self, event_type: str, data: dict[str, Any] | Response | None, state: StreamState, retrieval_time: float
@@ -392,22 +363,8 @@ class TypedStreamHandler:
                         results = item.get("results", [])
                         tool_state.results_count = len(results)
 
-            # Update display
-            self.display.handle_event("tool_status", {"tool_type": tool_type, **tool_state.to_display_info()})
-
-    def _finalize_response(self, state: StreamState) -> None:
-        """Finalize the response processing."""
-        # Extract citations if available
-        if state.output_items:
-            # Process citations - implementation depends on processor updates
+            # In v3, tool status is shown through the complete Response snapshot
             pass
-
-        # Send stream complete event with final usage statistics
-        self.display.handle_event("stream_complete", {
-            "message": f"Completed with {state.event_count} events",
-            "usage": state.usage,
-            "event_count": state.event_count,
-        })
 
 
 # Export the typed handler as the default

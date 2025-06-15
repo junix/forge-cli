@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from forge_cli.chat.controller import ChatController
 from forge_cli.config import SearchConfig
 from forge_cli.display.registry import DisplayRegistry, initialize_default_displays
-from forge_cli.display.v2.base import Display
+from forge_cli.display.v3.base import Display
 from forge_cli.processors.registry import initialize_default_registry
 from forge_cli.sdk import astream_response, astream_typed_response, async_get_vectorstore, create_typed_request
 from forge_cli.stream.handler import StreamHandler
@@ -34,10 +34,10 @@ def create_display(config: SearchConfig) -> Display:
     try:
         return DisplayRegistry.get_display_for_config(config)
     except (ValueError, ImportError):
-        # Fallback to v2 plain renderer if there's an error
-        from forge_cli.display.v2.renderers.plain import PlainRenderer
+        # Fallback to v3 rich renderer if there's an error
+        from forge_cli.display.v3.renderers.rich import RichRenderer
 
-        renderer = PlainRenderer()
+        renderer = RichRenderer()
         return Display(renderer)
 
 

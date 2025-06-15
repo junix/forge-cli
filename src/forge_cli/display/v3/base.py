@@ -94,6 +94,27 @@ class Display:
         if hasattr(self._renderer, "render_welcome"):
             self._renderer.render_welcome(config)
 
+    def show_request_info(self, info: dict) -> None:
+        """Show request information if renderer supports it."""
+        if hasattr(self._renderer, "render_request_info"):
+            self._renderer.render_request_info(info)
+        elif hasattr(self._renderer, "_console"):
+            # Fallback for rich renderers
+            console = self._renderer._console
+            console.print(f"[cyan]Query:[/cyan] {info.get('question', 'N/A')}")
+            if info.get('model'):
+                console.print(f"[cyan]Model:[/cyan] {info['model']}")
+            if info.get('tools'):
+                console.print(f"[cyan]Tools:[/cyan] {', '.join(info['tools'])}")
+
+    def show_status(self, message: str) -> None:
+        """Show status message if renderer supports it."""
+        if hasattr(self._renderer, "render_status"):
+            self._renderer.render_status(message)
+        elif hasattr(self._renderer, "_console"):
+            # Fallback for rich renderers
+            self._renderer._console.print(f"[yellow]Status:[/yellow] {message}")
+
     @property
     def event_count(self) -> int:
         """Get total number of events handled."""
