@@ -228,9 +228,10 @@ class RichRenderer(BaseRenderer):
                 md_parts.append(f"- 🛠️ {item.type.replace('_', ' ').title()} ({item.status}){detail_str}")
             elif item.type == "reasoning":
                 if hasattr(item, "summary") and item.summary:
-                    lines = [s.text.strip() for s in item.summary if hasattr(s, "text") and s.text]
-                    if lines:
-                        md_parts.extend([f"> {line}" for line in lines])
+                    texts = [s.text.strip() for s in item.summary if hasattr(s, "text") and s.text]
+                    if texts:
+                        for txt in texts:
+                            md_parts.extend([f"> {subline}" for subline in txt.splitlines()])
 
         # References section
         citations = self._extract_all_citations(response)
