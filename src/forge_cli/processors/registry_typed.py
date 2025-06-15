@@ -116,7 +116,6 @@ default_typed_registry = TypedProcessorRegistry()
 def initialize_typed_registry():
     """Initialize the typed registry with both old and new processors."""
     # Import here to avoid circular imports
-    from .message import MessageProcessor
     from .reasoning import ReasoningProcessor
     from .tool_calls.document_finder_typed import DocumentFinderProcessor as TypedDocumentFinderProcessor
     from .tool_calls.file_reader_typed import FileReaderProcessor as TypedFileReaderProcessor
@@ -125,7 +124,7 @@ def initialize_typed_registry():
 
     # Register processors that already support both dict and typed
     default_typed_registry.register("reasoning", ReasoningProcessor())
-    default_typed_registry.register("message", MessageProcessor())
+    # Note: Message processing is now handled directly by v3 renderers
 
     # Register new typed tool processors
     default_typed_registry.register("file_search_call", TypedFileSearchProcessor())

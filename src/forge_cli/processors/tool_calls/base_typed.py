@@ -1,8 +1,26 @@
 """Base class for tool call processors with typed API support."""
 
-from typing import Any
+from typing import Any, Literal, TypedDict
 
 from ..base_typed import TypedToolProcessor
+
+
+# Generic processed tool call data type (used by file_reader and document_finder processors)
+class ProcessedToolCallData(TypedDict, total=False):
+    type: str  # tool type
+    tool_name: str
+    status: str
+    action_text: str
+    queries: list[str]
+    results_count: int | None
+    error_message: str | None
+    # Additional tool-specific fields can be added by specific processors
+    file_id: str | None
+    doc_ids: list[str] | None
+    query: str | None
+    navigation: str | None
+    vector_store_ids: list[str] | None
+    count: int | None
 
 
 class BaseToolCallProcessor(TypedToolProcessor):

@@ -1,11 +1,29 @@
 """File search tool call processor with typed API support."""
 
-from typing import Any, cast
+from typing import Any, Literal, TypedDict, cast
 
-from forge_cli.common.types import FileSearchResult, ProcessedFileSearchData
 from forge_cli.response._types import ResponseFileSearchToolCall
 
 from .base_typed import BaseToolCallProcessor
+
+
+# Local type definitions for file search processor
+class FileSearchResult(TypedDict, total=False):
+    file_id: str
+    filename: str
+    citation_id: int | None
+
+
+class ProcessedFileSearchData(TypedDict, total=False):
+    type: Literal["file_search"]  # from BaseToolCallProcessor
+    tool_name: str  # from BaseToolCallProcessor
+    status: str  # from BaseToolCallProcessor
+    action_text: str  # from BaseToolCallProcessor
+    queries: list[str]  # from BaseToolCallProcessor
+    results_count: int | None  # from BaseToolCallProcessor
+    error_message: str | None  # from BaseToolCallProcessor
+    file_id: str | None  # Specific to file search
+    vector_store_ids: list[str] | None  # Specific to file search
 
 
 class FileSearchProcessor(BaseToolCallProcessor):
