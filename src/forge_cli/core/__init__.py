@@ -13,7 +13,7 @@ from .document_content import DocumentContent
 from .page import Page
 
 # File management models  
-from .file_response import FileResponse
+from ..sdk.file_response import FileResponse
 
 # Task tracking models
 from .trace import Trace
