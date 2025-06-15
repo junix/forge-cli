@@ -1,4 +1,4 @@
-"""Test that v2 renderers are now used by default."""
+"""Test that v3 renderers are now used by default."""
 
 import asyncio
 import json
@@ -10,19 +10,19 @@ from io import StringIO
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from forge_cli.config import SearchConfig
-from forge_cli.display.v2.base import Display
+from forge_cli.display.v3.base import Display
 from forge_cli.main import create_display
 
 
 async def test_default_displays():
-    """Test that default displays are now pure v2."""
+    """Test that default displays are now pure v3."""
     print("=== Testing Default Display Creation ===\n")
 
     # Test 1: Plain display (default)
     config = SearchConfig()
     display = create_display(config)
     print(f"Default display: {type(display).__name__}")
-    print(f"Is v2 Display: {isinstance(display, Display)}")
+    print(f"Is v3 Display: {isinstance(display, Display)}")
     if isinstance(display, Display):
         print(f"  Renderer: {display._renderer.__class__.__name__}")
 
@@ -31,7 +31,7 @@ async def test_default_displays():
     config = SearchConfig(use_rich=True)
     display = create_display(config)
     print(f"Rich display: {type(display).__name__}")
-    print(f"Is v2 Display: {isinstance(display, Display)}")
+    print(f"Is v3 Display: {isinstance(display, Display)}")
     if isinstance(display, Display):
         print(f"  Renderer: {display._renderer.__class__.__name__}")
 
@@ -40,7 +40,7 @@ async def test_default_displays():
     config = SearchConfig(json_output=True)
     display = create_display(config)
     print(f"JSON display: {type(display).__name__}")
-    print(f"Is v2 Display: {isinstance(display, Display)}")
+    print(f"Is v3 Display: {isinstance(display, Display)}")
     if isinstance(display, Display):
         print(f"  Renderer: {display._renderer.__class__.__name__}")
 
@@ -50,15 +50,15 @@ async def test_default_displays():
     config.chat = True  # Set the chat attribute
     display = create_display(config)
     print(f"Chat display: {type(display).__name__}")
-    print(f"Is v2 Display: {isinstance(display, Display)}")
+    print(f"Is v3 Display: {isinstance(display, Display)}")
     if isinstance(display, Display):
         print(f"  Mode: {display.mode}")
         print(f"  Renderer: {display._renderer.__class__.__name__}")
 
 
 async def test_functionality():
-    """Test that v2 displays work correctly through event handling."""
-    print("\n\n=== Testing V2 Display Functionality ===\n")
+    """Test that v3 displays work correctly through event handling."""
+    print("\n\n=== Testing V3 Display Functionality ===\n")
 
     # Test JSON output
     output = StringIO()
@@ -69,7 +69,7 @@ async def test_functionality():
         config = SearchConfig(json_output=True, debug=False)
         display = create_display(config)
 
-        # Simulate v2 event-based usage
+        # Simulate v3 event-based usage
         display.handle_event("request_info", {"question": "What is Python?", "model": "qwen-max-latest"})
         display.handle_event("text_delta", {"text": "Python is a programming language."})
         display.complete()
@@ -102,7 +102,7 @@ async def test_plain_output():
     config = SearchConfig(use_rich=False)
     display = create_display(config)
 
-    # Check it's using v2
+    # Check it's using v3
     if isinstance(display, Display):
         # Monkey patch the renderer's output file
         display._renderer._file = output
@@ -116,19 +116,19 @@ async def test_plain_output():
         print(plain_output[:200] + "..." if len(plain_output) > 200 else plain_output)
         print("✅ Plain renderer working!")
     else:
-        print("❌ Not using v2 display!")
+        print("❌ Not using v3 display!")
 
 
 async def main():
     """Run all tests."""
-    print("Testing V2 Renderers as Default\n")
+    print("Testing V3 Renderers as Default\n")
 
     try:
         await test_default_displays()
         await test_functionality()
         await test_plain_output()
 
-        print("\n\n🎉 All tests passed! V2 renderers are now the default.")
+        print("\n\n🎉 All tests passed! V3 renderers are now the default.")
 
     except Exception as e:
         print(f"❌ Test failed: {e}", file=sys.stderr)
