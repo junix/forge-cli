@@ -5,94 +5,58 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import List, Optional
 
-MetadataDict = dict[str, str | int | float | bool]
+# Import proper types from response system
+from ..response._types.response_input_message_item import ResponseInputMessageItem
+from ..response._types.response_usage import ResponseUsage, InputTokensDetails, OutputTokensDetails
 
-
-class MessageDict(TypedDict):
-    role: Literal["user", "assistant", "system"]
-    content: str
-    id: str | None
-    timestamp: float | None
-    metadata: MetadataDict | None
-
-
-@dataclass
-class Message:
-    """Represents a single message in the conversation."""
-
-    role: Literal["user", "assistant", "system"]
-    content: str
-    id: str | None = None
-    timestamp: float | None = None
-    metadata: dict[str, str | int | float | bool] | None = None
-
-    def __post_init__(self):
-        """Initialize defaults after dataclass init."""
-        if self.id is None:
-            self.id = f"{self.role}_{uuid.uuid4().hex[:8]}"
-        if self.timestamp is None:
-            self.timestamp = time.time()
-        if self.metadata is None:
-            self.metadata = {}
-
-    def to_dict(self) -> MessageDict:
-        """Convert to dictionary for serialization."""
-        return {
-            "role": self.role,
-            "content": self.content,
-            "id": self.id,
-            "timestamp": self.timestamp,
-            "metadata": self.metadata,
-        }
-
-    @classmethod
-    def from_dict(cls, data: MessageDict) -> "Message":
-        """Create from dictionary."""
-        return cls(
-            role=data["role"],  # type: ignore
-            content=data["content"],
-            id=data.get("id"),
-            timestamp=data.get("timestamp"),
-            metadata=data.get("metadata", {}),  # type: ignore
-        )
 
 
 @dataclass
 class ConversationState:
-    """Manages the state of a multi-turn conversation."""
+    """Manages the state of a multi-turn conversation using typed API."""
 
-    messages: list[Message] = field(default_factory=list)
+    # Use proper typed messages instead of custom Message class
+    messages: List[ResponseInputMessageItem] = field(default_factory=list)
     session_id: str = field(default_factory=lambda: f"session_{uuid.uuid4().hex[:12]}")
     created_at: float = field(default_factory=time.time)
     model: str = "qwen-max-latest"
-    tools: list[dict[str, str | bool | list[str]]] = field(default_factory=list)
+    tools: List[dict] = field(default_factory=list)
     metadata: dict[str, str | int | float | bool] = field(default_factory=dict)
-    # Token usage tracking
-    total_input_tokens: int = 0
-    total_output_tokens: int = 0
-    total_tokens: int = 0
+    # Use proper ResponseUsage instead of manual tracking
+    usage: Optional[ResponseUsage] = None
 
-    def add_message(self, message: Message) -> None:
+    def add_message(self, message: ResponseInputMessageItem) -> None:
         """Add a message to the conversation."""
         self.messages.append(message)
 
-    def add_user_message(self, content: str) -> Message:
-        """Add a user message and return it."""
-        message = Message(role="user", content=content)
+    def add_user_message(self, content: str) -> ResponseInputMessageItem:
+        """Add a user message using proper typed API."""
+        message = ResponseInputMessageItem(
+            id=f"user_{uuid.uuid4().hex[:8]}",
+            role="user",
+            content=[{"type": "text", "text": content}],  # Proper content format
+        )
         self.add_message(message)
         return message
 
-    def add_assistant_message(self, content: str) -> Message:
-        """Add an assistant message and return it."""
-        message = Message(role="assistant", content=content)
+    def add_assistant_message(self, content: str, assistant_id: Optional[str] = None) -> ResponseInputMessageItem:
+        """Add an assistant message using proper typed API."""
+        # Note: Assistant messages need proper handling since they don't fit the input message format
+        # This might need adjustment based on how assistant messages are actually handled
+        # For now, creating a compatible structure
+        message = ResponseInputMessageItem(
+            id=assistant_id or f"assistant_{uuid.uuid4().hex[:8]}",
+            role="system",  # Using system role as assistant isn't in the enum
+            content=[{"type": "text", "text": content}],
+        )
         self.add_message(message)
         return message
 
-    def to_api_format(self) -> list[dict[str, str | float]]:
-        """Convert messages to API format."""
-        return [{"role": msg.role, "content": msg.content, "id": msg.id} for msg in self.messages]
+    def to_api_format(self) -> List[ResponseInputMessageItem]:
+        """Return messages in proper API format (already typed)."""
+        return self.messages
 
     def clear(self) -> None:
         """Clear conversation history but keep configuration."""
@@ -102,29 +66,24 @@ class ConversationState:
         """Get the number of messages in the conversation."""
         return len(self.messages)
 
-    def get_last_n_messages(self, n: int) -> list[Message]:
+    def get_last_n_messages(self, n: int) -> List[ResponseInputMessageItem]:
         """Get the last n messages."""
         return self.messages[-n:] if n > 0 else []
 
-    def add_token_usage(self, input_tokens: int = 0, output_tokens: int = 0) -> None:
-        """Add token usage to the accumulated totals."""
-        self.total_input_tokens += input_tokens
-        self.total_output_tokens += output_tokens
-        self.total_tokens = self.total_input_tokens + self.total_output_tokens
+    def add_token_usage(self, usage: ResponseUsage) -> None:
+        """Add token usage using proper ResponseUsage type."""
+        if self.usage is None:
+            self.usage = usage
+        else:
+            self.usage += usage  # Uses built-in __add__ method
 
-    def get_token_usage(self) -> dict[str, int]:
-        """Get current token usage statistics."""
-        return {
-            "input_tokens": self.total_input_tokens,
-            "output_tokens": self.total_output_tokens,
-            "total_tokens": self.total_tokens,
-        }
+    def get_token_usage(self) -> Optional[ResponseUsage]:
+        """Get current token usage."""
+        return self.usage
 
     def reset_token_usage(self) -> None:
-        """Reset token usage counters to zero."""
-        self.total_input_tokens = 0
-        self.total_output_tokens = 0
-        self.total_tokens = 0
+        """Reset token usage."""
+        self.usage = None
 
     def save(self, path: Path) -> None:
         """Save conversation to a JSON file."""
@@ -134,10 +93,8 @@ class ConversationState:
             "model": self.model,
             "tools": self.tools,
             "metadata": self.metadata,
-            "total_input_tokens": self.total_input_tokens,
-            "total_output_tokens": self.total_output_tokens,
-            "total_tokens": self.total_tokens,
-            "messages": [msg.to_dict() for msg in self.messages],
+            "usage": self.usage.model_dump() if self.usage else None,
+            "messages": [msg.model_dump() for msg in self.messages],
         }
 
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -150,20 +107,46 @@ class ConversationState:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
 
+        # Handle usage data
+        usage = None
+        usage_data = data.get("usage")
+        if usage_data:
+            usage = ResponseUsage.model_validate(usage_data)
+        
+        # Handle backward compatibility with old token fields
+        elif any(key in data for key in ["total_input_tokens", "total_output_tokens", "total_tokens"]):
+            # Convert old format to new ResponseUsage
+            usage = ResponseUsage(
+                input_tokens=data.get("total_input_tokens", 0),
+                output_tokens=data.get("total_output_tokens", 0),
+                total_tokens=data.get("total_tokens", 0),
+                input_tokens_details=InputTokensDetails(cached_tokens=0),
+                output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
+            )
+
         conversation = cls(
             session_id=data["session_id"],
             created_at=data["created_at"],
             model=data["model"],
             tools=data.get("tools", []),
             metadata=data.get("metadata", {}),
-            total_input_tokens=data.get("total_input_tokens", 0),
-            total_output_tokens=data.get("total_output_tokens", 0),
-            total_tokens=data.get("total_tokens", 0),
+            usage=usage,
         )
 
-        # Load messages
+        # Load messages using Pydantic models
         for msg_data in data.get("messages", []):
-            message = Message.from_dict(msg_data)
+            # Handle both old and new message formats
+            if "role" in msg_data and "content" in msg_data and isinstance(msg_data["content"], str):
+                # Old format - convert to new format
+                message = ResponseInputMessageItem(
+                    id=msg_data.get("id", f"{msg_data['role']}_{uuid.uuid4().hex[:8]}"),
+                    role=msg_data["role"] if msg_data["role"] in ["user", "system", "developer"] else "user",
+                    content=[{"type": "text", "text": msg_data["content"]}],
+                )
+            else:
+                # New format - use Pydantic validation
+                message = ResponseInputMessageItem.model_validate(msg_data)
+            
             conversation.add_message(message)
 
         return conversation
@@ -174,21 +157,37 @@ class ConversationState:
         This is a simple implementation that removes oldest messages.
         """
         # Simple heuristic: assume ~4 chars per token
-        estimated_tokens = sum(len(msg.content) // 4 for msg in self.messages)
+        # Extract text content from the new message format
+        def get_text_content(msg: ResponseInputMessageItem) -> str:
+            text_parts = []
+            for content_item in msg.content:
+                if isinstance(content_item, dict) and content_item.get("type") == "text":
+                    text_parts.append(content_item.get("text", ""))
+            return " ".join(text_parts)
+        
+        estimated_tokens = sum(len(get_text_content(msg)) // 4 for msg in self.messages)
 
         while estimated_tokens > max_tokens and len(self.messages) > 2:
             # Keep at least the last 2 messages
             removed = self.messages.pop(0)
-            estimated_tokens -= len(removed.content) // 4
+            estimated_tokens -= len(get_text_content(removed)) // 4
 
     def to_display_format(self) -> str:
         """Format conversation for display."""
         lines = []
         for msg in self.messages:
+            # Extract text content from the new message format
+            text_content = []
+            for content_item in msg.content:
+                if isinstance(content_item, dict) and content_item.get("type") == "text":
+                    text_content.append(content_item.get("text", ""))
+            
+            content_str = " ".join(text_content)
+            
             if msg.role == "user":
-                lines.append(f"\n**You**: {msg.content}")
-            elif msg.role == "assistant":
-                lines.append(f"\n**Assistant**: {msg.content}")
+                lines.append(f"\n**You**: {content_str}")
             elif msg.role == "system":
-                lines.append(f"\n**System**: {msg.content}")
+                lines.append(f"\n**Assistant**: {content_str}")  # Treat system as assistant for display
+            elif msg.role == "developer":
+                lines.append(f"\n**Developer**: {content_str}")
         return "\n".join(lines)

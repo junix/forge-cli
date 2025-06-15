@@ -1,6 +1,6 @@
 """Model definitions for the refactored file search module."""
 
-from .conversation import ConversationState, Message
+from .conversation import ConversationState
 from .state import StreamState, ToolState, ToolStatus
 
 __all__ = [
@@ -9,6 +9,5 @@ __all__ = [
     "ToolState",
     "ToolStatus",
     # Conversation
-    "Message",
     "ConversationState",
 ]
