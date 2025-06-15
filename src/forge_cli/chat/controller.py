@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from typing import Any
 
 from ..config import SearchConfig
 from ..display.v3.base import Display
@@ -44,6 +45,34 @@ class ChatController:
                 web_tool["user_location"] = {"type": "approximate", **location}
 
             tools.append(web_tool)
+
+        return tools
+
+    def prepare_typed_tools(self) -> list:
+        """Prepare typed tools configuration based on config."""
+        from ..response._types import FileSearchTool, WebSearchTool
+        tools = []
+
+        # File search tool
+        if "file-search" in self.config.enabled_tools and self.config.vec_ids:
+            tools.append(
+                FileSearchTool(
+                    type="file_search",
+                    vector_store_ids=self.config.vec_ids,
+                    max_num_results=self.config.max_results,
+                )
+            )
+
+        # Web search tool
+        if "web-search" in self.config.enabled_tools:
+            tool_params = {"type": "web_search"}
+            location = self.config.get_web_location()
+            if location:
+                if "country" in location:
+                    tool_params["country"] = location["country"]
+                if "city" in location:
+                    tool_params["city"] = location["city"]
+            tools.append(WebSearchTool(**tool_params))
 
         return tools
 
@@ -276,10 +305,13 @@ class ChatController:
             elif isinstance(request.get("input_messages"), str):
                 input_messages = [InputMessage(role="user", content=request["input_messages"])]
 
+            # Use typed tools
+            typed_tools = self.prepare_typed_tools()
+            
             typed_request = Request(
                 input=input_messages,
                 model=request.get("model", "qwen-max"),
-                tools=request.get("tools", []),
+                tools=typed_tools,
                 temperature=request.get("temperature", 0.7),
                 max_output_tokens=request.get("max_output_tokens", 2000),
                 effort=request.get("effort", "low"),
@@ -373,4 +405,27 @@ class ChatController:
                     # If content item is just a string
                     return content_item
 
+        return None
+    
+    def extract_text_from_typed_response(self, response: "Response") -> str | None:
+        """Extract text content from a typed response object."""
+        from ..response._types import Response, ResponseOutputMessage
+        
+        # Check if response has output attribute
+        if hasattr(response, "output") and response.output:
+            for item in response.output:
+                # Check if it's a message type
+                if hasattr(item, "type") and item.type == "message":
+                    # For typed ResponseOutputMessage
+                    if isinstance(item, ResponseOutputMessage):
+                        if hasattr(item, "content") and item.content:
+                            # Extract text from content
+                            for content_item in item.content:
+                                if hasattr(content_item, "type") and content_item.type == "text":
+                                    if hasattr(content_item, "text"):
+                                        return content_item.text
+                    # For dict-like message
+                    elif isinstance(item, dict):
+                        return self.extract_text_from_message(item)
+        
         return None

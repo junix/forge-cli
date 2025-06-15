@@ -120,8 +120,8 @@ def initialize_typed_registry():
     from .reasoning import ReasoningProcessor
     from .tool_calls.file_search_typed import FileSearchProcessor as TypedFileSearchProcessor
     from .tool_calls.web_search_typed import WebSearchProcessor as TypedWebSearchProcessor
-    from .tool_calls.document_finder import DocumentFinderProcessor
-    from .tool_calls.file_reader import FileReaderProcessor
+    from .tool_calls.document_finder_typed import DocumentFinderProcessor as TypedDocumentFinderProcessor
+    from .tool_calls.file_reader_typed import FileReaderProcessor as TypedFileReaderProcessor
 
     # Register processors that already support both dict and typed
     default_typed_registry.register("reasoning", ReasoningProcessor())
@@ -130,7 +130,5 @@ def initialize_typed_registry():
     # Register new typed tool processors
     default_typed_registry.register("file_search_call", TypedFileSearchProcessor())
     default_typed_registry.register("web_search_call", TypedWebSearchProcessor())
-
-    # Register remaining legacy processors directly (should be updated to typed)
-    default_typed_registry.register("document_finder_call", DocumentFinderProcessor())
-    default_typed_registry.register("file_reader_call", FileReaderProcessor())
+    default_typed_registry.register("document_finder_call", TypedDocumentFinderProcessor())
+    default_typed_registry.register("file_reader_call", TypedFileReaderProcessor())

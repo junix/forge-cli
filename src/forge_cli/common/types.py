@@ -114,3 +114,21 @@ class ProcessedMessage(TypedDict):
     annotations: List[AnnotationUnion] # Or List[Annotation] if Annotation is already the union
     id: str
     status: str
+
+# Generic processed tool call data type
+class ProcessedToolCallData(TypedDict, total=False):
+    type: str  # tool type
+    tool_name: str
+    status: str
+    action_text: str
+    queries: List[str]
+    results_count: Optional[int]
+    error_message: Optional[str]
+    raw_item: Optional[AnyCitable]
+    # Additional tool-specific fields can be added by specific processors
+    file_id: Optional[str]
+    doc_ids: Optional[List[str]]
+    query: Optional[str]
+    navigation: Optional[str]
+    vector_store_ids: Optional[List[str]]
+    count: Optional[int]
