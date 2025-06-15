@@ -11,19 +11,18 @@ Server Configuration:
 
 import argparse
 import asyncio
-import json
 import os
 from pathlib import Path
-from typing import Any
 
 # Import sdk functions that we'll use
-from sdk import (
+from forge_cli.sdk.files import (
     async_delete_file,
     async_fetch_file,
     async_upload_file,
     async_wait_for_task_completion,
-    print_file_results,
 )
+from forge_cli.sdk.types import File
+from forge_cli.sdk.utils import print_file_results
 
 
 def main():
@@ -119,23 +118,22 @@ async def upload_file_async(
         )
 
         # Print upload results
-        print_file_results(upload_result)
+        print_file_results([upload_result])
 
-        file_id = upload_result.get("id")
-        task_id = upload_result.get("task_id")
+        file_id = upload_result.id
+        task_id = upload_result.task_id
 
         # Wait for processing if there's a task ID
         if task_id:
             print(f"Waiting for file processing (task: {task_id})...")
             try:
                 final_status = await async_wait_for_task_completion(task_id)
-                status = final_status.get("status", "unknown")
-                print(f"Processing completed with status: {status}")
+                print(f"Processing completed with status: {final_status.status}")
 
                 # Show error message if processing failed
-                if status == "failed":
-                    error = final_status.get("error", "Unknown error")
-                    print(f"Processing failed: {error}")
+                if final_status.status == "failed":
+                    error_info = final_status.error or "Unknown error"
+                    print(f"Processing failed: {error_info}")
                     return
 
             except Exception as e:
@@ -196,7 +194,7 @@ async def delete_file_async(file_id: str):
         print(f"Error during file deletion: {e}")
 
 
-def print_document_info(document: dict[str, Any]):
+def print_document_info(document: File):
     """
     Print key information about a document.
 
@@ -204,33 +202,33 @@ def print_document_info(document: dict[str, Any]):
         document: The document data dictionary
     """
     print("=== Document Information ===")
-    print(f"Document ID: {document.get('id', 'Unknown')}")
-    print(f"Title: {document.get('title', 'Unknown')}")
-    print(f"Filename: {document.get('filename', 'Unknown')}")
-    print(f"File size: {document.get('bytes', 0)} bytes")
-    print(f"Created at: {document.get('created_at', 'Unknown')}")
+    print(f"Document ID: {document.id}")
+    print(f"Title: {document.title or 'N/A'}")
+    print(f"Filename: {document.filename}")
+    print(f"File size: {document.bytes} bytes")
+    print(f"Created at: {document.created_at}")
 
     # Display content details if available
-    if document.get("content"):
-        content = document["content"]
+    if document.content:
+        content = document.content
         print("\n=== Content Details ===")
-        print(f"Language: {content.get('language', 'unknown')}")
-        print(f"File type: {content.get('file_type', 'unknown')}")
-        print(f"Page count: {content.get('page_count', 0)}")
+        print(f"Language: {content.language or 'unknown'}")
+        print(f"File type: {content.file_type or 'unknown'}")
+        print(f"Page count: {content.page_count or 0}")
 
         # Show segment count if segments exist
-        if "segments" in content:
-            seg_count = len(content["segments"])
-            print(f"Segments: {seg_count}")
+        if content.segments:
+            print(f"Segments: {len(content.segments)}")
 
         # Show summary if available (first 200 chars)
-        if content.get("summary"):
-            print(f"\nSummary: {content['summary'][:200]}...")
-            if len(content["summary"]) > 200:
-                print("...")
+        if content.summary:
+            summary_display = (
+                content.summary[:200] + "..." if len(content.summary) > 200 else content.summary
+            )
+            print(f"\nSummary: {summary_display}")
 
 
-async def dump_document_to_file(document: dict[str, Any], file_id: str):
+async def dump_document_to_file(document: File, file_id: str):
     """
     Dump document data to a JSON file.
 
@@ -240,14 +238,15 @@ async def dump_document_to_file(document: dict[str, Any], file_id: str):
     """
     try:
         # Use the document ID if available, otherwise use file_id
-        doc_id = document.get("id", file_id)
+        doc_id = document.id or file_id
         json_file = f"{doc_id}.json"
 
         # Ensure we have a valid path
         output_path = Path(json_file).resolve()
 
         with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(document, f, indent=2, ensure_ascii=False)
+            # Use model_dump_json for Pydantic models for correct serialization
+            f.write(document.model_dump_json(indent=2))
 
         print(f"Document content dumped to: {output_path}")
 
