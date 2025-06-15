@@ -5,11 +5,57 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Final, Literal, NewType, Protocol, TypeAlias, overload
 
 # Import proper types from response system
 from ..response._types.response_input_message_item import ResponseInputMessageItem
 from ..response._types.response_usage import InputTokensDetails, OutputTokensDetails, ResponseUsage
 from ..response._types.tool import Tool
+from ..response.type_guards import (
+    is_input_text,
+    is_file_search_tool,
+    is_web_search_tool,
+    is_function_tool,
+    is_computer_tool,
+    is_document_finder_tool,
+    is_file_reader_tool,
+)
+
+if TYPE_CHECKING:
+    from ..response._types.response_input_text import ResponseInputText
+    from ..response._types import (
+        ComputerTool,
+        DocumentFinderTool,
+        FileSearchTool,
+        FunctionTool,
+        WebSearchTool,
+    )
+    from ..response._types.file_reader_tool import FileReaderTool
+
+# Type aliases for clarity
+MessageRole: TypeAlias = Literal["user", "system", "developer"]
+ToolType: TypeAlias = Literal["file_search", "web_search", "function", "computer_use_preview", "document_finder", "file_reader"]
+
+# Domain-specific types
+SessionId = NewType("SessionId", str)
+MessageId = NewType("MessageId", str)
+
+# Constants
+DEFAULT_MODEL: Final[str] = "qwen-max-latest"
+TOKENS_PER_CHAR: Final[int] = 4  # Heuristic for token estimation
+MIN_MESSAGES_TO_KEEP: Final[int] = 2
+
+
+class ConversationPersistence(Protocol):
+    """Protocol for conversation persistence strategies."""
+    
+    def save(self, state: "ConversationState", path: Path) -> None:
+        """Save conversation state to storage."""
+        ...
+    
+    def load(self, path: Path) -> "ConversationState":
+        """Load conversation state from storage."""
+        ...
 
 
 @dataclass
@@ -18,9 +64,9 @@ class ConversationState:
 
     # Use proper typed messages instead of custom Message class
     messages: list[ResponseInputMessageItem] = field(default_factory=list)
-    session_id: str = field(default_factory=lambda: f"session_{uuid.uuid4().hex[:12]}")
+    session_id: SessionId = field(default_factory=lambda: SessionId(f"session_{uuid.uuid4().hex[:12]}"))
     created_at: float = field(default_factory=time.time)
-    model: str = "qwen-max-latest"
+    model: str = DEFAULT_MODEL
     tools: list[Tool] = field(default_factory=list)
     metadata: dict[str, str | int | float | bool] = field(default_factory=dict)
     # Use proper ResponseUsage instead of manual tracking
@@ -64,11 +110,9 @@ class ConversationState:
             # Extract text content from ResponseInputText objects
             content_parts = []
             for content_item in msg.content:
-                # Handle both Pydantic objects and dict formats
-                if hasattr(content_item, "type") and content_item.type == "input_text":
+                if is_input_text(content_item):
+                    # Type guard ensures content_item is ResponseInputText
                     content_parts.append(content_item.text)
-                elif isinstance(content_item, dict) and content_item.get("type") == "input_text":
-                    content_parts.append(content_item.get("text", ""))
 
             content_str = " ".join(content_parts)
 
@@ -89,8 +133,16 @@ class ConversationState:
         """Get the number of messages in the conversation."""
         return len(self.messages)
 
-    def get_last_n_messages(self, n: int) -> list[ResponseInputMessageItem]:
+    @overload
+    def get_last_n_messages(self, n: Literal[1]) -> ResponseInputMessageItem | None: ...
+    
+    @overload
+    def get_last_n_messages(self, n: int) -> list[ResponseInputMessageItem]: ...
+    
+    def get_last_n_messages(self, n: int) -> ResponseInputMessageItem | None | list[ResponseInputMessageItem]:
         """Get the last n messages."""
+        if n == 1:
+            return self.messages[-1] if self.messages else None
         return self.messages[-n:] if n > 0 else []
 
     def add_token_usage(self, usage: ResponseUsage) -> None:
@@ -151,37 +203,7 @@ class ConversationState:
         tools = []
         tools_data = data.get("tools", [])
         if tools_data:
-            from ..response._types import (
-                ComputerTool,
-                DocumentFinderTool,
-                FileSearchTool,
-                FunctionTool,
-                WebSearchTool,
-            )
-            from ..response._types.file_reader_tool import FileReaderTool
-
-            for tool_data in tools_data:
-                if isinstance(tool_data, dict):
-                    tool_type = tool_data.get("type")
-                    if tool_type == "file_search":
-                        tools.append(FileSearchTool.model_validate(tool_data))
-                    elif tool_type in ["web_search", "web_search_preview", "web_search_preview_2025_03_11"]:
-                        tools.append(WebSearchTool.model_validate(tool_data))
-                    elif tool_type == "function":
-                        tools.append(FunctionTool.model_validate(tool_data))
-                    elif tool_type == "computer_use_preview":
-                        tools.append(ComputerTool.model_validate(tool_data))
-                    elif tool_type == "document_finder":
-                        tools.append(DocumentFinderTool.model_validate(tool_data))
-                    elif tool_type == "file_reader":
-                        tools.append(FileReaderTool.model_validate(tool_data))
-                    else:
-                        # For unknown tool types, we could either skip or try a generic approach
-                        # For now, let's skip unknown tools with a note
-                        continue
-                else:
-                    # Already a Tool object, keep as is
-                    tools.append(tool_data)
+            tools = cls._load_tools(tools_data)
 
         conversation = cls(
             session_id=data["session_id"],
@@ -218,38 +240,28 @@ class ConversationState:
         This is a simple implementation that removes oldest messages.
         """
 
-        # Simple heuristic: assume ~4 chars per token
+        # Simple heuristic: assume ~TOKENS_PER_CHAR chars per token
         # Extract text content from the new message format
         def get_text_content(msg: ResponseInputMessageItem) -> str:
             text_parts = []
             for content_item in msg.content:
-                # Handle both Pydantic objects and dict formats
-                if hasattr(content_item, "type") and content_item.type == "input_text":
+                if is_input_text(content_item):
                     text_parts.append(content_item.text)
-                elif isinstance(content_item, dict) and content_item.get("type") == "input_text":
-                    text_parts.append(content_item.get("text", ""))
             return " ".join(text_parts)
 
-        estimated_tokens = sum(len(get_text_content(msg)) // 4 for msg in self.messages)
+        estimated_tokens = sum(len(get_text_content(msg)) // TOKENS_PER_CHAR for msg in self.messages)
 
-        while estimated_tokens > max_tokens and len(self.messages) > 2:
-            # Keep at least the last 2 messages
+        while estimated_tokens > max_tokens and len(self.messages) > MIN_MESSAGES_TO_KEEP:
+            # Keep at least the last MIN_MESSAGES_TO_KEEP messages
             removed = self.messages.pop(0)
-            estimated_tokens -= len(get_text_content(removed)) // 4
+            estimated_tokens -= len(get_text_content(removed)) // TOKENS_PER_CHAR
 
     def to_display_format(self) -> str:
         """Format conversation for display."""
         lines = []
         for msg in self.messages:
             # Extract text content from the new message format
-            text_content = []
-            for content_item in msg.content:
-                # Handle both Pydantic objects and dict formats
-                if hasattr(content_item, "type") and content_item.type == "input_text":
-                    text_content.append(content_item.text)
-                elif isinstance(content_item, dict) and content_item.get("type") == "input_text":
-                    text_content.append(content_item.get("text", ""))
-
+            text_content = self._extract_text_content(msg)
             content_str = " ".join(text_content)
 
             if msg.role == "user":
@@ -259,3 +271,48 @@ class ConversationState:
             elif msg.role == "developer":
                 lines.append(f"\n**Developer**: {content_str}")
         return "\n".join(lines)
+
+    def _extract_text_content(self, msg: ResponseInputMessageItem) -> list[str]:
+        """Extract text content from a message using type guards."""
+        text_content = []
+        for content_item in msg.content:
+            if is_input_text(content_item):
+                text_content.append(content_item.text)
+        return text_content
+
+    @classmethod
+    def _load_tools(cls, tools_data: list[dict[str, Any] | Tool]) -> list[Tool]:
+        """Load tools from data, handling both dict and Tool formats."""
+        from ..response._types import (
+            ComputerTool,
+            DocumentFinderTool,
+            FileSearchTool,
+            FunctionTool,
+            WebSearchTool,
+        )
+        from ..response._types.file_reader_tool import FileReaderTool
+
+        # Tool factory mapping
+        tool_factories: dict[str, type[Tool]] = {
+            "file_search": FileSearchTool,
+            "web_search": WebSearchTool,
+            "web_search_preview": WebSearchTool,
+            "web_search_preview_2025_03_11": WebSearchTool,
+            "function": FunctionTool,
+            "computer_use_preview": ComputerTool,
+            "document_finder": DocumentFinderTool,
+            "file_reader": FileReaderTool,
+        }
+
+        tools = []
+        for tool_data in tools_data:
+            if isinstance(tool_data, Tool):
+                # Already a Tool object
+                tools.append(tool_data)
+            elif isinstance(tool_data, dict):
+                tool_type = tool_data.get("type")
+                if tool_type and tool_type in tool_factories:
+                    tool_class = tool_factories[tool_type]
+                    tools.append(tool_class.model_validate(tool_data))
+                # Skip unknown tool types
+        return tools

@@ -550,6 +550,39 @@ def is_any_tool_call(item: ResponseOutputItem) -> bool:
     )
 
 
+# Tool Type Guards (for Tool objects)
+
+
+def is_file_search_tool(tool: Tool) -> TypeGuard[FileSearchTool]:
+    """Check if tool is a file search tool."""
+    return tool.type == "file_search"
+
+
+def is_web_search_tool(tool: Tool) -> TypeGuard[WebSearchTool]:
+    """Check if tool is a web search tool."""
+    return tool.type in ["web_search", "web_search_preview", "web_search_preview_2025_03_11"]
+
+
+def is_function_tool(tool: Tool) -> TypeGuard[FunctionTool]:
+    """Check if tool is a function tool."""
+    return tool.type == "function"
+
+
+def is_computer_tool(tool: Tool) -> TypeGuard[ComputerTool]:
+    """Check if tool is a computer use tool."""
+    return tool.type == "computer_use_preview"
+
+
+def is_document_finder_tool(tool: Tool) -> TypeGuard[DocumentFinderTool]:
+    """Check if tool is a document finder tool."""
+    return tool.type == "document_finder"
+
+
+def is_file_reader_tool(tool: Tool) -> TypeGuard[FileReaderTool]:
+    """Check if tool is a file reader tool."""
+    return tool.type == "file_reader"
+
+
 def is_search_related_tool_call(item: ResponseOutputItem) -> bool:
     """Check if output item is a search-related tool call."""
     return (
