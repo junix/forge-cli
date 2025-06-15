@@ -226,14 +226,19 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
                 # Look for ResponseOutputMessage items
                 for item in state.output_items:
                     # Check if this is a message type item from the typed response
-                    if hasattr(item, 'type') and item.type == "message" and hasattr(item, 'role') and item.role == "assistant":
+                    if (
+                        hasattr(item, "type")
+                        and item.type == "message"
+                        and hasattr(item, "role")
+                        and item.role == "assistant"
+                    ):
                         # This is a ResponseOutputMessage - extract text from content
                         assistant_text = ""
-                        if hasattr(item, 'content') and item.content:
+                        if hasattr(item, "content") and item.content:
                             for content_item in item.content:
-                                if hasattr(content_item, 'type') and content_item.type == "output_text":
+                                if hasattr(content_item, "type") and content_item.type == "output_text":
                                     assistant_text += content_item.text
-                        
+
                         if assistant_text:
                             controller.conversation.add_assistant_message(assistant_text)
                             if config.debug:
@@ -248,12 +253,14 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
                             if config.debug:
                                 print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
                             break
-                
+
                 # If we didn't find any assistant messages, debug log the structure
                 if config.debug:
-                    print(f"DEBUG: State output_items types: {[getattr(item, 'type', type(item).__name__) for item in state.output_items]}")
+                    print(
+                        f"DEBUG: State output_items types: {[getattr(item, 'type', type(item).__name__) for item in state.output_items]}"
+                    )
                     for i, item in enumerate(state.output_items):
-                        if hasattr(item, 'type'):
+                        if hasattr(item, "type"):
                             print(f"DEBUG: Item {i}: type={item.type}, role={getattr(item, 'role', 'N/A')}")
 
         except Exception as e:
