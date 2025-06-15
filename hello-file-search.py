@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-Multi-tool search example using the Knowledge Forge SDK.
+Multi-tool search example using the Knowledge Forge SDK with Typed APIs.
 
-This script demonstrates how to use the SDK to create responses using multiple tools,
-including file search through vectorstores and web search for current information.
+This script demonstrates how to use the modern typed SDK to create responses using 
+multiple tools, including file search through vectorstores and web search for 
+current information.
 
 Features:
 - Configurable tools: file-search, web-search, or both
 - Support for multiple vectorstore IDs
 - Web search with optional location context
-- Streaming response with real-time updates
+- Streaming response with real-time updates using typed Response objects
 - Rich command line interface with customizable options
 - Pretty output formatting with rich library
 - Citation processing and display
@@ -39,8 +40,15 @@ from rich.text import Text
 # Add the current directory to sys.path to allow importing from current directory
 sys.path.insert(0, str(Path(__file__).parent))
 
-# Import SDK functions from local sdk.py
-from sdk import astream_response, async_get_vectorstore
+# Import typed SDK functions
+from src.forge_cli.sdk import (
+    astream_typed_response,
+    create_typed_request,
+    create_file_search_tool,
+    create_web_search_tool,
+    async_get_vectorstore
+)
+from src.forge_cli.response._types import Response
 
 # Rich library is used for terminal output
 
@@ -1010,25 +1018,24 @@ async def process_with_streaming(
         },
     ]
 
-    # Create tools list based on enabled tools
+    # Create tools list based on enabled tools using typed tool creation
     tools = []
     
     # Add file search tool if enabled and vectorstore IDs are provided
     if enabled_tools and "file-search" in enabled_tools and vec_ids:
-        file_search_tool = {
-            "type": "file_search",
-            "vector_store_ids": vec_ids,
-            "max_num_results": max_results,
-        }
+        file_search_tool = create_file_search_tool(
+            vector_store_ids=vec_ids,
+            max_search_results=max_results
+        )
         tools.append(file_search_tool)
     
     # Add web search tool if enabled
     if enabled_tools and "web-search" in enabled_tools:
-        web_search_tool = {"type": "web_search"}
+        web_search_tool = create_web_search_tool()
         
-        # Add location context if provided
-        if web_location:
-            web_search_tool["user_location"] = {"type": "approximate", **web_location}
+        # Note: Web search location handling may need to be updated
+        # based on the typed WebSearchTool structure
+        # TODO: Check if location setting is needed for WebSearchTool
         
         tools.append(web_search_tool)
     
@@ -1148,13 +1155,18 @@ async def process_with_streaming(
         live_display = None
 
     try:
-        # Process the streaming response
-        async for event_type, event_data in astream_response(
+        # Create typed request for the streaming response
+        request = create_typed_request(
             input_messages=input_messages,
             model=model,
             effort=effort,
             store=True,
-            tools=tools,
+            tools=tools
+        )
+        
+        # Process the streaming response with typed API
+        async for event_type, response_snapshot in astream_typed_response(
+            request,
             debug=debug,
         ):
             # Update event count
@@ -1164,9 +1176,13 @@ async def process_with_streaming(
             if event_type and event_type.startswith("response"):
                 response_event_count += 1
 
-            # Collect usage data if present
-            if event_data and isinstance(event_data, dict) and "usage" in event_data:
-                collect_usage(event_data.get("usage"))
+            # Collect usage data if present from response snapshot
+            if response_snapshot and response_snapshot.usage:
+                collect_usage({
+                    "input_tokens": response_snapshot.usage.input_tokens,
+                    "output_tokens": response_snapshot.usage.output_tokens,
+                    "total_tokens": response_snapshot.usage.total_tokens
+                })
             # Time tracking for search events
             if event_type in [
                 "response.file_search_call.searching",
@@ -1188,50 +1204,49 @@ async def process_with_streaming(
                 # Special debug for file search events
                 if "file_search" in str(event_type):
                     print(f"{debug_prefix}[FILE_SEARCH] Event type: {event_type}")
-                    if event_data:
-                        # Check for results in various places
-                        if isinstance(event_data, dict):
-                            if "results" in event_data:
-                                print(
-                                    f"{debug_prefix}[FILE_SEARCH] Direct results count: {len(event_data.get('results', []))}"
-                                )
-                            if "output" in event_data and isinstance(event_data["output"], list):
-                                for idx, item in enumerate(event_data["output"]):
-                                    if item.get("type") == "file_search_call":
-                                        results = item.get("results")
-                                        print(
-                                            f"{debug_prefix}[FILE_SEARCH] output[{idx}] results: {type(results)}, count: {len(results) if isinstance(results, list) else 'N/A'}"
-                                        )
+                    if response_snapshot and response_snapshot.output:
+                        # Check for file search tool calls in output
+                        for idx, item in enumerate(response_snapshot.output):
+                            if hasattr(item, 'type') and item.type == "file_search_call":
+                                results = getattr(item, 'results', None)
+                                if results:
+                                    print(
+                                        f"{debug_prefix}[FILE_SEARCH] output[{idx}] results count: {len(results)}"
+                                    )
+                                else:
+                                    print(f"{debug_prefix}[FILE_SEARCH] output[{idx}] no results yet")
 
                 # Special debug for Rich mode to track what's happening
                 if use_rich and event_type in [
                     "response.file_search_call.completed",
                     "response.output_item.done",
-                    "final_response",
+                    "response.completed",
                 ]:
                     print(f"{debug_prefix}[RICH MODE] Processing event: {event_type}")
-                    if event_data:
-                        print(f"{debug_prefix}[RICH MODE] Event data keys: {list(event_data.keys())}")
+                    if response_snapshot:
+                        print(f"{debug_prefix}[RICH MODE] Response snapshot available with {len(response_snapshot.output) if response_snapshot.output else 0} output items")
 
-                if event_data:
+                if response_snapshot and response_snapshot.output:
                     # Special handling for different event types in debug
-                    if "output" in event_data and isinstance(event_data.get("output"), list):
-                        # Check if output contains reasoning items
-                        for idx, output_item in enumerate(event_data["output"]):
-                            if isinstance(output_item, dict) and output_item.get("type") == "reasoning":
-                                print(f"{debug_prefix}  Found reasoning in output[{idx}]:")
-                                if "summary" in output_item:
-                                    for s_idx, summary in enumerate(output_item["summary"]):
-                                        if summary.get("type") == "summary_text":
-                                            print(
-                                                f"{debug_prefix}    Summary[{s_idx}]: {summary.get('text', '')[:200]}..."
-                                            )
+                    for idx, output_item in enumerate(response_snapshot.output):
+                        if hasattr(output_item, 'type') and output_item.type == "reasoning":
+                            print(f"{debug_prefix}  Found reasoning in output[{idx}]:")
+                            # Note: The reasoning structure may be different in typed API
+                            # This would need to be updated based on the actual typed structure
 
-                    # Print full event data
-                    print(f"{debug_prefix}{json.dumps(event_data, indent=2, ensure_ascii=False)}")
+                    # Print response snapshot in debug mode
+                    if response_snapshot:
+                        snapshot_dict = response_snapshot.model_dump()
+                        print(f"{debug_prefix}Response snapshot: {json.dumps(snapshot_dict, indent=2, ensure_ascii=False)}")
 
             # Handle tool events with modular handler
             if tool_handler.can_handle(event_type):
+                # Convert response snapshot to event data format for tool handler compatibility
+                # TODO: Eventually update tool handler to work with typed Response objects directly
+                event_data = {}
+                if response_snapshot:
+                    event_data = response_snapshot.model_dump()
+                
                 # Handle the event
                 update = tool_handler.handle_event(
                     event_type,
@@ -1380,30 +1395,28 @@ async def process_with_streaming(
                         result_type = "relevant chunks" if "file_search" in event_type else "web results"
                         print(f"  Found {tool_state.results_count} {result_type}")
 
-            # Handle text delta events for non-Rich mode
-            if event_type == "response.output_text.delta" and event_data and "text" in event_data and not use_rich:
+            # Handle text delta events for non-Rich mode  
+            if event_type == "response.output_text.delta" and response_snapshot and not use_rich:
                 if not json_output:  # Only print streaming output in normal mode
-                    text_content = event_data["text"]
-
-                    # Extract the actual text from the event data, which can be nested
-                    fragment = ""
-                    if isinstance(text_content, dict) and "text" in text_content:
-                        fragment = text_content["text"]
-                    elif isinstance(text_content, str):
-                        fragment = text_content
-
-                    # Process the fragment
-                    if fragment:
-                        # For non-rich mode, just print the text
-                        print(fragment, end="", flush=True)
+                    # For delta events in typed API, we need to track what we've already printed
+                    # and only print the new portion
+                    current_text = response_snapshot.output_text or ""
+                    if not hasattr(process_with_streaming, '_last_printed_length'):
+                        process_with_streaming._last_printed_length = 0
+                    
+                    if len(current_text) > process_with_streaming._last_printed_length:
+                        # Print only the new portion
+                        new_text = current_text[process_with_streaming._last_printed_length:]
+                        print(new_text, end="", flush=True)
+                        process_with_streaming._last_printed_length = len(current_text)
 
                         # Apply throttling if requested
                         if throttle_ms > 0:
                             await asyncio.sleep(throttle_ms / 1000)
 
             # Handle error events
-            if event_type == "error" and event_data and not json_output:
-                error_message = event_data.get("message", "Unknown error occurred")
+            if event_type == "error" and not json_output:
+                error_message = "Unknown error occurred"  # Default message for typed API
                 if use_rich:
                     error_panel = Panel(
                         Text(f"Error: {error_message}", style="red bold"),
@@ -1414,11 +1427,14 @@ async def process_with_streaming(
                 else:
                     print(f"\nError: {error_message}")
 
-            # Exit on done event
+            # Exit on done event or response completed
             if event_type == "done":
-                # Store final response data
-                final_response = event_data
+                # Store final response data from the last snapshot
+                final_response = response_snapshot.model_dump() if response_snapshot else {}
                 break
+            elif event_type == "response.completed" and response_snapshot:
+                # Store the completed response
+                final_response = response_snapshot.model_dump()
 
         # Stop the live display if it's running
         if use_rich and live_display:

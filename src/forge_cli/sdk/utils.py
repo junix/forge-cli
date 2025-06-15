@@ -2,8 +2,8 @@ from typing import Any
 
 from forge_cli.response._types import Response
 
-# Import async_create_response from .response for example_response_usage
-from .response import async_create_response
+# Import typed API functions for example_response_usage
+from .typed_api import async_create_typed_response, create_file_search_tool, create_typed_request
 
 
 def print_file_results(upload_result: dict[str, str | int | float | bool | list | dict]) -> None:
@@ -120,15 +120,21 @@ async def example_response_usage() -> None:
     - Analyze tool calls
     - Use compression features
     """
-    # Create a response with file search
+    # Create a response with file search using typed API
     # Note: This example assumes a vector store 'vs_example' exists.
     # In a real scenario, you'd create or ensure this vector store exists.
-    print("Attempting to create a response with file search (ensure 'vs_example' vector store exists)...")
-    response = await async_create_response(
+    print(
+        "Attempting to create a response with file search using typed API (ensure 'vs_example' vector store exists)..."
+    )
+
+    # Create typed request with file search tool
+    request = create_typed_request(
         input_messages="What information is available about machine learning?",
         model="qwen-max-latest",  # Using a common model name
-        tools=[{"type": "file_search", "file_search": {"vector_store_ids": ["vs_example"], "max_num_results": 10}}],
+        tools=[create_file_search_tool(vector_store_ids=["vs_example"], max_search_results=10)],
     )
+
+    response = await async_create_typed_response(request)
 
     if not response:
         print("Failed to create response for example_response_usage.")

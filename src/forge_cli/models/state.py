@@ -2,7 +2,10 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from ..response._types.annotations import Annotation
 
 # Import proper types from response system
 from ..response._types.response_output_item import ResponseOutputItem
@@ -60,8 +63,8 @@ class StreamState:
     # File ID to filename mapping
     file_id_to_name: dict[str, str] = field(default_factory=dict)
 
-    # Extracted citations
-    citations: list[dict[str, str | int]] = field(default_factory=list)
+    # Extracted citations using typed API
+    citations: list["Annotation"] = field(default_factory=list)
 
     # Current reasoning text
     current_reasoning: str = ""
@@ -86,6 +89,7 @@ class StreamState:
                 self.output_items = self._convert_output_items(output_data)
             self._extract_file_mappings()
             self._extract_reasoning()
+            self._extract_citations()
 
         if "usage" in snapshot:
             usage_data = snapshot["usage"]
@@ -264,6 +268,68 @@ class StreamState:
                         reasoning_texts.append(text)
 
         self.current_reasoning = "\n\n".join(reasoning_texts)
+
+    def _extract_citations(self) -> None:
+        """Extract citations from message content annotations."""
+        from ..response._types.annotations import AnnotationFileCitation, AnnotationFilePath, AnnotationURLCitation
+
+        citations = []
+
+        for item in self.output_items:
+            # Handle typed objects
+            if hasattr(item, "type"):
+                item_type = item.type
+            else:
+                # Fallback for dict format
+                item_type = item.get("type", "") if isinstance(item, dict) else ""
+
+            if item_type == "message":
+                # Handle typed ResponseOutputMessage
+                if hasattr(item, "content"):
+                    content_list = item.content
+                else:
+                    # Fallback for dict format
+                    content_list = item.get("content", []) if isinstance(item, dict) else []
+
+                for content in content_list:
+                    # Handle both typed and dict content items
+                    if hasattr(content, "type") and content.type == "output_text":
+                        annotations = getattr(content, "annotations", [])
+                    elif isinstance(content, dict) and content.get("type") == "output_text":
+                        annotations = content.get("annotations", [])
+                    else:
+                        continue
+
+                    for annotation in annotations:
+                        # Handle both typed and dict annotations
+                        if hasattr(annotation, "type"):
+                            annotation_type = annotation.type
+                        elif isinstance(annotation, dict):
+                            annotation_type = annotation.get("type", "")
+                        else:
+                            continue
+
+                        # Convert dict annotations to typed objects if needed
+                        if isinstance(annotation, dict):
+                            try:
+                                if annotation_type == "file_citation":
+                                    typed_annotation = AnnotationFileCitation.model_validate(annotation)
+                                elif annotation_type == "url_citation":
+                                    typed_annotation = AnnotationURLCitation.model_validate(annotation)
+                                elif annotation_type == "file_path":
+                                    typed_annotation = AnnotationFilePath.model_validate(annotation)
+                                else:
+                                    continue
+                                citations.append(typed_annotation)
+                            except Exception:
+                                # If validation fails, skip the annotation
+                                continue
+                        else:
+                            # Already a typed object
+                            if annotation_type in ["file_citation", "url_citation", "file_path"]:
+                                citations.append(annotation)
+
+        self.citations = citations
 
     def get_tool_state(self, tool_type: str) -> ToolState:
         """Get or create tool state for a specific tool type."""
