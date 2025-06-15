@@ -4,9 +4,10 @@
 
 The display module implements the Strategy pattern to provide multiple output formatting options for the Forge CLI. It separates presentation logic from business logic, allowing users to choose between rich terminal UI, plain text, or JSON output while maintaining consistent functionality across all formats.
 
-The module has evolved into a dual-version architecture:
-- **v1**: Original display implementations (legacy support)
-- **v2**: Enhanced architecture with pluggable renderers and improved event handling
+The module has evolved through multiple versions:
+- **v1**: Original display implementations (legacy, removed)
+- **v2**: Enhanced architecture with pluggable renderers (legacy, removed)  
+- **v3**: Current architecture with improved renderer capabilities and event processing
 
 ## Directory Structure
 
@@ -14,24 +15,25 @@ The module has evolved into a dual-version architecture:
 display/
 ├── __init__.py          # Module exports
 ├── registry.py          # Display registry for strategy selection/registration
-├── v1/                  # Legacy display implementations
+├── v2/                  # Legacy v2 display architecture (for migration support)
 │   ├── __init__.py
-│   ├── base.py          # v1 base display interface
-│   ├── factory.py       # v1 display factory functions
-│   ├── rich_display.py  # Rich terminal UI with live updates
-│   ├── plain_display.py # Simple text output
-│   ├── json_display.py  # Machine-readable JSON format
-│   └── json_chat_display.py # JSON format for chat mode
-└── v2/                  # Current display architecture
+│   ├── base.py          # v2 base display and renderer classes
+│   ├── events.py        # Event type definitions
+│   └── renderers/       # Pluggable renderers
+│       ├── __init__.py
+│       ├── plain.py     # Plain text renderer
+│       ├── rich.py      # Rich UI renderer
+│       └── json.py      # JSON renderer
+└── v3/                  # Current display architecture
     ├── __init__.py
-    ├── base.py          # v2 base display and renderer classes
-    ├── adapter.py       # v1-to-v2 adapter for backward compatibility
-    ├── events.py        # Event type definitions
-    └── renderers/       # Pluggable renderers
+    ├── base.py          # v3 base display and renderer classes  
+    ├── example.py       # Usage examples
+    └── renderers/       # v3 Pluggable renderers
         ├── __init__.py
         ├── plain.py     # Plain text renderer
         ├── rich.py      # Rich UI renderer
-        └── json.py      # JSON renderer
+        ├── json.py      # JSON renderer
+        └── json_example.py # JSON usage examples
 ```
 
 ## Architecture & Design
@@ -115,11 +117,11 @@ class BaseDisplay(ABC):
 
 Original display implementations for various output formats.
 
-## v2 Architecture (Current)
+## v3 Architecture (Current)
 
-### v2/base.py - Component Classes
+### v3/base.py - Component Classes
 
-The v2 system separates concerns between display coordination and rendering:
+The v3 system separates concerns between display coordination and rendering:
 
 ```python
 class Renderer(Protocol):

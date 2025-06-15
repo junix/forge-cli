@@ -236,7 +236,7 @@ class ChatController:
         user_message = self.conversation.add_user_message(content)
 
         # Show user message if display supports it
-        # For v2 displays, we don't need to show user message - it's already visible in the terminal
+        # For v3 displays, we don't need to show user message - it's already visible in the terminal
 
         # Mark display as in chat mode
         if hasattr(self.display, "console"):

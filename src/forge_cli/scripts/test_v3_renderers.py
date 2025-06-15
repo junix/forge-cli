@@ -1,4 +1,4 @@
-"""Test script for v2 Rich and JSON renderers."""
+"""Test script for v3 Rich and JSON renderers."""
 
 import asyncio
 import json
@@ -11,10 +11,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from forge_cli.config import SearchConfig
 from forge_cli.display.factory import create_compatible_display, create_display
-from forge_cli.display.v2.base import Display
-from forge_cli.display.v2.events import EventType
-from forge_cli.display.v2.renderers.json import JsonRenderer
-from forge_cli.display.v2.renderers.rich import RichRenderer
+from forge_cli.display.v3.base import Display
+from forge_cli.display.v3.renderers.json import JsonRenderer
+from forge_cli.display.v3.renderers.rich import RichRenderer
 
 
 async def test_json_renderer():
