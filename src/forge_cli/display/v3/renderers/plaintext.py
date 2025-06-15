@@ -173,9 +173,7 @@ class PlaintextRenderer(BaseRenderer):
                     if content.type == "output_text":
                         # Add the text content with white color
                         self._add_formatted_text(text, content.text, style=self._styles["content"])
-                        # Add inline annotations if available
-                        if content.annotations and self._config.show_citations:
-                            self._add_inline_annotations(text, content.annotations)
+                        # Don't add inline annotations - they're already in the text as ⟦⟦1⟧⟧
                     elif content.type == "output_refusal":
                         text.append("⚠️  Response Refused: ", style=self._styles["warning"])
                         text.append(f"{content.refusal}\n", style=self._styles["error"])
@@ -210,7 +208,8 @@ class PlaintextRenderer(BaseRenderer):
         if self._config.show_citations:
             citations = self._extract_all_citations(response)
             if citations:
-                self._add_separator(text, "SOURCES")
+                # Add a simple newline before citations, no separator
+                text.append("\n")
                 self._add_citation_list(text, citations)
 
         # Add usage statistics if enabled
@@ -337,35 +336,50 @@ class PlaintextRenderer(BaseRenderer):
 
             # Handle headers
             if line.startswith("# "):
-                text.append("🔸 ", style=self._styles["header"])
-                text.append(line[2:], style=self._styles["header"])
+                # Create centered header by calculating padding
+                header_text = line[2:]
+                console_width = getattr(self._console.size, 'width', 80)  # Default to 80 if size unavailable
+                header_width = len(header_text)
+                padding = max(0, (console_width - header_width) // 2)
+                centered_header = " " * padding + header_text
+                text.append(centered_header, style=self._styles["header"])
                 text.append("\n")
             elif line.startswith("## "):
-                text.append("  ▸ ", style=self._styles["info"])
-                text.append(line[3:], style="bold white")
+                # Create centered header by calculating padding
+                header_text = line[3:]
+                console_width = getattr(self._console.size, 'width', 80)  # Default to 80 if size unavailable
+                header_width = len(header_text)
+                padding = max(0, (console_width - header_width) // 2)
+                centered_header = " " * padding + header_text
+                text.append(centered_header, style="bold white")
                 text.append("\n")
             elif line.startswith("### "):
-                text.append("    • ", style=self._styles["citation_ref"])
-                text.append(line[4:], style="bold dim white")
+                # Create centered header by calculating padding  
+                header_text = line[4:]
+                console_width = getattr(self._console.size, 'width', 80)  # Default to 80 if size unavailable
+                header_width = len(header_text)
+                padding = max(0, (console_width - header_width) // 2)
+                centered_header = " " * padding + header_text
+                text.append(centered_header, style="bold dim white")
                 text.append("\n")
             # Handle bullet points
-            elif line.startswith("- ") or line.startswith("* "):
-                indent = " " * self._config.indent_size
-                text.append(f"{indent}• ", style=self._styles["citation_ref"])
-                text.append(line[2:], style=style)
-                text.append("\n")
-            # Handle numbered lists
-            elif line and line[0].isdigit() and ". " in line:
-                indent = " " * self._config.indent_size
-                parts = line.split(". ", 1)
-                text.append(f"{indent}{parts[0]}. ", style=self._styles["citation_ref"])
-                if len(parts) > 1:
-                    text.append(parts[1], style=style)
-                text.append("\n")
+            # elif line.startswith("- ") or line.startswith("* "):
+            #     indent = "" * self._config.indent_size
+            #     text.append(f"{indent}• ", style=self._styles["citation_ref"])
+            #     text.append(line[2:], style=style)
+            #     text.append("\n")
+            # # Handle numbered lists
+            # elif line and line[0].isdigit() and ". " in line:
+            #     indent = " " * self._config.indent_size
+            #     parts = line.split(". ", 1)
+            #     text.append(f"{indent}{parts[0]}. ", style=self._styles["citation_ref"])
+            #     if len(parts) > 1:
+            #         text.append(parts[1], style=style)
+            #     text.append("\n")
             # Regular text with bold/italic handling
             else:
-                formatted_line = self._apply_inline_formatting(line, base_style=style)
-                text.append(formatted_line)
+                # formatted_line = self._apply_inline_formatting(line, base_style=style)
+                text.append(line)
                 text.append("\n")
 
     def _apply_inline_formatting(self, line: str, base_style: str = None) -> Text:
@@ -443,53 +457,35 @@ class PlaintextRenderer(BaseRenderer):
 
     def _add_citation_list(self, text: Text, citations: list[dict[str, Any]]) -> None:
         """Add citation list with proper formatting."""
+        # Use compact format for file citations
+        text.append("ref:\n", style=self._styles["citation_ref"])
+        
         for i, citation in enumerate(citations, 1):
-            # Citation reference number
-            text.append(f"[{i}] ", style=self._styles["citation_ref"])
-
-            # Source information based on citation type
             if citation.get("type") == "file_citation":
-                source = citation.get("file_name") or citation.get("file_id", "Unknown File")
-                text.append(f"{source}", style=self._styles["citation_source"])
+                # Compact format: 1. filename, P{index}
+                source = citation.get("file_name") or citation.get("file_id", "Unknown")
+                page = f", P{citation['page_number']}" if citation.get("page_number") is not None else ""
+                text.append(f"{i}. {source}{page}\n", style=self._styles["citation_source"])
                 
-                # Page/index number if available
-                if citation.get("page_number") is not None:
-                    text.append(f" (index {citation['page_number']})", style="dim")
-                    
             elif citation.get("type") == "url_citation":
-                # Show title with URL
+                # URL format: 1. title (domain)
                 title = citation.get("title", "Web Page")
                 url = citation.get("url", "")
                 if url:
-                    # Extract domain for compact display
                     try:
                         from urllib.parse import urlparse
                         domain = urlparse(url).netloc
                         if domain.startswith("www."):
                             domain = domain[4:]
-                        text.append(f"{title}", style=self._styles["citation_source"])
-                        text.append(f" ({domain})", style="dim")
+                        text.append(f"{i}. {title} ({domain})\n", style=self._styles["citation_source"])
                     except:
-                        text.append(f"{title}", style=self._styles["citation_source"])
+                        text.append(f"{i}. {title}\n", style=self._styles["citation_source"])
                 else:
-                    text.append(f"{title}", style=self._styles["citation_source"])
+                    text.append(f"{i}. {title}\n", style=self._styles["citation_source"])
             else:
-                # Fallback for unknown types
+                # Fallback format
                 source = citation.get("file_name", citation.get("url", "Unknown"))
-                text.append(f"{source}", style=self._styles["citation_source"])
-
-            text.append("\n")
-
-            # Quote/snippet if available
-            if citation.get("text"):
-                quote = citation["text"]
-                if len(quote) > self._config.max_text_preview:
-                    quote = quote[: self._config.max_text_preview - 3] + "..."
-
-                indent = " " * (self._config.indent_size + 2)
-                text.append(f'{indent}"{quote}"\n', style=self._styles["citation_text"])
-
-            text.append("\n")
+                text.append(f"{i}. {source}\n", style=self._styles["citation_source"])
 
     # Remove old methods that are no longer needed
     # The functionality has been integrated into the main flow
