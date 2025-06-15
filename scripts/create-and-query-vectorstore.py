@@ -109,10 +109,7 @@ async def join_file_to_vector_store(vector_store_id, file_id):
         print(f"Joining file {file_id} to vector store {vector_store_id}")
 
         # Call the SDK function to join files
-        result = await async_join_files_to_vectorstore(
-            vector_store_id=vector_store_id, 
-            file_ids=[file_id]
-        )
+        result = await async_join_files_to_vectorstore(vector_store_id=vector_store_id, file_ids=[file_id])
 
         if result:
             print("File joined successfully. Server response:")
@@ -166,7 +163,9 @@ async def query_vector_store(
 
             # Print each result with its score and content
             for i, search_result in enumerate(result.data, 1):
-                print(f"\n[{i}] Score: {search_result.score:.4f} | File: {search_result.filename} (ID: {search_result.file_id})")
+                print(
+                    f"\n[{i}] Score: {search_result.score:.4f} | File: {search_result.filename} (ID: {search_result.file_id})"
+                )
 
                 # Print attributes if any
                 if search_result.attributes:
