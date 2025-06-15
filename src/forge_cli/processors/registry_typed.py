@@ -2,11 +2,11 @@
 
 from typing import Any, Union
 from .base import OutputProcessor
-from .base_typed import TypedOutputProcessor, ProcessorAdapter
+from .base_typed import TypedOutputProcessor
 
 
 class TypedProcessorRegistry:
-    """Central registry for output processors supporting both dict and typed items."""
+    """Central registry for output processors supporting typed items only."""
 
     def __init__(self):
         self._processors: dict[str, Union[OutputProcessor, TypedOutputProcessor]] = {}
@@ -37,21 +37,19 @@ class TypedProcessorRegistry:
         """
         Process an output item using appropriate processor.
 
-        This method supports both old-style (dict) and new typed processors.
+        This method supports typed processors only.
 
         Args:
-            item: Raw output item from the API (dict or typed)
+            item: Typed output item from the API
             state: StreamState instance (for typed processors)
             display: Display instance (for typed processors)
 
         Returns:
-            Processed data (for old processors) or None (typed processors update display directly)
+            None (typed processors update display directly)
         """
         # Determine item type
         if hasattr(item, "type"):
             output_type = str(item.type)
-        elif isinstance(item, dict):
-            output_type = item.get("type", "")
         else:
             return None
 
@@ -96,8 +94,6 @@ class TypedProcessorRegistry:
         # Determine item type
         if hasattr(item, "type"):
             output_type = str(item.type)
-        elif isinstance(item, dict):
-            output_type = item.get("type", "")
         else:
             return None
 
@@ -111,9 +107,6 @@ class TypedProcessorRegistry:
                     return processor.format(processed)
         return None
 
-    def wrap_legacy_processor(self, processor: OutputProcessor) -> ProcessorAdapter:
-        """Wrap a legacy processor to work with typed items."""
-        return ProcessorAdapter(processor)
 
 
 # Create and populate default typed registry
@@ -138,10 +131,6 @@ def initialize_typed_registry():
     default_typed_registry.register("file_search_call", TypedFileSearchProcessor())
     default_typed_registry.register("web_search_call", TypedWebSearchProcessor())
 
-    # Wrap legacy processors that don't support typed yet
-    default_typed_registry.register(
-        "document_finder_call", default_typed_registry.wrap_legacy_processor(DocumentFinderProcessor())
-    )
-    default_typed_registry.register(
-        "file_reader_call", default_typed_registry.wrap_legacy_processor(FileReaderProcessor())
-    )
+    # Register remaining legacy processors directly (should be updated to typed)
+    default_typed_registry.register("document_finder_call", DocumentFinderProcessor())
+    default_typed_registry.register("file_reader_call", FileReaderProcessor())

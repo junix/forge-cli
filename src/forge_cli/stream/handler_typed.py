@@ -73,10 +73,10 @@ class StreamState:
     response_id: str | None = None
     model: str | None = None
 
-    def update_from_snapshot(self, snapshot: dict[str, Any] | Response) -> None:
-        """Update state from response snapshot (dict or typed)."""
+    def update_from_snapshot(self, snapshot: Response) -> None:
+        """Update state from typed Response snapshot."""
         if isinstance(snapshot, Response):
-            # Typed Response
+            # Typed Response only
             self.output_items = list(snapshot.output)
             self._extract_file_mappings_typed(snapshot)
             self._extract_reasoning_typed(snapshot)
@@ -91,22 +91,6 @@ class StreamState:
             self.response_id = snapshot.id
             self.model = snapshot.model
 
-        elif isinstance(snapshot, dict):
-            # Dict response
-            if "output" in snapshot:
-                self.output_items = snapshot["output"]
-                self._extract_file_mappings_dict()
-                self._extract_reasoning_dict()
-
-            if "usage" in snapshot:
-                self.usage.update(snapshot["usage"])
-
-            if "id" in snapshot:
-                self.response_id = snapshot["id"]
-
-            if "model" in snapshot:
-                self.model = snapshot["model"]
-
     def _extract_file_mappings_typed(self, response: Response) -> None:
         """Extract file mappings from typed Response."""
         for item in response.output:
@@ -116,18 +100,6 @@ class StreamState:
                         if hasattr(result, "file_id") and hasattr(result, "filename"):
                             self.file_id_to_name[result.file_id] = result.filename
 
-    def _extract_file_mappings_dict(self) -> None:
-        """Extract file mappings from dict output."""
-        for item in self.output_items:
-            if isinstance(item, dict):
-                item_type = item.get("type", "")
-                if "search_call" in item_type and item.get("results"):
-                    for result in item["results"]:
-                        if isinstance(result, dict):
-                            file_id = result.get("file_id")
-                            filename = result.get("filename")
-                            if file_id and filename:
-                                self.file_id_to_name[file_id] = filename
 
     def _extract_reasoning_typed(self, response: Response) -> None:
         """Extract reasoning from typed Response."""
@@ -141,23 +113,10 @@ class StreamState:
                             texts.append(summary_item.text)
                     self.current_reasoning = " ".join(texts)
 
-    def _extract_reasoning_dict(self) -> None:
-        """Extract reasoning from dict output."""
-        for item in self.output_items:
-            if isinstance(item, dict) and item.get("type") == "reasoning":
-                summary = item.get("summary", [])
-                if isinstance(summary, list):
-                    texts = []
-                    for summary_item in summary:
-                        if isinstance(summary_item, dict) and summary_item.get("type") == "summary_text":
-                            text = summary_item.get("text", "")
-                            if text:
-                                texts.append(text)
-                    self.current_reasoning = " ".join(texts)
 
 
 class TypedStreamHandler:
-    """Stream handler that works with both dict and typed Response streams."""
+    """Stream handler that works with typed Response streams only."""
 
     def __init__(self, display: Display, debug: bool = False):
         """Initialize with display and debug settings."""

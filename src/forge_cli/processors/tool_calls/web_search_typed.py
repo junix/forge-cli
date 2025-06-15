@@ -25,13 +25,9 @@ class WebSearchProcessor(BaseToolCallProcessor):
         # Extract location info
         if hasattr(item, "country"):
             processed["country"] = str(item.country) if item.country else None
-        elif isinstance(item, dict):
-            processed["country"] = item.get("country")
 
         if hasattr(item, "city"):
             processed["city"] = str(item.city) if item.city else None
-        elif isinstance(item, dict):
-            processed["city"] = item.get("city")
 
     def _add_tool_specific_formatting(self, processed: dict[str, Any], parts: list[str]) -> None:
         """Add web search specific formatting."""
@@ -56,7 +52,5 @@ class WebSearchProcessor(BaseToolCallProcessor):
         for result in results:
             if hasattr(result, "url"):
                 urls.append(str(result.url))
-            elif isinstance(result, dict) and "url" in result:
-                urls.append(result["url"])
 
         return urls

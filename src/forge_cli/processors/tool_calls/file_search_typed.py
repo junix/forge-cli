@@ -25,16 +25,10 @@ class FileSearchProcessor(BaseToolCallProcessor):
         # Extract file_id if searching specific file
         if hasattr(item, "file_id"):
             processed["file_id"] = str(item.file_id)
-        elif isinstance(item, dict):
-            file_id = item.get("file_id")
-            if file_id:
-                processed["file_id"] = file_id
 
         # Extract vector store IDs if available
         if hasattr(item, "vector_store_ids"):
             processed["vector_store_ids"] = list(item.vector_store_ids)
-        elif isinstance(item, dict) and "vector_store_ids" in item:
-            processed["vector_store_ids"] = item["vector_store_ids"]
 
     def _add_tool_specific_formatting(self, processed: dict[str, Any], parts: list[str]) -> None:
         """Add file search specific formatting."""
@@ -56,10 +50,5 @@ class FileSearchProcessor(BaseToolCallProcessor):
         for result in results:
             if hasattr(result, "file_id") and hasattr(result, "filename"):
                 mappings[result.file_id] = result.filename
-            elif isinstance(result, dict):
-                file_id = result.get("file_id")
-                filename = result.get("filename")
-                if file_id and filename:
-                    mappings[file_id] = filename
 
         return mappings

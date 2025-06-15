@@ -17,7 +17,7 @@ class ReasoningProcessor(OutputProcessor):
         """Extract reasoning text from summary items."""
         reasoning_texts = []
 
-        # Handle typed event
+        # Handle typed ResponseReasoningItem only
         if isinstance(item, ResponseReasoningItem):
             # Extract from typed object
             for summary in item.summary or []:
@@ -31,22 +31,6 @@ class ReasoningProcessor(OutputProcessor):
                 "content": "\n\n".join(reasoning_texts),
                 "status": item.status or "completed",
                 "id": item.id or "",
-            }
-
-        # Handle dict for backward compatibility
-        elif isinstance(item, dict):
-            for summary in item.get("summary", []):
-                # Handle both "summary_text" and "text" types
-                if summary.get("type") in ["summary_text", "text"]:
-                    text = summary.get("text", "")
-                    if text:
-                        reasoning_texts.append(text)
-
-            return {
-                "type": "reasoning",
-                "content": "\n\n".join(reasoning_texts),
-                "status": item.get("status", "completed"),
-                "id": item.get("id", ""),
             }
 
         return None

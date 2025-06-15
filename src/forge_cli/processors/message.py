@@ -20,7 +20,7 @@ class MessageProcessor(OutputProcessor):
 
     def process(self, item: Any) -> dict[str, Any] | None:
         """Extract text and annotations from message content."""
-        # Handle typed event
+        # Handle typed ResponseOutputMessage only
         if isinstance(item, ResponseOutputMessage):
             if item.role != "assistant":
                 return None
@@ -42,29 +42,6 @@ class MessageProcessor(OutputProcessor):
                 "annotations": all_annotations,
                 "id": item.id or "",
                 "status": item.status or "completed",
-            }
-
-        # Handle dict for backward compatibility
-        elif isinstance(item, dict):
-            if item.get("role") != "assistant":
-                return None
-
-            full_text = ""
-            all_annotations = []
-
-            content_list = item.get("content", [])
-            for content_item in content_list:
-                if content_item.get("type") == "output_text":
-                    full_text = content_item.get("text", "")
-                    all_annotations = content_item.get("annotations", [])
-                    break
-
-            return {
-                "type": "message",
-                "text": full_text,
-                "annotations": all_annotations,
-                "id": item.get("id", ""),
-                "status": item.get("status", "completed"),
             }
 
         return None
@@ -141,69 +118,6 @@ class MessageProcessor(OutputProcessor):
                     }
                 )
 
-            # Handle dict annotation for backward compatibility
-            elif isinstance(ann, dict):
-                citation_type = ann.get("type")
-
-                if citation_type == "file_citation":
-                    file_id = ann.get("file_id", "")
-                    filename = ann.get("filename", "")
-
-                    # Try to get filename from nested file object
-                    if not filename and "file" in ann:
-                        filename = ann["file"].get("filename", "")
-
-                    if not filename:
-                        filename = "Unknown"
-
-                    # Convert 0-based page index to 1-based
-                    page_index = ann.get("index", "N/A")
-                    if isinstance(page_index, int):
-                        page_index = page_index + 1
-
-                    citations.append(
-                        {
-                            "number": i + 1,
-                            "type": "file",
-                            "page": page_index,
-                            "filename": filename,
-                            "file_id": file_id,
-                            "url": None,
-                            "title": filename,
-                        }
-                    )
-
-                elif citation_type == "url_citation":
-                    url = ann.get("url", "")
-                    title = ann.get("title", "")
-                    snippet = ann.get("snippet", "")
-
-                # Create display name
-                display_name = title
-                if not display_name and url:
-                    try:
-                        from urllib.parse import urlparse
-
-                        parsed = urlparse(url)
-                        display_name = parsed.netloc or url
-                    except:
-                        display_name = url
-
-                if not display_name:
-                    display_name = "Web Source"
-
-                citations.append(
-                    {
-                        "number": i + 1,
-                        "type": "web",
-                        "page": "Web",
-                        "filename": display_name,
-                        "file_id": None,
-                        "url": url,
-                        "title": title,
-                        "snippet": snippet,
-                    }
-                )
 
         return citations
 
