@@ -83,7 +83,6 @@ class Display:
             self._renderer.finalize()
             self._finalized = True
 
-
     def show_error(self, error: str) -> None:
         """Show error if renderer supports it."""
         if hasattr(self._renderer, "render_error"):
@@ -102,9 +101,9 @@ class Display:
             # Fallback for rich renderers
             console = self._renderer._console
             console.print(f"[cyan]Query:[/cyan] {info.get('question', 'N/A')}")
-            if info.get('model'):
+            if info.get("model"):
                 console.print(f"[cyan]Model:[/cyan] {info['model']}")
-            if info.get('tools'):
+            if info.get("tools"):
                 console.print(f"[cyan]Tools:[/cyan] {', '.join(info['tools'])}")
 
     def show_status(self, message: str) -> None:

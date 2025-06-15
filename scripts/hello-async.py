@@ -29,12 +29,7 @@ async def hello_async():
     user_message = "你好，Knowledge Forge!"
 
     # Create a typed request object
-    request = create_typed_request(
-        input_messages=user_message,
-        model="qwen-max-latest",
-        effort="low",
-        store=True
-    )
+    request = create_typed_request(input_messages=user_message, model="qwen-max-latest", effort="low", store=True)
 
     print(f"Sending message: '{user_message}'")
 
@@ -127,31 +122,31 @@ def print_response_summary(response: Union[Response, dict[str, Any]]):
         print(f"Response ID: {response.id}")
         print(f"Model: {response.model}")
         print(f"Created at: {response.created_at}")
-        
+
         # Use Response's output_text property
         text_content = response.output_text
         if text_content:
             print(f"Content: '{text_content}'")
         else:
             print("No text content found in response")
-        
+
         # Show token usage if available
         if response.usage:
             print(f"Tokens used: {response.usage.total_tokens}")
-    
+
     # Handle dict response (backward compatibility)
     elif isinstance(response, dict):
         print(f"Response ID: {response.get('id')}")
         print(f"Model: {response.get('model')}")
         print(f"Created at: {response.get('created_at')}")
-        
+
         # Use migration helper for safe text extraction
         text_content = MigrationHelper.safe_get_text(response)
         if text_content:
             print(f"Content: '{text_content}'")
         else:
             print("No text content found in response")
-        
+
         # Show token usage if available
         usage = MigrationHelper.safe_get_usage(response)
         if usage:

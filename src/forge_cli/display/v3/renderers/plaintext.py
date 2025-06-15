@@ -9,7 +9,7 @@ from rich.live import Live
 from rich.text import Text
 
 from forge_cli.response._types.response import Response
-from common.logger import logger
+from forge_cli.common.logger import logger
 
 from ..base import BaseRenderer
 
@@ -44,16 +44,16 @@ class PlaintextDisplayConfig(BaseModel):
 
 class PlaintextRenderer(BaseRenderer):
     """Plaintext renderer for v3 display system using Rich Live and Text.
-    
+
     Creates beautiful, colorful plaintext output without panels or markdown.
     Uses only Rich's Live display and Text components with custom styling.
     """
 
     def __init__(
-        self, 
-        console: Optional["Console"] = None, 
-        config: PlaintextDisplayConfig | None = None, 
-        in_chat_mode: bool = False
+        self,
+        console: Optional["Console"] = None,
+        config: PlaintextDisplayConfig | None = None,
+        in_chat_mode: bool = False,
     ):
         """Initialize plaintext renderer.
 
@@ -80,7 +80,7 @@ class PlaintextRenderer(BaseRenderer):
         self._styles = {
             "header": "bold cyan",
             "status_completed": "bold green",
-            "status_failed": "bold red", 
+            "status_failed": "bold red",
             "status_in_progress": "bold yellow",
             "status_default": "bold blue",
             "model": "green",
@@ -222,11 +222,9 @@ class PlaintextRenderer(BaseRenderer):
             label_length = len(label) + 2  # +2 for spaces around label
             left_padding = (total_length - label_length) // 2
             right_padding = total_length - label_length - left_padding
-            
+
             separator_line = (
-                self._config.separator_char * left_padding + 
-                f" {label} " + 
-                self._config.separator_char * right_padding
+                self._config.separator_char * left_padding + f" {label} " + self._config.separator_char * right_padding
             )
         else:
             separator_line = self._config.separator_char * self._config.separator_length
@@ -268,8 +266,8 @@ class PlaintextRenderer(BaseRenderer):
 
     def _add_formatted_text(self, text: Text, content: str) -> None:
         """Add formatted text content with simple markdown-like styling."""
-        lines = content.split('\n')
-        
+        lines = content.split("\n")
+
         for line in lines:
             line = line.strip()
             if not line:
@@ -277,28 +275,28 @@ class PlaintextRenderer(BaseRenderer):
                 continue
 
             # Handle headers
-            if line.startswith('# '):
+            if line.startswith("# "):
                 text.append("🔸 ", style=self._styles["header"])
                 text.append(line[2:], style=self._styles["header"])
                 text.append("\n")
-            elif line.startswith('## '):
+            elif line.startswith("## "):
                 text.append("  ▸ ", style=self._styles["info"])
                 text.append(line[3:], style="bold white")
                 text.append("\n")
-            elif line.startswith('### '):
+            elif line.startswith("### "):
                 text.append("    • ", style=self._styles["citation_ref"])
                 text.append(line[4:], style="bold dim white")
                 text.append("\n")
             # Handle bullet points
-            elif line.startswith('- ') or line.startswith('* '):
+            elif line.startswith("- ") or line.startswith("* "):
                 indent = " " * self._config.indent_size
                 text.append(f"{indent}• ", style=self._styles["citation_ref"])
                 text.append(line[2:], style=self._styles["content"])
                 text.append("\n")
             # Handle numbered lists
-            elif line and line[0].isdigit() and '. ' in line:
+            elif line and line[0].isdigit() and ". " in line:
                 indent = " " * self._config.indent_size
-                parts = line.split('. ', 1)
+                parts = line.split(". ", 1)
                 text.append(f"{indent}{parts[0]}. ", style=self._styles["citation_ref"])
                 if len(parts) > 1:
                     text.append(parts[1], style=self._styles["content"])
@@ -313,42 +311,42 @@ class PlaintextRenderer(BaseRenderer):
         """Apply simple inline formatting like **bold** and *italic*."""
         result = Text()
         i = 0
-        
+
         while i < len(line):
             # Check for **bold**
-            if i < len(line) - 3 and line[i:i+2] == '**':
-                end = line.find('**', i + 2)
+            if i < len(line) - 3 and line[i : i + 2] == "**":
+                end = line.find("**", i + 2)
                 if end != -1:
-                    result.append(line[i+2:end], style="bold white")
+                    result.append(line[i + 2 : end], style="bold white")
                     i = end + 2
                     continue
-            
+
             # Check for *italic*
-            if i < len(line) - 2 and line[i] == '*' and line[i+1] != '*':
-                end = line.find('*', i + 1)
+            if i < len(line) - 2 and line[i] == "*" and line[i + 1] != "*":
+                end = line.find("*", i + 1)
                 if end != -1:
-                    result.append(line[i+1:end], style="italic dim white")
+                    result.append(line[i + 1 : end], style="italic dim white")
                     i = end + 1
                     continue
-            
+
             # Check for `code`
-            if i < len(line) - 2 and line[i] == '`':
-                end = line.find('`', i + 1)
+            if i < len(line) - 2 and line[i] == "`":
+                end = line.find("`", i + 1)
                 if end != -1:
-                    result.append(line[i+1:end], style="bold green")
+                    result.append(line[i + 1 : end], style="bold green")
                     i = end + 1
                     continue
-            
+
             # Regular character
             result.append(line[i], style=self._styles["content"])
             i += 1
-        
+
         return result
 
     def _add_tool_information(self, text: Text, response: Response) -> None:
         """Add tool execution information."""
         tool_items = []
-        
+
         for item in response.output:
             if hasattr(item, "status") and hasattr(item, "type"):
                 if item.type in ["file_search_call", "web_search_call", "document_finder_call", "file_reader_call"]:
@@ -356,99 +354,99 @@ class PlaintextRenderer(BaseRenderer):
 
         if tool_items:
             self._add_separator(text, "TOOLS")
-            
+
             for tool_item in tool_items:
                 # Tool icon and name
                 tool_icon = self._get_tool_icon(tool_item.type)
                 text.append(f"{tool_icon} ", style=self._styles["tool_icon"])
-                
-                tool_name = tool_item.type.replace('_', ' ').title()
+
+                tool_name = tool_item.type.replace("_", " ").title()
                 text.append(f"{tool_name}: ", style=self._styles["tool_name"])
-                
+
                 # Status with color
                 status_style = self._get_tool_status_style(tool_item.status)
                 status_icon = self._get_tool_status_icon(tool_item.status)
                 text.append(f"{status_icon} {tool_item.status}", style=status_style)
-                
+
                 # Additional info
                 details = []
                 if hasattr(tool_item, "queries") and tool_item.queries:
                     details.append(f"Queries: {len(tool_item.queries)}")
                 if hasattr(tool_item, "results") and tool_item.results:
                     details.append(f"Results: {len(tool_item.results)}")
-                
+
                 if details:
                     text.append(" │ ", style=self._styles["separator"])
                     text.append(" │ ".join(details), style="dim")
-                
+
                 text.append("\n")
-            
+
             text.append("\n")
 
     def _add_reasoning_content(self, text: Text, response: Response) -> None:
         """Add reasoning content if available."""
         reasoning_found = False
-        
+
         for item in response.output:
             if hasattr(item, "type") and item.type == "reasoning":
                 if hasattr(item, "summary") and item.summary:
                     if not reasoning_found:
                         self._add_separator(text, "REASONING")
                         reasoning_found = True
-                    
+
                     text.append("🤔 AI Thinking Process:\n", style=self._styles["reasoning_header"])
-                    
+
                     for summary in item.summary:
                         if hasattr(summary, "text") and summary.text:
                             # Add reasoning text with indentation
-                            reasoning_lines = summary.text.split('\n')
+                            reasoning_lines = summary.text.split("\n")
                             for line in reasoning_lines:
                                 if line.strip():
                                     indent = " " * self._config.indent_size
                                     text.append(f"{indent}{line.strip()}\n", style=self._styles["reasoning"])
                                 else:
                                     text.append("\n")
-        
+
         if reasoning_found:
             text.append("\n")
 
     def _add_citation_content(self, text: Text, response: Response) -> None:
         """Add citations information."""
         citations = self._extract_all_citations(response)
-        
+
         if citations:
             self._add_separator(text, "SOURCES")
-            
+
             for i, citation in enumerate(citations, 1):
                 # Citation reference number
                 text.append(f"[{i}] ", style=self._styles["citation_ref"])
-                
+
                 # Source information
                 source = citation.get("file_name", citation.get("url", "Unknown"))
                 text.append(f"{source}", style=self._styles["citation_source"])
-                
+
                 # Page number if available
                 if citation.get("page_number"):
                     text.append(f" (page {citation['page_number']})", style="dim")
-                
+
                 text.append("\n")
-                
+
                 # Quote if available
                 if citation.get("text"):
                     quote = citation["text"]
                     if len(quote) > 100:
                         quote = quote[:97] + "..."
-                    
+
                     indent = " " * (self._config.indent_size + 2)
                     text.append(f'{indent}"{quote}"\n', style=self._styles["citation_text"])
-                
+
                 text.append("\n")
 
     def _add_inline_annotations(self, text: Text, annotations: list[Any]) -> None:
         """Add inline annotation references."""
         if not annotations:
             return
-        
+
         text.append("📎 References: ", style="dim")
         for i, annotation in enumerate(annotations):
             if i > 0:
@@ -460,7 +458,7 @@ class PlaintextRenderer(BaseRenderer):
         """Add usage statistics."""
         usage = response.usage
         self._add_separator(text, "USAGE")
-        
+
         text.append("📊 Token Usage: ", style=self._styles["usage_label"])
         text.append(f"Input: ", style=self._styles["usage_label"])
         text.append(f"{usage.input_tokens or 0}", style=self._styles["usage"])
@@ -488,11 +486,13 @@ class PlaintextRenderer(BaseRenderer):
                                 }
 
                                 if annotation.type == "file_citation":
-                                    citation_data.update({
-                                        "file_id": getattr(annotation, "file_id", ""),
-                                        "file_name": getattr(annotation, "file_name", ""),
-                                        "page_number": getattr(annotation, "page_number", None),
-                                    })
+                                    citation_data.update(
+                                        {
+                                            "file_id": getattr(annotation, "file_id", ""),
+                                            "file_name": getattr(annotation, "file_name", ""),
+                                            "page_number": getattr(annotation, "page_number", None),
+                                        }
+                                    )
                                 elif annotation.type == "url_citation":
                                     citation_data["url"] = getattr(annotation, "url", "")
 
@@ -594,12 +594,12 @@ class PlaintextRenderer(BaseRenderer):
         info_text = Text()
         info_text.append("🔍 Query: ", style=self._styles["info"])
         info_text.append(f"{info.get('question', 'N/A')}\n", style=self._styles["content"])
-        
-        if info.get('model'):
+
+        if info.get("model"):
             info_text.append("🤖 Model: ", style=self._styles["info"])
             info_text.append(f"{info['model']}\n", style=self._styles["model"])
-            
-        if info.get('tools'):
+
+        if info.get("tools"):
             info_text.append("🛠️  Tools: ", style=self._styles["info"])
             info_text.append(f"{', '.join(info['tools'])}\n", style=self._styles["content"])
 
@@ -610,4 +610,4 @@ class PlaintextRenderer(BaseRenderer):
         status_text = Text()
         status_text.append("ℹ️  Status: ", style=self._styles["info"])
         status_text.append(message, style=self._styles["content"])
-        self._console.print(status_text) 
+        self._console.print(status_text)

@@ -913,13 +913,13 @@ async def astream_typed_response(
     """
     # Convert Request to API format
     request_dict = request.model_dump(exclude_none=True)
-    
+
     # Convert input messages to API format
     input_messages = []
     for msg in request_dict.get("input", []):
         if isinstance(msg, dict):
             input_messages.append(msg)
-        elif hasattr(msg, 'model_dump'):
+        elif hasattr(msg, "model_dump"):
             input_messages.append(msg.model_dump())
         else:
             input_messages.append({"role": "user", "content": str(msg)})
@@ -940,7 +940,7 @@ async def astream_typed_response(
         for tool in request_dict["tools"]:
             if isinstance(tool, dict):
                 tools.append(tool)
-            elif hasattr(tool, 'model_dump'):
+            elif hasattr(tool, "model_dump"):
                 tools.append(tool.model_dump())
             else:
                 tools.append(tool)
@@ -1012,7 +1012,9 @@ async def astream_typed_response(
                                         yield current_event_type, response_obj
                                     except Exception as e:
                                         if debug:
-                                            logger.debug(f"Could not convert event data to Response for event {current_event_type}: {e}")
+                                            logger.debug(
+                                                f"Could not convert event data to Response for event {current_event_type}: {e}"
+                                            )
                                         # For events that don't have full response data, yield None
                                         yield current_event_type, None
                                 else:
@@ -1021,7 +1023,7 @@ async def astream_typed_response(
 
                                 # If this is the completed event, also yield the final response
                                 if current_event_type == "response.completed":
-                                    yield "final_response", response_obj if 'response_obj' in locals() else None
+                                    yield "final_response", response_obj if "response_obj" in locals() else None
 
                             except json.JSONDecodeError:
                                 error_msg = f"Failed to parse JSON data: {data_str}"

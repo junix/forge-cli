@@ -119,18 +119,18 @@ class EventDataExtractor:
         """Extract search queries from response."""
         if not response:
             return []
-        
+
         queries = []
         for item in response.output:
             # Check for file search tool calls
-            if hasattr(item, 'type') and item.type == 'file_search_call':
-                if hasattr(item, 'queries') and item.queries:
+            if hasattr(item, "type") and item.type == "file_search_call":
+                if hasattr(item, "queries") and item.queries:
                     queries.extend(item.queries)
             # Check for web search tool calls
-            elif hasattr(item, 'type') and item.type == 'web_search_call':
-                if hasattr(item, 'queries') and item.queries:
+            elif hasattr(item, "type") and item.type == "web_search_call":
+                if hasattr(item, "queries") and item.queries:
                     queries.extend(item.queries)
-        
+
         return queries
 
     @staticmethod
@@ -138,16 +138,16 @@ class EventDataExtractor:
         """Extract results count from response."""
         if not response:
             return 0, False
-        
+
         total_count = 0
         found = False
-        
+
         for item in response.output:
-            if hasattr(item, 'type') and 'search_call' in item.type:
-                if hasattr(item, 'results') and item.results:
+            if hasattr(item, "type") and "search_call" in item.type:
+                if hasattr(item, "results") and item.results:
                     total_count += len(item.results)
                     found = True
-        
+
         return total_count, found
 
     @staticmethod
@@ -155,24 +155,24 @@ class EventDataExtractor:
         """Extract citations from response."""
         if not response:
             return []
-        
+
         citations = []
-        
+
         # Use Response's built-in citation methods
         try:
             citable_items = response.collect_citable_items()
             for idx, item in enumerate(citable_items):
                 citation = {
                     "id": str(idx + 1),
-                    "file_id": getattr(item, 'file_id', 'unknown'),
-                    "filename": getattr(item, 'filename', 'unknown'),
-                    "page": getattr(item, 'page', None),
+                    "file_id": getattr(item, "file_id", "unknown"),
+                    "filename": getattr(item, "filename", "unknown"),
+                    "page": getattr(item, "page", None),
                 }
                 citations.append(citation)
         except Exception:
             # Fallback to manual extraction if needed
             pass
-        
+
         return citations
 
 
@@ -196,7 +196,7 @@ class MultiToolEventHandler:
         retrieval_time: Optional[float] = None,
     ) -> ToolSearchUpdate:
         """Process tool search event using typed Response."""
-        
+
         # Extract tool type from event type
         tool_type = event_type
         if "response." in tool_type:
@@ -236,10 +236,10 @@ class MultiToolEventHandler:
     def _extract_file_mappings(self, response: Response):
         """Extract file ID to name mappings from response."""
         for item in response.output:
-            if hasattr(item, 'type') and 'search_call' in item.type:
-                if hasattr(item, 'results') and item.results:
+            if hasattr(item, "type") and "search_call" in item.type:
+                if hasattr(item, "results") and item.results:
                     for result in item.results:
-                        if hasattr(result, 'file_id') and hasattr(result, 'filename'):
+                        if hasattr(result, "file_id") and hasattr(result, "filename"):
                             self.file_id_to_name[result.file_id] = result.filename
 
     def apply_update(self, update: ToolSearchUpdate):
@@ -262,41 +262,41 @@ class MultiToolEventHandler:
 def create_display_text(state: MultiToolState, is_final: bool = False) -> str:
     """Create formatted display text for the current state."""
     lines = []
-    
+
     # Show tool states
     for tool_type, tool_state in state.tools.items():
         emoji = "📚" if tool_type == "file_search" else "🌐" if tool_type == "web_search" else "🔧"
         status_emoji = "✅" if tool_state.status == FileSearchStatus.COMPLETED else "🔍"
-        
+
         lines.append(f"{emoji} **{tool_type.replace('_', ' ').title()}** {status_emoji}")
-        
+
         if tool_state.query:
             lines.append(f"   Query: {tool_state.query}")
-        
+
         if tool_state.results_count > 0:
             lines.append(f"   Results: {tool_state.results_count} found")
-        
+
         if tool_state.query_time:
             lines.append(f"   Query time: {tool_state.query_time:.2f}s")
-        
+
         if tool_state.retrieval_time:
             lines.append(f"   Retrieval time: {tool_state.retrieval_time:.2f}s")
-        
+
         lines.append("")
-    
+
     # Show response text if available
     if state.final_text:
         lines.append("## Response\n")
         lines.append(state.final_text)
-        
+
         # Show citations if available
         if state.citations:
             lines.append("\n## Citations\n")
             for citation in state.citations:
                 lines.append(f"[{citation['id']}] {citation['filename']}")
-                if citation.get('page'):
+                if citation.get("page"):
                     lines[-1] += f" (page {citation['page']})"
-    
+
     return "\n".join(lines)
 
 
@@ -311,7 +311,7 @@ async def hello_file_search(
 ):
     """
     Run a multi-tool search query using the typed API.
-    
+
     Args:
         query: The search query
         tools: List of tools to use (file-search, web-search)
@@ -327,7 +327,7 @@ async def hello_file_search(
 
     # Build tools list using typed API
     typed_tools = []
-    
+
     if "file-search" in tools:
         # Validate vectorstore IDs
         for vec_id in vec_ids:
@@ -336,40 +336,18 @@ async def hello_file_search(
                 console.print(f"[green]✓[/green] Using vectorstore: {vec_info.get('name', vec_id)}")
             else:
                 console.print(f"[yellow]⚠[/yellow] Warning: Could not fetch vectorstore {vec_id}")
-        
-        typed_tools.append(
-            FileSearchTool(
-                type="file_search",
-                vector_store_ids=vec_ids,
-                max_num_results=20
-            )
-        )
-    
+
+        typed_tools.append(FileSearchTool(type="file_search", vector_store_ids=vec_ids, max_num_results=20))
+
     if "web-search" in tools:
         user_location = None
         if country or city:
-            user_location = UserLocation(
-                type="approximate",
-                country=country,
-                city=city
-            )
-        
-        typed_tools.append(
-            WebSearchTool(
-                type="web_search",
-                search_context_size="medium",
-                user_location=user_location
-            )
-        )
+            user_location = UserLocation(type="approximate", country=country, city=city)
+
+        typed_tools.append(WebSearchTool(type="web_search", search_context_size="medium", user_location=user_location))
 
     # Create typed request
-    request = create_typed_request(
-        input_messages=query,
-        model=model,
-        tools=typed_tools,
-        effort="low",
-        store=True
-    )
+    request = create_typed_request(input_messages=query, model=model, tools=typed_tools, effort="low", store=True)
 
     # Initialize event handler
     event_handler = MultiToolEventHandler(debug=debug)
@@ -377,44 +355,40 @@ async def hello_file_search(
     # Create initial display
     with Live(console=console, refresh_per_second=4) as live:
         start_time = time.time()
-        
+
         # Process streaming response with typed API
         async for event_type, response in astream_typed_response(request, debug=debug):
             if debug:
                 console.print(f"[dim]Event: {event_type}[/dim]")
-            
+
             # Handle tool events
             if event_handler.can_handle(event_type):
-                update = event_handler.handle_event(
-                    event_type, 
-                    response,
-                    query_time=time.time() - start_time
-                )
-                
+                update = event_handler.handle_event(event_type, response, query_time=time.time() - start_time)
+
                 # Update display
                 display_text = create_display_text(event_handler.state)
                 live.update(Markdown(display_text))
-            
+
             # Handle text output
             elif event_type == "response.output_text.delta" and response:
                 if response.output_text:
                     event_handler.state.final_text = response.output_text
                     display_text = create_display_text(event_handler.state)
                     live.update(Markdown(display_text))
-            
+
             # Handle completion
             elif event_type == "response.completed" and response:
                 # Extract citations
                 event_handler.state.citations = EventDataExtractor.extract_citations(response)
-                
+
                 # Final display update
                 display_text = create_display_text(event_handler.state, is_final=True)
                 live.update(Markdown(display_text))
-            
+
             # Exit on done
             elif event_type == "done":
                 break
-        
+
         # Show final timing
         total_time = time.time() - start_time
         console.print(f"\n[dim]Total time: {total_time:.2f}s[/dim]")
@@ -524,6 +498,7 @@ Examples:
         console.print(f"\n[red]Error: {e}[/red]")
         if args.debug:
             import traceback
+
             traceback.print_exc()
 
 

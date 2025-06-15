@@ -14,6 +14,7 @@ from forge_cli.dataset import TestDataset
 # Use absolute imports from top-level directory
 from forge_cli.chat.controller import ChatController
 from forge_cli.config import SearchConfig
+
 # Registry no longer needed - using v3 directly
 from forge_cli.processors.registry_typed import initialize_typed_registry
 from forge_cli.sdk import astream_typed_response, async_get_vectorstore
@@ -25,25 +26,54 @@ def create_display(config: SearchConfig) -> "Display":
     """Create appropriate display based on configuration using v3 architecture."""
     # Import v3 components
     from forge_cli.display.v3.base import Display
-    from forge_cli.display.v3.renderers.rich import RichRenderer, RichDisplayConfig
-
-    # Create display config for rich renderer
-    display_config = RichDisplayConfig(
-        show_reasoning=getattr(config, "show_reasoning", True),
-        show_citations=True,
-        show_tool_details=True,
-        show_usage=not getattr(config, "quiet", False),
-        show_metadata=getattr(config, "debug", False),
-    )
 
     # Determine if we're in chat mode
     in_chat_mode = getattr(config, "chat_mode", False) or getattr(config, "chat", False)
+    mode = "chat" if in_chat_mode else "default"
 
-    # Create renderer
-    renderer = RichRenderer(config=display_config, in_chat_mode=in_chat_mode)
+    # Choose renderer based on configuration
+    if getattr(config, "json_output", False):
+        # JSON output with Rich live updates
+        from forge_cli.display.v3.renderers.json import JsonRenderer, JsonDisplayConfig
+
+        json_config = JsonDisplayConfig(
+            pretty_print=True,
+            include_metadata=getattr(config, "debug", False),
+            include_usage=not getattr(config, "quiet", False),
+            show_panel=not getattr(config, "quiet", False),  # No panel in quiet mode
+            panel_title="🔍 Knowledge Forge JSON Response" if in_chat_mode else "📋 JSON Response",
+            syntax_theme="monokai",
+            line_numbers=not in_chat_mode
+            and not getattr(config, "quiet", False),  # No line numbers in chat or quiet mode
+        )
+        renderer = JsonRenderer(config=json_config)
+
+    elif not getattr(config, "use_rich", True):
+        # Plain text output
+        from forge_cli.display.v3.renderers.plaintext import PlaintextRenderer, PlaintextDisplayConfig
+
+        plain_config = PlaintextDisplayConfig(
+            show_reasoning=getattr(config, "show_reasoning", True),
+            show_citations=True,
+            show_usage=not getattr(config, "quiet", False),
+            show_metadata=getattr(config, "debug", False),
+        )
+        renderer = PlaintextRenderer(config=plain_config)
+
+    else:
+        # Rich terminal UI (default)
+        from forge_cli.display.v3.renderers.rich import RichRenderer, RichDisplayConfig
+
+        display_config = RichDisplayConfig(
+            show_reasoning=getattr(config, "show_reasoning", True),
+            show_citations=True,
+            show_tool_details=True,
+            show_usage=not getattr(config, "quiet", False),
+            show_metadata=getattr(config, "debug", False),
+        )
+        renderer = RichRenderer(config=display_config, in_chat_mode=in_chat_mode)
 
     # Create v3 display
-    mode = "chat" if in_chat_mode else "default"
     return Display(renderer, mode=mode)
 
 
@@ -75,7 +105,7 @@ def prepare_request(config: SearchConfig, question: str, conversation_history: l
 
     # Build input messages
     input_messages = []
-    
+
     # If we have conversation history, include it
     if conversation_history:
         # Convert conversation history to InputMessage objects
@@ -146,6 +176,7 @@ async def process_search(config: SearchConfig, question: str) -> dict[str, str |
         display.show_error(f"Processing error: {str(e)}")
         if config.debug:
             import traceback
+
             traceback.print_exc()
         return None
 
@@ -160,43 +191,43 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
 
     # Create chat controller
     controller = ChatController(config, display)
-    
+
     # Store the original prepare_request method
     original_prepare_request = controller.prepare_request
-    
+
     # Patch the controller to use typed API
     async def typed_send_message(content: str) -> None:
         """Send message using typed API with proper chat support."""
         # Add user message to conversation
         user_message = controller.conversation.add_user_message(content)
-        
+
         # Create a fresh display for this message
         message_display = create_display(config)
-        
+
         # Mark display as in chat mode
         if hasattr(message_display, "console"):
             message_display._in_chat_mode = True
-        
+
         # Get conversation history
         messages = controller.conversation.to_api_format()
-        
+
         # Create typed request
         # Note: The typed API currently doesn't support full conversation history
         # So we'll just use the current message for now
         request = prepare_request(config, content, messages)
-        
+
         # Start the display for this message
         if hasattr(message_display, "handle_event"):
             message_display.handle_event("stream_start", {"query": content})
-        
+
         # Create typed handler and stream
         handler = TypedStreamHandler(message_display, debug=config.debug)
-        
+
         try:
             # Stream the response
             event_stream = astream_typed_response(request, debug=config.debug)
             state = await handler.handle_stream(event_stream, content)
-            
+
             # Extract assistant response from state
             if state and state.output_items:
                 for item in state.output_items:
@@ -208,13 +239,14 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
                             if config.debug:
                                 print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
                             break
-                        
+
         except Exception as e:
             message_display.show_error(f"Error processing message: {str(e)}")
             if config.debug:
                 import traceback
+
                 traceback.print_exc()
-    
+
     # Replace method
     controller.send_message = typed_send_message
 
@@ -249,6 +281,7 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
         display.show_error(f"Chat error: {str(e)}")
         if config.debug:
             import traceback
+
             traceback.print_exc()
 
 
@@ -498,7 +531,7 @@ async def main():
                 print(f"  Files: {len(dataset.files)}")
         except Exception as e:
             print(f"Error loading dataset: {e}")
-    
+
     # Create configuration
     config = SearchConfig.from_args(args)
 

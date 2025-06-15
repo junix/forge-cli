@@ -28,18 +28,18 @@ async def main():
         debug=True,
         vector_store_ids=["<your-vector-store-id>"],  # Replace with actual ID
     )
-    
+
     # Create display
     display = create_display("v2", format="rich", config=config)
-    
+
     # Create stream handler with typed support
     handler = TypedStreamHandler(display, debug=config.debug)
-    
+
     # Example query
     query = "What information is in these documents about machine learning?"
-    
+
     print(f"🔍 Searching for: {query}\n")
-    
+
     # Create request with typed tools
     request = Request(
         input=[{"type": "text", "text": query}],
@@ -54,22 +54,22 @@ async def main():
         temperature=0.7,
         max_output_tokens=2000,
     )
-    
+
     try:
         # Get typed stream
         stream = astream_typed_response(request, debug=config.debug)
-        
+
         # Handle stream with typed handler
         state = await handler.handle_stream(stream, query)
-        
+
         # Show final statistics
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("📊 Final Statistics:")
         print(f"   Response ID: {state.response_id}")
         print(f"   Model: {state.model}")
         print(f"   Events processed: {state.event_count}")
         print(f"   Output items: {len(state.output_items)}")
-        
+
         # Show tool states
         if state.tool_states:
             print("\n🔧 Tool Execution:")
@@ -83,26 +83,27 @@ async def main():
                     print(f"      Query time: {info['query_time']:.2f}s")
                 if "retrieval_time" in info:
                     print(f"      Total time: {info['retrieval_time']:.2f}s")
-        
+
         # Show usage
         if state.usage:
             print(f"\n💰 Token Usage:")
             print(f"   Input: {state.usage.get('input_tokens', 0)}")
             print(f"   Output: {state.usage.get('output_tokens', 0)}")
             print(f"   Total: {state.usage.get('total_tokens', 0)}")
-            
+
         # Show file mappings
         if state.file_id_to_name:
             print(f"\n📁 Files Referenced:")
             for file_id, filename in state.file_id_to_name.items():
                 print(f"   {filename} ({file_id})")
-                
+
     except KeyboardInterrupt:
         print("\n\n⚠️  Search interrupted by user")
     except Exception as e:
         print(f"\n❌ Error: {e}")
         if config.debug:
             import traceback
+
             traceback.print_exc()
 
 

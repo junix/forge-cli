@@ -276,7 +276,7 @@ class RichRenderer(BaseRenderer):
                     for summary in item.summary:
                         if hasattr(summary, "text") and summary.text:
                             reasoning_texts.append(summary.text)
-                    
+
                     if reasoning_texts:
                         reasoning_content = "\n\n".join(reasoning_texts)
                         reasoning_text = Text("🤔 AI Reasoning:\n", style="yellow bold")

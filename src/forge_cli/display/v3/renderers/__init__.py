@@ -6,9 +6,9 @@ from .plaintext import PlaintextRenderer, PlaintextDisplayConfig
 
 __all__ = [
     "RichRenderer",
-    "RichDisplayConfig", 
+    "RichDisplayConfig",
     "JsonRenderer",
     "JsonDisplayConfig",
     "PlaintextRenderer",
     "PlaintextDisplayConfig",
-] 
+]

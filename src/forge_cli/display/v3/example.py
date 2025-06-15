@@ -14,7 +14,7 @@ from forge_cli.response._types.response_usage import ResponseUsage
 
 def create_sample_response() -> Response:
     """Create a sample response for demonstration."""
-    
+
     # Create sample text content with annotations
     text_content = ResponseOutputText(
         text="""# Knowledge Retrieval Systems
@@ -35,25 +35,17 @@ The integration of Large Language Models (LLMs) has revolutionized this field by
 
 These advances have made knowledge retrieval systems essential for enterprise search, research assistance, and intelligent document processing.""",
         annotations=[],
-        type="output_text"
+        type="output_text",
     )
-    
+
     # Create message with the text content
     message = ResponseOutputMessage(
-        id="msg_123456",
-        content=[text_content],
-        role="assistant",
-        status="completed",
-        type="message"
+        id="msg_123456", content=[text_content], role="assistant", status="completed", type="message"
     )
-    
+
     # Create usage statistics
-    usage = ResponseUsage(
-        input_tokens=150,
-        output_tokens=320,
-        total_tokens=470
-    )
-    
+    usage = ResponseUsage(input_tokens=150, output_tokens=320, total_tokens=470)
+
     # Create the complete response
     response = Response(
         id="resp_abcdef123456",
@@ -66,58 +58,54 @@ These advances have made knowledge retrieval systems essential for enterprise se
         tool_choice="auto",
         tools=[],
         status="completed",
-        usage=usage
+        usage=usage,
     )
-    
+
     return response
 
 
 async def demonstrate_v3_renderer():
     """Demonstrate the v3 rich renderer capabilities."""
-    
+
     print("🚀 Knowledge Forge v3 Rich Renderer Demo")
     print("=" * 50)
-    
+
     # Create renderer with custom configuration
     config = RichDisplayConfig(
-        show_reasoning=True,
-        show_citations=True,
-        show_tool_details=True,
-        show_usage=True,
-        refresh_rate=8
+        show_reasoning=True, show_citations=True, show_tool_details=True, show_usage=True, refresh_rate=8
     )
-    
+
     renderer = RichRenderer(config=config, in_chat_mode=False)
-    
+
     # Create display with the renderer
     display = Display(renderer, mode="default")
-    
+
     # Create sample response
     response = create_sample_response()
-    
+
     print("\n📋 Rendering sample response with v3 Rich renderer...")
     print("   Notice how everything is available in the single Response object!")
-    
+
     # This is the beauty of v3 - just one simple method call!
     display.handle_response(response)
-    
+
     # Simulate streaming updates (multiple snapshots)
     print("\n🔄 Simulating streaming updates...")
     await asyncio.sleep(1)
-    
+
     # Update response status to show streaming
     response.status = "in_progress"
     display.handle_response(response)
-    
+
     await asyncio.sleep(1)
-    
+
     # Final completion
     response.status = "completed"
     display.handle_response(response)
-    
+
     # Complete the display
     display.complete()
-    
+
     print("\n✅ Demo completed!")
     print("\nKey v3 Advantages:")
     print("  • Single render_response() method")
@@ -129,32 +117,32 @@ async def demonstrate_v3_renderer():
 
 async def demonstrate_multiple_renderers():
     """Show how easy it is to switch renderers in v3."""
-    
+
     print("\n" + "=" * 50)
     print("🔄 Demonstrating renderer flexibility")
     print("=" * 50)
-    
+
     response = create_sample_response()
-    
+
     # Rich renderer
     print("\n1️⃣ Rich Renderer:")
     rich_renderer = RichRenderer(config=RichDisplayConfig(show_usage=False))
     rich_display = Display(rich_renderer)
     rich_display.handle_response(response)
     rich_display.complete()
-    
+
     # Could easily add other renderers:
     # plain_renderer = PlainRenderer()
     # json_renderer = JsonRenderer()
     # html_renderer = HtmlRenderer()
-    
+
     print("\n💡 In v3, switching renderers is as simple as:")
     print("   Display(RichRenderer())     # Beautiful terminal UI")
-    print("   Display(PlainRenderer())    # Simple text output") 
+    print("   Display(PlainRenderer())    # Simple text output")
     print("   Display(JsonRenderer())     # Structured JSON")
     print("   Display(HtmlRenderer())     # Web-ready HTML")
 
 
 if __name__ == "__main__":
     asyncio.run(demonstrate_v3_renderer())
-    asyncio.run(demonstrate_multiple_renderers()) 
+    asyncio.run(demonstrate_multiple_renderers())

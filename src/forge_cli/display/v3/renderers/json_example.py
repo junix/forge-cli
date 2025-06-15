@@ -18,7 +18,7 @@ def demo_json_renderer():
 
     # Mock response data - in real usage this comes from the API
     from types import SimpleNamespace
-    
+
     mock_response = SimpleNamespace(
         id="resp_12345",
         status="completed",
@@ -30,16 +30,12 @@ def demo_json_renderer():
                     SimpleNamespace(
                         type="output_text",
                         text="# Hello World\n\nThis is a test response with **markdown** formatting.",
-                        annotations=[]
+                        annotations=[],
                     )
-                ]
+                ],
             )
         ],
-        usage=SimpleNamespace(
-            input_tokens=50,
-            output_tokens=25,
-            total_tokens=75
-        )
+        usage=SimpleNamespace(input_tokens=50, output_tokens=25, total_tokens=75),
     )
 
     display.handle_response(mock_response)
@@ -51,7 +47,7 @@ def demo_json_renderer():
     config = JsonDisplayConfig(pretty_print=False, include_usage=True)
     renderer = JsonRenderer(config=config)
     display = Display(renderer)
-    
+
     display.handle_response(mock_response)
     display.complete()
     print()
@@ -62,10 +58,10 @@ def demo_json_renderer():
     config = JsonDisplayConfig(pretty_print=True, include_timing=True)
     renderer = JsonRenderer(config=config, output_stream=output_buffer)
     display = Display(renderer)
-    
+
     display.handle_response(mock_response)
     display.complete()
-    
+
     json_output = output_buffer.getvalue()
     print(f"Captured JSON output ({len(json_output)} chars):")
     print(json_output)
@@ -74,29 +70,26 @@ def demo_json_renderer():
     print("4. JSON to file output:")
     import tempfile
     import os
-    
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as temp_file:
         temp_filename = temp_file.name
-    
+
     try:
         config = JsonDisplayConfig(
-            pretty_print=True,
-            include_metadata=True,
-            include_timing=True,
-            output_file=temp_filename
+            pretty_print=True, include_metadata=True, include_timing=True, output_file=temp_filename
         )
         renderer = JsonRenderer(config=config)
         display = Display(renderer)
-        
+
         display.handle_response(mock_response)
         display.complete()
-        
+
         # Read back and display
-        with open(temp_filename, 'r') as f:
+        with open(temp_filename, "r") as f:
             file_content = f.read()
         print(f"File output to {temp_filename}:")
         print(file_content)
-        
+
     finally:
         if os.path.exists(temp_filename):
             os.unlink(temp_filename)
@@ -105,4 +98,4 @@ def demo_json_renderer():
 
 
 if __name__ == "__main__":
-    demo_json_renderer() 
+    demo_json_renderer()
