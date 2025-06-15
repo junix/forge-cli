@@ -26,7 +26,6 @@ class RichDisplayConfig(BaseModel):
     show_metadata: bool = Field(False, description="Whether to show response metadata")
     max_text_preview: int = Field(100, description="Maximum characters for text previews")
     refresh_rate: int = Field(10, description="Live display refresh rate per second")
-    flat_markdown: bool = Field(True, description="Render flat packed markdown without panels")
 
     @validator("refresh_rate")
     def validate_refresh_rate(cls, v):
@@ -134,75 +133,7 @@ class RichRenderer(BaseRenderer):
             self._live_started = True
 
     def _create_response_content(self, response: Response):
-        """Create rich content from complete response snapshot.
-
-        If `self._config.flat_markdown` is True, build a single packed Markdown renderable
-        that preserves the exact order of `response.output` and avoids any nested panels.
-        """
-        # Flat markdown path
-        if self._config.flat_markdown:
-            return self._create_flat_markdown_content(response)
-
-        # Build content components
-        content_parts = []
-
-        # Add response content (message body)
-        response_content = self._create_response_body(response)
-        if response_content:
-            content_parts.append(response_content)
-
-        # Add tool information
-        tool_content = self._create_tool_information(response)
-        if tool_content:
-            content_parts.append(tool_content)
-
-        # Add reasoning if available and enabled
-        if self._config.show_reasoning:
-            reasoning_content = self._create_reasoning_content(response)
-            if reasoning_content:
-                content_parts.append(reasoning_content)
-
-        # Add citations if available and enabled
-        if self._config.show_citations:
-            citation_content = self._create_citation_content(response)
-            if citation_content:
-                content_parts.append(citation_content)
-
-        # Combine all content
-        if content_parts:
-            combined_content = Group(*content_parts)
-        else:
-            combined_content = Text("No content available", style="dim italic")
-
-        # Create the new title format: full_id / status / ↑ input ↓ output
-        title_parts = []
-        
-        # Full message ID
-        title_parts.append(response.id)
-        
-        # Status
-        if response.status:
-            title_parts.append(response.status)
-        
-        # Usage information with arrows
-        if response.usage:
-            usage_part = f"↑ {response.usage.input_tokens or 0} ↓ {response.usage.output_tokens or 0}"
-            title_parts.append(usage_part)
-        
-        panel_title = " / ".join(title_parts)
-
-        # Determine panel style based on response status
-        border_style, title_style = self._get_panel_style(response)
-
-        return Panel(
-            combined_content,
-            title=f"[{title_style}]{panel_title}[/{title_style}]",
-            border_style=border_style,
-            padding=(1, 2),
-        )
-
-    def _create_flat_markdown_content(self, response: Response) -> Panel:
-        """Build a Panel with markdown content and the new title format."""
+        """Create rich content from complete response snapshot."""
         md_parts: list[str] = []
 
         # Iterate through output items maintaining order
@@ -289,30 +220,6 @@ class RichRenderer(BaseRenderer):
             border_style=border_style,
             padding=(1, 2),
         )
-
-    def _create_status_header(self, response: Response) -> Text:
-        """Create status header with response information."""
-        status_text = Text()
-
-        # Response ID and status
-        status_text.append("ID: ", style="cyan")
-        status_text.append(f"{response.id[:12]}...", style="white")
-
-        if response.status:
-            status_text.append(" | Status: ", style="cyan")
-            status_style = self._get_status_style(response.status)
-            status_text.append(f"{response.status}", style=status_style)
-
-        # Model information
-        if response.model:
-            status_text.append(" | Model: ", style="cyan")
-            status_text.append(f"{response.model}", style="green")
-
-        # Render count for streaming feedback
-        status_text.append(" | Updates: ", style="cyan")
-        status_text.append(f"{self._render_count}", style="yellow")
-
-        return status_text
 
     def _create_response_body(self, response: Response) -> Group | None:
         """Create the main response content from output items."""
@@ -436,18 +343,6 @@ class RichRenderer(BaseRenderer):
             table.add_row(ref, source, page, quote)
 
         return Panel(table, title="📚 Sources", border_style="cyan")
-
-    def _create_usage_content(self, response: Response) -> Text:
-        """Create usage statistics display."""
-        usage = response.usage
-        usage_text = Text()
-
-        usage_text.append("📊 Usage: ", style="cyan bold")
-        usage_text.append(f"Input: {usage.input_tokens or 0} | ", style="green")
-        usage_text.append(f"Output: {usage.output_tokens or 0} | ", style="yellow")
-        usage_text.append(f"Total: {usage.total_tokens or 0}", style="bold")
-
-        return usage_text
 
     def _extract_all_citations(self, response: Response) -> list[dict[str, Any]]:
         """Extract all citations from response annotations."""
