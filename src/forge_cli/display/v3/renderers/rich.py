@@ -95,6 +95,9 @@ class RichRenderer(BaseRenderer):
         # Create rich content from response
         content = self._create_response_content(response)
 
+        # Save current content for potential final print
+        self._current_content = content
+
         # Update live display
         if self._live and self._live_started:
             self._live.update(content)
@@ -107,14 +110,12 @@ class RichRenderer(BaseRenderer):
     def finalize(self) -> None:
         """Complete rendering and cleanup resources."""
         if self._live and self._live_started:
-            # Stop live display
+            # Stop live display (transient=True clears screen), then print final content once
             self._live.stop()
+            if hasattr(self, "_current_content") and self._current_content is not None:
+                self._console.print(self._current_content)
             self._live = None
             self._live_started = False
-
-            # Add final spacing for readability
-            if self._in_chat_mode:
-                self._console.print()
 
         super().finalize()
 
@@ -125,7 +126,7 @@ class RichRenderer(BaseRenderer):
                 Panel("Starting..."),
                 console=self._console,
                 refresh_per_second=self._config.refresh_rate,
-                transient=False,
+                transient=True,
             )
 
         if not self._live_started:
