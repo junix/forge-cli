@@ -26,6 +26,7 @@ class RichDisplayConfig(BaseModel):
     show_metadata: bool = Field(False, description="Whether to show response metadata")
     max_text_preview: int = Field(100, description="Maximum characters for text previews")
     refresh_rate: int = Field(10, description="Live display refresh rate per second")
+    flat_markdown: bool = Field(True, description="Render flat packed markdown without panels")
 
     @validator("refresh_rate")
     def validate_refresh_rate(cls, v):
@@ -42,7 +43,11 @@ class RichRenderer(BaseRenderer):
     """
 
     def __init__(
-        self, console: Optional["Console"] = None, config: RichDisplayConfig | None = None, in_chat_mode: bool = False
+        self,
+        console: Optional["Console"] = None,
+        config: RichDisplayConfig | None = None,
+        in_chat_mode: bool = False,
+        **config_overrides,
     ):
         """Initialize Rich renderer.
 
@@ -53,7 +58,17 @@ class RichRenderer(BaseRenderer):
         """
         super().__init__()
         self._console = console or Console()
-        self._config = config or RichDisplayConfig()
+
+        # Merge provided config or create new one using overrides
+        if config is None:
+            self._config = RichDisplayConfig(**config_overrides)
+        else:
+            # If overrides supplied, update the provided config dataclass
+            if config_overrides:
+                self._config = config.copy(update=config_overrides)
+            else:
+                self._config = config
+
         self._in_chat_mode = in_chat_mode
 
         # Live display management
@@ -117,8 +132,16 @@ class RichRenderer(BaseRenderer):
             self._live.start()
             self._live_started = True
 
-    def _create_response_content(self, response: Response) -> Panel:
-        """Create rich content from complete response snapshot."""
+    def _create_response_content(self, response: Response):
+        """Create rich content from complete response snapshot.
+
+        If `self._config.flat_markdown` is True, build a single packed Markdown renderable
+        that preserves the exact order of `response.output` and avoids any nested panels.
+        """
+        # Flat markdown path
+        if self._config.flat_markdown:
+            return self._create_flat_markdown_content(response)
+
         # Build content components
         content_parts = []
 
@@ -168,6 +191,53 @@ class RichRenderer(BaseRenderer):
             border_style=border_style,
             padding=(1, 2),
         )
+
+    def _create_flat_markdown_content(self, response: Response) -> Markdown:
+        """Build a packed Markdown object with no nested Rich containers."""
+        md_parts: list[str] = []
+
+        # Status line
+        status_fragments: list[str] = []
+        status_fragments.append(f"**ID:** {response.id[:12]}…")
+        if response.status:
+            status_fragments.append(f"**Status:** {response.status}")
+        if response.model:
+            status_fragments.append(f"**Model:** {response.model}")
+        md_parts.append(" | ".join(status_fragments))
+
+        # Iterate through output items maintaining order
+        for item in response.output:
+            if item.type == "message":
+                for content in item.content:
+                    if content.type == "output_text":
+                        md_parts.append(content.text)
+                        # inline citation numbers if present
+                        if content.annotations:
+                            refs = ", ".join(f"[{i+1}]" for i, _ in enumerate(content.annotations))
+                            md_parts.append(f"*References:* {refs}")
+                    elif content.type == "output_refusal":
+                        md_parts.append(f"> ⚠️ Response refused: {content.refusal}")
+            elif item.type in ["file_search_call", "web_search_call", "document_finder_call", "file_reader_call", "code_interpreter_call", "function_call"]:
+                details = []
+                if hasattr(item, "queries") and item.queries:
+                    details.append(f"{len(item.queries)} queries")
+                if hasattr(item, "results") and item.results:
+                    details.append(f"{len(item.results)} results")
+                detail_str = f" — {'; '.join(details)}" if details else ""
+                md_parts.append(f"- 🛠️ {item.type.replace('_', ' ').title()} ({item.status}){detail_str}")
+            elif item.type == "reasoning":
+                if hasattr(item, "summary") and item.summary:
+                    texts = [s.text for s in item.summary if hasattr(s, "text") and s.text]
+                    if texts:
+                        md_parts.append("### 🤔 AI Reasoning")
+                        md_parts.append("\n\n".join(texts))
+
+        # Usage stats
+        if self._config.show_usage and response.usage:
+            u = response.usage
+            md_parts.append(f"📊 **Usage:** Input {u.input_tokens or 0} | Output {u.output_tokens or 0} | Total {u.total_tokens or 0}")
+
+        return Markdown("\n\n".join(md_parts))
 
     def _create_status_header(self, response: Response) -> Text:
         """Create status header with response information."""
