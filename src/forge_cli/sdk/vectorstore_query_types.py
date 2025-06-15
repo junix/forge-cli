@@ -1,34 +1,36 @@
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
+
 
 class VectorStoreQueryResultItem(BaseModel):
     """
     Represents a single item in a vector store query result.
     """
+
     id: str = Field(description="Unique identifier for the result item (e.g., chunk ID or document ID).")
     vector_store_id: str = Field(description="Identifier of the vector store this result belongs to.")
-    file_id: Optional[str] = Field(None, description="Identifier of the source file, if applicable.")
+    file_id: str | None = Field(None, description="Identifier of the source file, if applicable.")
 
     score: float = Field(description="Relevance score of the result item for the query.")
     text: str = Field(description="The actual text content of the result item.")
-    metadata: Optional[dict[str, Any]] = Field(None, description="Any associated metadata with the result item.")
+    metadata: dict[str, Any] | None = Field(None, description="Any associated metadata with the result item.")
 
-    created_at: Optional[datetime] = Field(None, description="Timestamp when the underlying data was created or indexed.")
+    created_at: datetime | None = Field(None, description="Timestamp when the underlying data was created or indexed.")
     # Add other relevant fields like chunk_index, document_title, etc., if available from API
 
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat() if v else None
-        }
+        json_encoders = {datetime: lambda v: v.isoformat() if v else None}
+
 
 class VectorStoreQueryResponse(BaseModel):
     """
     Represents the response from a vector store query operation.
     """
+
     object_field: str = Field(default="list", alias="object", description="The type of object, typically 'list'.")
-    data: List[VectorStoreQueryResultItem] = Field(description="A list of query result items.")
+    data: list[VectorStoreQueryResultItem] = Field(description="A list of query result items.")
 
     vector_store_id: str = Field(description="Identifier of the vector store that was queried.")
     query: str = Field(description="The original query string.")
@@ -46,6 +48,7 @@ class VectorStoreQueryResponse(BaseModel):
     class Config:
         populate_by_name = True
         allow_population_by_field_name = True
+
 
 # Example Usage (for illustration):
 # item_data = {

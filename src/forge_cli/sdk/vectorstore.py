@@ -1,10 +1,11 @@
 from loguru import logger
-from typing import Optional # Ensure Optional is imported
 
 from .config import BASE_URL
 from .http_client import async_make_request
+
 # Import new types
-from .types import Vectorstore, VectorStoreQueryResponse, VectorStoreSummary, DeleteResponse # Updated imports
+from .types import DeleteResponse, Vectorstore, VectorStoreQueryResponse, VectorStoreSummary  # Updated imports
+
 
 async def async_create_vectorstore(
     name: str,
@@ -12,7 +13,7 @@ async def async_create_vectorstore(
     file_ids: list[str] = None,
     custom_id: str = None,
     metadata: dict[str, str | int | float | bool | list | dict] = None,
-) -> Optional[Vectorstore]: # Changed return type
+) -> Vectorstore | None:  # Changed return type
     """
     Asynchronously create a new vector store.
     ...
@@ -21,10 +22,14 @@ async def async_create_vectorstore(
     """
     url = f"{BASE_URL}/v1/vector_stores"
     payload = {"name": name}
-    if custom_id: payload["id"] = custom_id
-    if description: payload["description"] = description
-    if file_ids: payload["file_ids"] = file_ids
-    if metadata: payload["metadata"] = metadata
+    if custom_id:
+        payload["id"] = custom_id
+    if description:
+        payload["description"] = description
+    if file_ids:
+        payload["file_ids"] = file_ids
+    if metadata:
+        payload["metadata"] = metadata
 
     try:
         status_code, response_data = await async_make_request("POST", url, json_payload=payload)
@@ -32,14 +37,20 @@ async def async_create_vectorstore(
             try:
                 return Vectorstore.model_validate(response_data)
             except Exception as e:
-                logger.error(f"Vector store creation for {name} succeeded but failed to parse response: {e}. Data: {response_data}")
+                logger.error(
+                    f"Vector store creation for {name} succeeded but failed to parse response: {e}. Data: {response_data}"
+                )
                 return None
         elif status_code == 200 and isinstance(response_data, str):
-            logger.error(f"Vector store creation failed: Server returned 200 but response was not valid JSON. Name: {name}. Content: {response_data}")
+            logger.error(
+                f"Vector store creation failed: Server returned 200 but response was not valid JSON. Name: {name}. Content: {response_data}"
+            )
             return None
         elif status_code != 200:
-             logger.error(f"Vector store creation for {name} returned unhandled status {status_code}. Data: {response_data}")
-             return None
+            logger.error(
+                f"Vector store creation for {name} returned unhandled status {status_code}. Data: {response_data}"
+            )
+            return None
         return None
     except Exception as e:
         logger.error(f"Error creating vector store '{name}': {str(e)}")
@@ -51,7 +62,7 @@ async def async_query_vectorstore(
     query: str,
     top_k: int = 10,
     filters: dict[str, str | int | float | bool | list | dict] = None,
-) -> Optional[VectorStoreQueryResponse]: # Changed return type
+) -> VectorStoreQueryResponse | None:  # Changed return type
     """
     Asynchronously query a vector store.
     ...
@@ -60,7 +71,8 @@ async def async_query_vectorstore(
     """
     url = f"{BASE_URL}/v1/vector_stores/{vector_store_id}/search"
     payload = {"query": query, "top_k": top_k}
-    if filters: payload["filters"] = filters
+    if filters:
+        payload["filters"] = filters
 
     try:
         status_code, response_data = await async_make_request("POST", url, json_payload=payload)
@@ -68,21 +80,27 @@ async def async_query_vectorstore(
             try:
                 return VectorStoreQueryResponse.model_validate(response_data)
             except Exception as e:
-                logger.error(f"Vector store query for {vector_store_id} succeeded but failed to parse response: {e}. Data: {response_data}")
+                logger.error(
+                    f"Vector store query for {vector_store_id} succeeded but failed to parse response: {e}. Data: {response_data}"
+                )
                 return None
         elif status_code == 200 and isinstance(response_data, str):
-            logger.error(f"Vector store query failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}")
+            logger.error(
+                f"Vector store query failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}"
+            )
             return None
         elif status_code != 200:
-             logger.error(f"Vector store query for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}")
-             return None
+            logger.error(
+                f"Vector store query for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}"
+            )
+            return None
         return None
     except Exception as e:
         logger.error(f"Error querying vector store {vector_store_id}: {str(e)}")
         return None
 
 
-async def async_get_vectorstore(vector_store_id: str) -> Optional[Vectorstore]: # Changed return type
+async def async_get_vectorstore(vector_store_id: str) -> Vectorstore | None:  # Changed return type
     """
     Asynchronously get vector store information by its ID.
     ...
@@ -97,23 +115,29 @@ async def async_get_vectorstore(vector_store_id: str) -> Optional[Vectorstore]: 
             try:
                 return Vectorstore.model_validate(response_data)
             except Exception as e:
-                logger.error(f"Get vector store {vector_store_id} succeeded but failed to parse response: {e}. Data: {response_data}")
+                logger.error(
+                    f"Get vector store {vector_store_id} succeeded but failed to parse response: {e}. Data: {response_data}"
+                )
                 return None
         elif status_code == 404:
             return None
         elif status_code == 200 and isinstance(response_data, str):
-            logger.error(f"Get vector store failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}")
+            logger.error(
+                f"Get vector store failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}"
+            )
             return None
         elif status_code != 200:
-             logger.error(f"Get vector store for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}")
-             return None
+            logger.error(
+                f"Get vector store for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}"
+            )
+            return None
         return None
     except Exception as e:
         logger.error(f"Error getting vector store {vector_store_id}: {str(e)}")
         return None
 
 
-async def async_delete_vectorstore(vector_store_id: str) -> Optional[DeleteResponse]: # Changed return type
+async def async_delete_vectorstore(vector_store_id: str) -> DeleteResponse | None:  # Changed return type
     """
     Asynchronously delete a vector store by its ID.
     ...
@@ -129,18 +153,24 @@ async def async_delete_vectorstore(vector_store_id: str) -> Optional[DeleteRespo
                 # Assuming API returns e.g. {"id": vs_id, "object": "vector_store", "deleted": True}
                 return DeleteResponse.model_validate(response_data)
             except Exception as e:
-                logger.error(f"Delete vector store {vector_store_id} succeeded but failed to parse response: {e}. Data: {response_data}")
+                logger.error(
+                    f"Delete vector store {vector_store_id} succeeded but failed to parse response: {e}. Data: {response_data}"
+                )
                 return None
-        elif status_code == 204: # Handle No Content for successful delete
-             return DeleteResponse(id=vector_store_id, object_field="vector_store", deleted=True)
+        elif status_code == 204:  # Handle No Content for successful delete
+            return DeleteResponse(id=vector_store_id, object_field="vector_store", deleted=True)
         elif status_code == 404:
             return None
         elif status_code == 200 and isinstance(response_data, str):
-            logger.error(f"Delete vector store failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}")
+            logger.error(
+                f"Delete vector store failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}"
+            )
             return None
         elif status_code != 200:
-             logger.error(f"Delete vector store for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}")
-             return None
+            logger.error(
+                f"Delete vector store for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}"
+            )
+            return None
         return None
     except Exception as e:
         logger.error(f"Error deleting vector store {vector_store_id}: {str(e)}")
@@ -149,7 +179,7 @@ async def async_delete_vectorstore(vector_store_id: str) -> Optional[DeleteRespo
 
 async def async_join_files_to_vectorstore(
     vector_store_id: str, file_ids: list[str]
-) -> Optional[Vectorstore]: # Changed return type
+) -> Vectorstore | None:  # Changed return type
     """
     Asynchronously join files to an existing vector store.
     ...
@@ -163,16 +193,22 @@ async def async_join_files_to_vectorstore(
         status_code, response_data = await async_make_request("POST", url, json_payload=payload)
         if status_code == 200 and isinstance(response_data, dict):
             try:
-                return Vectorstore.model_validate(response_data) # API likely returns updated VS object
+                return Vectorstore.model_validate(response_data)  # API likely returns updated VS object
             except Exception as e:
-                logger.error(f"Join files to VS {vector_store_id} succeeded but failed to parse response: {e}. Data: {response_data}")
+                logger.error(
+                    f"Join files to VS {vector_store_id} succeeded but failed to parse response: {e}. Data: {response_data}"
+                )
                 return None
         elif status_code == 200 and isinstance(response_data, str):
-            logger.error(f"Join files to vector store failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}")
+            logger.error(
+                f"Join files to vector store failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}"
+            )
             return None
         elif status_code != 200:
-             logger.error(f"Join files to vector store for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}")
-             return None
+            logger.error(
+                f"Join files to vector store for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}"
+            )
+            return None
         return None
     except Exception as e:
         logger.error(f"Error joining files to vector store {vector_store_id}: {str(e)}")
@@ -181,7 +217,7 @@ async def async_join_files_to_vectorstore(
 
 async def async_get_vectorstore_summary(
     vector_store_id: str, model: str = "qwen-max", max_tokens: int = 1000
-) -> Optional[VectorStoreSummary]: # Changed return type
+) -> VectorStoreSummary | None:  # Changed return type
     """
     Asynchronously get vector store summary.
     ...
@@ -197,16 +233,22 @@ async def async_get_vectorstore_summary(
             try:
                 return VectorStoreSummary.model_validate(response_data)
             except Exception as e:
-                logger.error(f"Get VS summary for {vector_store_id} succeeded but failed to parse response: {e}. Data: {response_data}")
+                logger.error(
+                    f"Get VS summary for {vector_store_id} succeeded but failed to parse response: {e}. Data: {response_data}"
+                )
                 return None
         elif status_code == 404:
             return None
         elif status_code == 200 and isinstance(response_data, str):
-            logger.error(f"Get vector store summary failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}")
+            logger.error(
+                f"Get vector store summary failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}"
+            )
             return None
         elif status_code != 200:
-             logger.error(f"Get vector store summary for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}")
-             return None
+            logger.error(
+                f"Get vector store summary for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}"
+            )
+            return None
         return None
     except Exception as e:
         logger.error(f"Error getting vector store summary for {vector_store_id}: {str(e)}")

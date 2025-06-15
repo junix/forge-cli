@@ -3,10 +3,12 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+
 class File(BaseModel):
     """
     Represents a file entity with its attributes.
     """
+
     id: str
     object_field: str = Field(alias="object")
     custom_id: str | None = None
