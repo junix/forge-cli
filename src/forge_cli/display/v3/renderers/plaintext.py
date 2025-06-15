@@ -9,6 +9,14 @@ from rich.live import Live
 from rich.text import Text
 
 from forge_cli.response._types.response import Response
+from forge_cli.response.type_guards import (
+    is_file_search_call,
+    is_web_search_call,
+    is_document_finder_call,
+    is_file_reader_call,
+    is_message_item,
+    is_reasoning_item,
+)
 
 from ..base import BaseRenderer
 from ..style import ICONS, STATUS_ICONS, pack_queries
@@ -168,7 +176,7 @@ class PlaintextRenderer(BaseRenderer):
 
         # Process output items in their original order to preserve event sequence
         for item in response.output:
-            if item.type == "message":
+            if is_message_item(item):
                 # Handle message content
                 for content in item.content:
                     if content.type == "output_text":
@@ -179,15 +187,15 @@ class PlaintextRenderer(BaseRenderer):
                         text.append("⚠️  Response Refused: ", style=self._styles["warning"])
                         text.append(f"{content.refusal}\n", style=self._styles["error"])
 
-            elif item.type == "reasoning" and self._config.show_reasoning:
+            elif is_reasoning_item(item) and self._config.show_reasoning:
                 # Handle reasoning content with dark green italic style
-                if hasattr(item, "summary") and item.summary:
+                if item.summary:
                     # text.append("🤔 ", style=self._styles["reasoning_header"])
                     # text.append("AI Thinking Process", style=self._styles["reasoning_header"])
                     text.append("\n", style="")
 
                     for summary in item.summary:
-                        if hasattr(summary, "text") and summary.text:
+                        if summary.text:
                             # Add reasoning text with dark green italic style
                             reasoning_lines = summary.text.split("\n")
                             for line in reasoning_lines:
@@ -265,65 +273,63 @@ class PlaintextRenderer(BaseRenderer):
 
     def _get_tool_details(self, tool_item: Any) -> str:
         """Get concise details for a tool item."""
-        tool_type = tool_item.type
-
-        if tool_type == "file_search_call":
+        if is_file_search_call(tool_item):
             # Show query and result count
             parts = []
-            if hasattr(tool_item, "query") and tool_item.query:
-                parts.append(f'{ICONS["query"]}"{tool_item.query}"')
-            elif hasattr(tool_item, "queries") and tool_item.queries:
+            if tool_item.queries:
                 # Use pack_queries for beautiful display
                 shortened_queries = [q[:30] + "..." if len(q) > 30 else q for q in tool_item.queries]
                 packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
                 parts.append(packed)
-            if hasattr(tool_item, "results") and tool_item.results:
+            # Note: results may not be available during in_progress status
+            if getattr(tool_item, "results", None):
                 parts.append(f"found {len(tool_item.results)} results")
 
             return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
-        elif tool_type == "web_search_call":
+        elif is_web_search_call(tool_item):
             # Show search query and results
             parts = []
-            if hasattr(tool_item, "queries") and tool_item.queries:
+            if tool_item.queries:
                 # Use pack_queries for consistent display
                 shortened_queries = [q[:30] + "..." if len(q) > 30 else q for q in tool_item.queries]
                 packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
                 parts.append(packed)
-            if hasattr(tool_item, "results") and tool_item.results:
+            # Note: results may not be available during in_progress status
+            if getattr(tool_item, "results", None):
                 parts.append(f"found {len(tool_item.results)} results")
 
             return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
-        elif tool_type == "document_finder_call":
+        elif is_document_finder_call(tool_item):
             # Show queries and document count
             parts = []
-            if hasattr(tool_item, "queries") and tool_item.queries:
+            if tool_item.queries:
                 # Show all queries
                 # Use pack_queries for consistent display
                 shortened_queries = [q[:25] + "..." if len(q) > 25 else q for q in tool_item.queries]
                 packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
                 parts.append(packed)
-            elif hasattr(tool_item, "query") and tool_item.query:
-                # Fallback to single query if present
-                parts.append(f'{ICONS["query"]}"{tool_item.query}"')
 
             # # Show document count
-            # if hasattr(tool_item, "count") and tool_item.count is not None:
+            # if tool_item.count is not None:
             #     parts.append(f"found {tool_item.count} document{'s' if tool_item.count != 1 else ''}")
-            # elif hasattr(tool_item, "results") and tool_item.results:
+            # elif getattr(tool_item, "results", None):
             #     doc_count = len(tool_item.results)
             #     parts.append(f"found {doc_count} document{'s' if doc_count != 1 else ''}")
 
             return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
-        elif tool_type == "file_reader_call":
+        elif is_file_reader_call(tool_item):
             # Show file name and status
             parts = []
-            if hasattr(tool_item, "file_name") and tool_item.file_name:
-                parts.append(f'{ICONS["file_reader"]}{tool_item.file_name}')
-            elif hasattr(tool_item, "file_id") and tool_item.file_id:
-                parts.append(f'{ICONS["file_reader"]}{tool_item.file_id}')
+            # Note: file_name might be added dynamically, not in the base model
+            file_name = getattr(tool_item, "file_name", None)
+            if file_name:
+                parts.append(f"{ICONS['file_reader']}{file_name}")
+            elif tool_item.doc_ids and len(tool_item.doc_ids) > 0:
+                # Use first doc_id as fallback
+                parts.append(f"{ICONS['file_reader']}{tool_item.doc_ids[0]}")
             return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
         else:
@@ -476,7 +482,7 @@ class PlaintextRenderer(BaseRenderer):
 
             elif citation.type == "url_citation":
                 # URL format: 1. title (domain) - using typed properties
-                title = citation.title if hasattr(citation, "title") and citation.title else "Web Page"
+                title = citation.title if citation.title else "Web Page"
                 url = citation.url
                 if url:
                     try:
@@ -618,11 +624,11 @@ class PlaintextRenderer(BaseRenderer):
         welcome_text.append("Knowledge Forge Chat", style=self._styles["header"])
         welcome_text.append("! (v3 Plaintext Renderer)\n\n", style="bold")
 
-        if hasattr(config, "model"):
+        if getattr(config, "model", None):
             welcome_text.append("🤖 Model: ", style=self._styles["info"])
             welcome_text.append(f"{config.model}\n", style=self._styles["model"])
 
-        if hasattr(config, "enabled_tools") and config.enabled_tools:
+        if getattr(config, "enabled_tools", None):
             welcome_text.append("🛠️  Tools: ", style=self._styles["info"])
             welcome_text.append(f"{', '.join(config.enabled_tools)}\n", style=self._styles["content"])
 

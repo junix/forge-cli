@@ -108,7 +108,7 @@ class StreamState:
                         reasoning_tokens=usage_data.get("output_tokens_details", {}).get("reasoning_tokens", 0)
                     ),
                 )
-            elif hasattr(usage_data, "model_validate"):
+            elif callable(getattr(usage_data, "model_validate", None)):
                 self.usage = ResponseUsage.model_validate(usage_data)
             else:
                 self.usage = usage_data
@@ -181,7 +181,7 @@ class StreamState:
         """Extract file ID to name mappings from output items."""
         for item in self.output_items:
             # Handle typed objects
-            if hasattr(item, "type"):
+            if getattr(item, "type", None):
                 item_type = item.type
             else:
                 # Fallback for dict format
@@ -191,7 +191,7 @@ class StreamState:
             if item_type == "file_search_call":
                 results = (
                     getattr(item, "results", None)
-                    if hasattr(item, "results")
+                    if getattr(item, "results", None) is not None
                     else item.get("results")
                     if isinstance(item, dict)
                     else None
@@ -199,7 +199,7 @@ class StreamState:
                 if results:
                     for result in results:
                         # Handle both typed and dict results
-                        if hasattr(result, "file_id") and hasattr(result, "filename"):
+                        if getattr(result, "file_id", None) and getattr(result, "filename", None):
                             file_id = result.file_id
                             filename = result.filename
                         elif isinstance(result, dict):
@@ -215,7 +215,7 @@ class StreamState:
             elif item_type == "document_finder_call":
                 results = (
                     getattr(item, "results", None)
-                    if hasattr(item, "results")
+                    if getattr(item, "results", None) is not None
                     else item.get("results")
                     if isinstance(item, dict)
                     else None
@@ -223,7 +223,7 @@ class StreamState:
                 if results:
                     for result in results:
                         # Handle both typed and dict results
-                        if hasattr(result, "doc_id") and hasattr(result, "title"):
+                        if getattr(result, "doc_id", None) and getattr(result, "title", None):
                             doc_id = result.doc_id
                             title = result.title
                         elif isinstance(result, dict):

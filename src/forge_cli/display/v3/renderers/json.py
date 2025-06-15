@@ -131,7 +131,7 @@ class JsonRenderer(BaseRenderer):
             error_json = {
                 "error": "JSON rendering failed",
                 "message": str(e),
-                "response_id": response.id if hasattr(response, "id") else None,
+                "response_id": getattr(response, "id", None),
             }
             error_output = json.dumps(error_json, indent=self._config.indent)
 
@@ -221,48 +221,47 @@ class JsonRenderer(BaseRenderer):
 
     def _serialize_output_item(self, item: Any) -> dict[str, Any]:
         """Serialize an output item to dictionary format."""
-        if not hasattr(item, "type"):
+        if not getattr(item, "type", None):
             return {"raw_data": str(item)}
 
         item_dict = {"type": item.type}
 
         # Handle different item types
         if item.type == "message":
-            if hasattr(item, "content") and item.content:
+            if getattr(item, "content", None):
                 item_dict["content"] = []
                 for content in item.content:
                     content_dict = self._serialize_content_item(content)
                     item_dict["content"].append(content_dict)
 
-        elif hasattr(item, "status"):
+        elif getattr(item, "status", None):
             # Tool-related items
             item_dict["status"] = item.status
 
-            if hasattr(item, "queries") and item.queries:
+            if getattr(item, "queries", None):
                 item_dict["queries"] = item.queries
 
-            if hasattr(item, "results") and item.results:
+            if getattr(item, "results", None):
                 item_dict["results"] = item.results
 
         elif item.type == "reasoning":
-            if hasattr(item, "summary") and item.summary:
+            if getattr(item, "summary", None):
                 item_dict["summary"] = []
                 for summary in item.summary:
-                    if hasattr(summary, "text"):
+                    if getattr(summary, "text", None):
                         item_dict["summary"].append({"text": summary.text})
 
         # Add any other attributes that might be useful
         for attr in ["role", "status", "queries", "results", "summary"]:
-            if hasattr(item, attr) and attr not in item_dict:
+            if getattr(item, attr, None) is not None and attr not in item_dict:
                 value = getattr(item, attr)
-                if value is not None:
-                    item_dict[attr] = value
+                item_dict[attr] = value
 
         return item_dict
 
     def _serialize_content_item(self, content: Any) -> dict[str, Any]:
         """Serialize a content item to dictionary format."""
-        if not hasattr(content, "type"):
+        if not getattr(content, "type", None):
             return {"raw_data": str(content)}
 
         content_dict = {"type": content.type}
@@ -271,7 +270,7 @@ class JsonRenderer(BaseRenderer):
             content_dict["text"] = getattr(content, "text", "")
 
             # Add annotations if present
-            if hasattr(content, "annotations") and content.annotations:
+            if getattr(content, "annotations", None):
                 content_dict["annotations"] = []
                 for annotation in content.annotations:
                     ann_dict = self._serialize_annotation(annotation)
@@ -284,32 +283,38 @@ class JsonRenderer(BaseRenderer):
 
     def _serialize_annotation(self, annotation: Any) -> dict[str, Any]:
         """Serialize an annotation to dictionary format."""
-        if not hasattr(annotation, "type"):
+        if not getattr(annotation, "type", None):
             return {"raw_data": str(annotation)}
 
         ann_dict = {"type": annotation.type}
 
         # Handle different annotation types
         if annotation.type == "file_citation":
-            for attr in ["file_id", "file_name", "page_number", "text"]:
-                if hasattr(annotation, attr):
-                    value = getattr(annotation, attr)
-                    if value is not None:
-                        ann_dict[attr] = value
+            for attr in ["file_id", "filename", "index", "snippet"]:
+                value = getattr(annotation, attr, None)
+                if value is not None:
+                    ann_dict[attr] = value
 
         elif annotation.type == "url_citation":
-            for attr in ["url", "text"]:
-                if hasattr(annotation, attr):
-                    value = getattr(annotation, attr)
-                    if value is not None:
-                        ann_dict[attr] = value
+            for attr in ["url", "title", "snippet", "start_index", "end_index"]:
+                value = getattr(annotation, attr, None)
+                if value is not None:
+                    ann_dict[attr] = value
+
+        elif annotation.type == "file_path":
+            for attr in ["file_id", "index"]:
+                value = getattr(annotation, attr, None)
+                if value is not None:
+                    ann_dict[attr] = value
 
         return ann_dict
 
     def _json_serializer(self, obj: Any) -> Any:
         """Custom JSON serializer for objects that aren't natively JSON serializable."""
         # Handle pydantic models
-        if hasattr(obj, "dict"):
+        if hasattr(obj, "model_dump"):
+            return obj.model_dump()
+        elif hasattr(obj, "dict"):
             return obj.dict()
 
         # Handle other objects by converting to string
@@ -342,10 +347,10 @@ class JsonRenderer(BaseRenderer):
             "timestamp": self._get_current_timestamp(),
         }
 
-        if hasattr(config, "model"):
+        if getattr(config, "model", None):
             welcome_data["model"] = config.model
 
-        if hasattr(config, "enabled_tools"):
+        if getattr(config, "enabled_tools", None):
             welcome_data["enabled_tools"] = config.enabled_tools
 
         try:
