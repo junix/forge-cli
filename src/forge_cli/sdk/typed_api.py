@@ -1,11 +1,10 @@
 import json
 from collections.abc import AsyncIterator
-from typing import Any, Union
+from typing import Any
 
 import aiohttp
 from loguru import logger
 
-from .config import BASE_URL
 from forge_cli.response._types import (
     FileSearchTool,
     InputMessage,
@@ -13,6 +12,8 @@ from forge_cli.response._types import (
     Response,
     WebSearchTool,
 )
+
+from .config import BASE_URL
 
 
 async def async_create_typed_response(
@@ -78,13 +79,13 @@ async def async_create_typed_response(
                                     # To simplify, we will assume the *last* JSON payload received on the stream before 'done' is the full response
                                     # if `response.completed` event was seen.
                                     # A better approach for robust streaming is to accumulate data based on event types.
-                                    final_data = data # Keep track of the latest data payload
+                                    final_data = data  # Keep track of the latest data payload
                                 except json.JSONDecodeError:
-                                    pass # Ignore malformed JSON
+                                    pass  # Ignore malformed JSON
                         elif line.startswith("event:") and line[6:].strip() == "done":
-                             break # Stream finished
+                            break  # Stream finished
 
-                    if final_data: # Check if we received any data that could be the final response
+                    if final_data:  # Check if we received any data that could be the final response
                         return Response(**final_data)
                     else:
                         raise Exception("No final response data received from stream")
@@ -128,7 +129,6 @@ async def astream_typed_response(
             # Fallback for simple string content, assuming 'user' role
             input_messages.append({"role": "user", "content": str(msg)})
 
-
     # Prepare request payload
     payload = {
         "model": request_dict.get("model", "qwen-max"),
@@ -136,7 +136,7 @@ async def astream_typed_response(
         "store": request_dict.get("store", True),
         "temperature": request_dict.get("temperature", 0.7),
         "max_output_tokens": request_dict.get("max_output_tokens", 1000),
-        "input": input_messages, # Use validated/converted messages
+        "input": input_messages,  # Use validated/converted messages
     }
 
     # Convert tools to API format
@@ -145,8 +145,8 @@ async def astream_typed_response(
         for tool in request_dict["tools"]:
             if isinstance(tool, dict):
                 tools.append(tool)
-            elif hasattr(tool, "model_dump"): # Check if it's a Pydantic model
-                tools.append(tool.model_dump(exclude_none=True)) # Ensure it's dumped correctly
+            elif hasattr(tool, "model_dump"):  # Check if it's a Pydantic model
+                tools.append(tool.model_dump(exclude_none=True))  # Ensure it's dumped correctly
             else:
                 # This case should ideally not happen if Request model is used correctly
                 tools.append(tool)
@@ -183,13 +183,13 @@ async def astream_typed_response(
                         if current_event_type == "done":
                             yield "done", None
                             break
-                        continue # Wait for data line
+                        continue  # Wait for data line
 
                     # Process data
                     if line.startswith("data:"):
                         data_str = line[5:].strip()
-                        if not data_str: # Empty data line
-                            yield current_event_type, None # Yield event type with no data
+                        if not data_str:  # Empty data line
+                            yield current_event_type, None  # Yield event type with no data
                             continue
 
                         # Parse JSON data
@@ -213,7 +213,7 @@ async def astream_typed_response(
                                 }
 
                                 response_obj = None
-                                if data and isinstance(data, dict): # Ensure data is a dict before **data
+                                if data and isinstance(data, dict):  # Ensure data is a dict before **data
                                     try:
                                         # Attempt to create a Response object from the data
                                         # This assumes 'data' directly maps to Response fields
@@ -226,11 +226,11 @@ async def astream_typed_response(
                                         # If conversion fails, but it's a snapshot type, yield None for data part
                                         if current_event_type in SNAPSHOT_EVENT_TYPES:
                                             yield current_event_type, None
-                                        else: # Not a snapshot type, yield event with raw data (or handle differently)
+                                        else:  # Not a snapshot type, yield event with raw data (or handle differently)
                                             # For simplicity, we'll yield None here too if not a snapshot type and fails parsing
                                             # Or, one could yield (current_event_type, data) if raw data is useful
                                             yield current_event_type, None
-                                        continue # Move to next line
+                                        continue  # Move to next line
 
                                     yield current_event_type, response_obj
 
@@ -246,17 +246,15 @@ async def astream_typed_response(
                                         # For now, adhering to the structure which yields ("response.completed", Response_object).
                                         pass
 
-
-                                else: # Data is not a dict or is None
+                                else:  # Data is not a dict or is None
                                     yield current_event_type, None
-
 
                             except json.JSONDecodeError:
                                 error_msg = f"Failed to parse JSON data: {data_str}"
                                 logger.error(error_msg)
-                                yield "error", None # Yield an error event
-                        else: # Data is not JSON
-                             yield current_event_type, None # Yield event type with no parseable data
+                                yield "error", None  # Yield an error event
+                        else:  # Data is not JSON
+                            yield current_event_type, None  # Yield event type with no parseable data
 
     except Exception as e:
         error_msg = f"Error creating typed response stream: {str(e)}"
@@ -267,7 +265,7 @@ async def astream_typed_response(
 def create_typed_request(
     input_messages: str | list[dict[str, Any]] | list[InputMessage],
     model: str = "qwen-max-latest",
-    tools: list[Union[dict[str, Any], FileSearchTool, WebSearchTool]] | None = None, # Made tool types more specific
+    tools: list[dict[str, Any] | FileSearchTool | WebSearchTool] | None = None,  # Made tool types more specific
     **kwargs,
 ) -> Request:
     """
@@ -305,10 +303,9 @@ def create_typed_request(
             elif isinstance(tool, dict):
                 # This assumes the dict can be parsed into one of the tool types.
                 # The Request model's validator will handle this.
-                processed_tools.append(tool) # Or attempt to parse into a specific tool type if known
+                processed_tools.append(tool)  # Or attempt to parse into a specific tool type if known
             else:
                 raise ValueError(f"Invalid tool type: {type(tool)}")
-
 
     return Request(input=processed_messages, model=model, tools=processed_tools or [], **kwargs)
 

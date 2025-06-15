@@ -1,6 +1,7 @@
 from typing import Any
 
 from forge_cli.response._types import Response
+
 # Import async_create_response from .response for example_response_usage
 from .response import async_create_response
 
@@ -17,7 +18,7 @@ def print_file_results(upload_result: dict[str, str | int | float | bool | list 
 
 def print_vectorstore_results(result: dict[str, str | int | float | bool | list | dict], query: str) -> None:
     """Print formatted vector store query results."""
-    if result and result.get("data"): # Ensure 'data' key exists and is not empty
+    if result and result.get("data"):  # Ensure 'data' key exists and is not empty
         print(f"Found {len(result['data'])} results for query: '{query}'")
         for i, item in enumerate(result["data"], 1):
             print(f"\nResult #{i}:")
@@ -26,7 +27,7 @@ def print_vectorstore_results(result: dict[str, str | int | float | bool | list 
             # Ensure content is a list and not empty before accessing
             content_list = item.get("content")
             if content_list and isinstance(content_list, list) and len(content_list) > 0:
-                content_item = content_list[0] # Take the first content item
+                content_item = content_list[0]  # Take the first content item
                 if isinstance(content_item, dict):
                     content_text = content_item.get("text", "")
                     if content_text:
@@ -54,15 +55,15 @@ def print_response_results(result: Response | dict[str, str | int | float | bool
             if isinstance(msg, dict) and msg.get("role") == "assistant" and "content" in msg:
                 assistant_output_found = True
                 content = msg["content"]
-                if isinstance(content, list): # Content can be a list of parts (e.g. text, tool_call)
+                if isinstance(content, list):  # Content can be a list of parts (e.g. text, tool_call)
                     for item in content:
                         if isinstance(item, dict) and item.get("type") == "text":
                             print(f"Assistant: {item.get('text', '')}")
                         # Could add handling for other content types if needed
-                elif isinstance(content, str): # Content can also be a simple string
+                elif isinstance(content, str):  # Content can also be a simple string
                     print(f"Assistant: {content}")
         if not assistant_output_found:
-             print("Assistant: [No assistant output in the expected format]")
+            print("Assistant: [No assistant output in the expected format]")
     else:
         print("Assistant: [Invalid or empty result format]")
 
@@ -77,8 +78,7 @@ def has_tool_calls(response: Response) -> bool:
     if not response or not response.output:
         return False
     return any(
-        hasattr(item, "type") and ("tool_call" in item.type or item.type == "function_call")
-        for item in response.output
+        hasattr(item, "type") and ("tool_call" in item.type or item.type == "function_call") for item in response.output
     )
 
 
@@ -89,7 +89,7 @@ def get_tool_call_results(response: Response) -> list[dict[str, Any]]:
         return results
     for item in response.output:
         if hasattr(item, "type") and ("tool_call" in item.type or item.type == "function_call"):
-            if hasattr(item, "results") and item.results: # 'results' is the attribute in the Pydantic model
+            if hasattr(item, "results") and item.results:  # 'results' is the attribute in the Pydantic model
                 results.extend(item.results)
     return results
 
@@ -126,7 +126,7 @@ async def example_response_usage() -> None:
     print("Attempting to create a response with file search (ensure 'vs_example' vector store exists)...")
     response = await async_create_response(
         input_messages="What information is available about machine learning?",
-        model="qwen-max-latest", # Using a common model name
+        model="qwen-max-latest",  # Using a common model name
         tools=[{"type": "file_search", "file_search": {"vector_store_ids": ["vs_example"], "max_num_results": 10}}],
     )
 
@@ -143,7 +143,7 @@ async def example_response_usage() -> None:
     # Tool call analysis
     print(f"Has tool calls: {has_tool_calls(response)}")
     print(f"Has uncompleted tool calls: {has_uncompleted_tool_calls(response)}")
-    if hasattr(response, 'contain_non_internal_tool_call'): # Check if method exists
+    if hasattr(response, "contain_non_internal_tool_call"):  # Check if method exists
         print(f"Contains non-internal tools: {response.contain_non_internal_tool_call()}")
 
     # Citation management
@@ -163,13 +163,15 @@ async def example_response_usage() -> None:
     if len(citable_items) > 0:
         print("\n--- Content Compression ---")
         # Remove duplicates
-        deduplicated_response = response.deduplicate() # Returns a new Response object
+        deduplicated_response = response.deduplicate()  # Returns a new Response object
         print(f"After deduplication: {len(deduplicated_response.collect_citable_items())} citable items")
 
         # Remove unreferenced chunks
         # The method is compact_retrieve_chunks and takes a strategy string
-        compact_response = response.compact_retrieve_chunks(strategy="nonrefed") # Returns new Response
-        print(f"After removing unreferenced (nonrefed strategy): {len(compact_response.collect_citable_items())} citable items")
+        compact_response = response.compact_retrieve_chunks(strategy="nonrefed")  # Returns new Response
+        print(
+            f"After removing unreferenced (nonrefed strategy): {len(compact_response.collect_citable_items())} citable items"
+        )
 
     # Usage statistics
     if response.usage:
@@ -182,8 +184,8 @@ async def example_response_usage() -> None:
 
     # Brief representation for debugging
     # The method is brief_repr and takes a strategy string
-    if hasattr(response, 'brief_repr'): # Check if method exists
-        brief_response = response.brief_repr(strategy="smart") # Returns new Response
+    if hasattr(response, "brief_repr"):  # Check if method exists
+        brief_response = response.brief_repr(strategy="smart")  # Returns new Response
         print(f"\nBrief representation (smart strategy) created with {len(brief_response.output)} output items")
 
     print("\n--- Example Usage End ---")

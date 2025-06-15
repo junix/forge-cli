@@ -1,4 +1,5 @@
-from typing import Callable, Literal, Protocol, TypedDict, Union
+from collections.abc import Callable
+from typing import Literal, Protocol, TypedDict, Union
 
 
 # Forward reference for Annotation types, actual import might be needed if used directly
@@ -71,23 +72,18 @@ class DocumentFinderResult(BaseSearchResult):
 
 
 # A generic result type for lists, if specific type is not known
-AnyCitable = TypedDict(
-    "AnyCitable",
-    {
-        "set_citation_id": Callable[[int], None] | None,  # Simplified representation
-        "as_annotation": Callable[[], AnnotationUnion | None] | None,
-        "file_id": str | None,
-        "filename": str | None,
-        "url": str | None,
-        "title": str | None,
-        "snippet": str | None,
-        "document_id": str | None,
-        "text": str | None,
-        "type": str | None,  # To discriminate if needed
-        "citation_id": int | None,
-    },
-    total=False,
-)
+class AnyCitable(TypedDict, total=False):
+    set_citation_id: Callable[[int], None] | None  # Simplified representation
+    as_annotation: Callable[[], AnnotationUnion | None] | None
+    file_id: str | None
+    filename: str | None
+    url: str | None
+    title: str | None
+    snippet: str | None
+    document_id: str | None
+    text: str | None
+    type: str | None  # To discriminate if needed
+    citation_id: int | None
 
 
 # Type for the 'processed' dictionary in FileSearchProcessor

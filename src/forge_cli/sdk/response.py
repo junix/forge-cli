@@ -3,8 +3,9 @@ import json
 import aiohttp
 from loguru import logger
 
-from .config import BASE_URL
 from forge_cli.response._types import Response
+
+from .config import BASE_URL
 
 
 def validate_input_messages(
