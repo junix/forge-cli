@@ -213,8 +213,8 @@ class RichRenderer(BaseRenderer):
                         md_parts.append(content.text)
                         # inline citation numbers if present
                         if content.annotations:
-                            refs = ", ".join(f"[{i+1}]" for i, _ in enumerate(content.annotations))
-                            md_parts.append(f"*References:* {refs}")
+                            # inline citation numbers handled; detailed reference list appended later
+                            pass
                     elif content.type == "output_refusal":
                         md_parts.append(f"> ⚠️ Response refused: {content.refusal}")
             elif item.type in ["file_search_call", "web_search_call", "document_finder_call", "file_reader_call", "code_interpreter_call", "function_call"]:
@@ -227,10 +227,25 @@ class RichRenderer(BaseRenderer):
                 md_parts.append(f"- 🛠️ {item.type.replace('_', ' ').title()} ({item.status}){detail_str}")
             elif item.type == "reasoning":
                 if hasattr(item, "summary") and item.summary:
-                    texts = [s.text for s in item.summary if hasattr(s, "text") and s.text]
-                    if texts:
-                        md_parts.append("### 🤔 AI Reasoning")
-                        md_parts.append("\n\n".join(texts))
+                    lines = [s.text.strip() for s in item.summary if hasattr(s, "text") and s.text]
+                    if lines:
+                        md_parts.extend([f"> {line}" for line in lines])
+
+        # References section
+        citations = self._extract_all_citations(response)
+        if citations:
+            ref_lines = ["**References**"]
+            for idx, citation in enumerate(citations, 1):
+                if citation["type"] == "file_citation":
+                    source = citation.get("file_name") or citation.get("file_id", "unknown_file")
+                    page = f" p.{citation.get('page_number')}" if citation.get("page_number") else ""
+                    quote = f' — "{citation.get("text", "").strip()}"' if citation.get("text") else ""
+                    ref_lines.append(f"{idx}. {source}{page}{quote}")
+                else:
+                    url = citation.get("url", "")
+                    quote = f' — "{citation.get("text", "").strip()}"' if citation.get("text") else ""
+                    ref_lines.append(f"{idx}. {url}{quote}")
+            md_parts.append("\n".join(ref_lines))
 
         # Usage stats
         if self._config.show_usage and response.usage:
