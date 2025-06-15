@@ -5,12 +5,10 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
 
 # Import proper types from response system
 from ..response._types.response_input_message_item import ResponseInputMessageItem
-from ..response._types.response_usage import ResponseUsage, InputTokensDetails, OutputTokensDetails
-
+from ..response._types.response_usage import InputTokensDetails, OutputTokensDetails, ResponseUsage
 
 
 @dataclass
@@ -18,14 +16,14 @@ class ConversationState:
     """Manages the state of a multi-turn conversation using typed API."""
 
     # Use proper typed messages instead of custom Message class
-    messages: List[ResponseInputMessageItem] = field(default_factory=list)
+    messages: list[ResponseInputMessageItem] = field(default_factory=list)
     session_id: str = field(default_factory=lambda: f"session_{uuid.uuid4().hex[:12]}")
     created_at: float = field(default_factory=time.time)
     model: str = "qwen-max-latest"
-    tools: List[dict] = field(default_factory=list)
+    tools: list[dict] = field(default_factory=list)
     metadata: dict[str, str | int | float | bool] = field(default_factory=dict)
     # Use proper ResponseUsage instead of manual tracking
-    usage: Optional[ResponseUsage] = None
+    usage: ResponseUsage | None = None
 
     def add_message(self, message: ResponseInputMessageItem) -> None:
         """Add a message to the conversation."""
@@ -43,7 +41,7 @@ class ConversationState:
         self.add_message(message)
         return message
 
-    def add_assistant_message(self, content: str, assistant_id: Optional[str] = None) -> ResponseInputMessageItem:
+    def add_assistant_message(self, content: str, assistant_id: str | None = None) -> ResponseInputMessageItem:
         """Add an assistant message using proper typed API."""
         # Note: Assistant messages need proper handling since they don't fit the input message format
         # This might need adjustment based on how assistant messages are actually handled
@@ -58,7 +56,7 @@ class ConversationState:
         self.add_message(message)
         return message
 
-    def to_api_format(self) -> List[ResponseInputMessageItem]:
+    def to_api_format(self) -> list[ResponseInputMessageItem]:
         """Return messages in proper API format (already typed)."""
         return self.messages
 
@@ -70,7 +68,7 @@ class ConversationState:
         """Get the number of messages in the conversation."""
         return len(self.messages)
 
-    def get_last_n_messages(self, n: int) -> List[ResponseInputMessageItem]:
+    def get_last_n_messages(self, n: int) -> list[ResponseInputMessageItem]:
         """Get the last n messages."""
         return self.messages[-n:] if n > 0 else []
 
@@ -81,7 +79,7 @@ class ConversationState:
         else:
             self.usage += usage  # Uses built-in __add__ method
 
-    def get_token_usage(self) -> Optional[ResponseUsage]:
+    def get_token_usage(self) -> ResponseUsage | None:
         """Get current token usage."""
         return self.usage
 
@@ -162,13 +160,14 @@ class ConversationState:
         Truncate conversation to fit within token limit.
         This is a simple implementation that removes oldest messages.
         """
+
         # Simple heuristic: assume ~4 chars per token
         # Extract text content from the new message format
         def get_text_content(msg: ResponseInputMessageItem) -> str:
             text_parts = []
             for content_item in msg.content:
                 # Handle both Pydantic objects and dict formats
-                if hasattr(content_item, 'type') and content_item.type == "input_text":
+                if hasattr(content_item, "type") and content_item.type == "input_text":
                     text_parts.append(content_item.text)
                 elif isinstance(content_item, dict) and content_item.get("type") == "input_text":
                     text_parts.append(content_item.get("text", ""))
@@ -189,7 +188,7 @@ class ConversationState:
             text_content = []
             for content_item in msg.content:
                 # Handle both Pydantic objects and dict formats
-                if hasattr(content_item, 'type') and content_item.type == "input_text":
+                if hasattr(content_item, "type") and content_item.type == "input_text":
                     text_content.append(content_item.text)
                 elif isinstance(content_item, dict) and content_item.get("type") == "input_text":
                     text_content.append(content_item.get("text", ""))
