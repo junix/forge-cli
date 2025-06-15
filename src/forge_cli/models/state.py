@@ -92,6 +92,7 @@ class StreamState:
             if isinstance(usage_data, dict):
                 # Convert dict to ResponseUsage
                 from ..response._types.response_usage import InputTokensDetails, OutputTokensDetails
+
                 self.usage = ResponseUsage(
                     input_tokens=usage_data.get("input_tokens", 0),
                     output_tokens=usage_data.get("output_tokens", 0),
@@ -103,7 +104,7 @@ class StreamState:
                         reasoning_tokens=usage_data.get("output_tokens_details", {}).get("reasoning_tokens", 0)
                     ),
                 )
-            elif hasattr(usage_data, 'model_validate'):
+            elif hasattr(usage_data, "model_validate"):
                 self.usage = ResponseUsage.model_validate(usage_data)
             else:
                 self.usage = usage_data
@@ -117,7 +118,7 @@ class StreamState:
     def _convert_output_items(self, output_data: list[Any]) -> list[ResponseOutputItem]:
         """Convert dict-based output items to typed ResponseOutputItem objects."""
         typed_items = []
-        
+
         for item_data in output_data:
             if isinstance(item_data, dict):
                 # Convert dict to proper typed object based on type
@@ -127,46 +128,56 @@ class StreamState:
                         # Import specific types as needed
                         if item_type == "message":
                             from ..response._types.response_output_message import ResponseOutputMessage
+
                             typed_items.append(ResponseOutputMessage.model_validate(item_data))
                         elif item_type == "reasoning":
                             from ..response._types.response_reasoning_item import ResponseReasoningItem
+
                             typed_items.append(ResponseReasoningItem.model_validate(item_data))
                         elif item_type == "file_search_call":
                             from ..response._types.response_file_search_tool_call import ResponseFileSearchToolCall
+
                             typed_items.append(ResponseFileSearchToolCall.model_validate(item_data))
                         elif item_type == "document_finder_call":
-                            from ..response._types.response_document_finder_tool_call import ResponseDocumentFinderToolCall
+                            from ..response._types.response_document_finder_tool_call import (
+                                ResponseDocumentFinderToolCall,
+                            )
+
                             typed_items.append(ResponseDocumentFinderToolCall.model_validate(item_data))
                         elif item_type == "function_call":
                             from ..response._types.response_function_tool_call import ResponseFunctionToolCall
+
                             typed_items.append(ResponseFunctionToolCall.model_validate(item_data))
                         elif item_type == "web_search":
                             from ..response._types.response_function_web_search import ResponseFunctionWebSearch
+
                             typed_items.append(ResponseFunctionWebSearch.model_validate(item_data))
                         elif item_type == "file_reader":
                             from ..response._types.response_function_file_reader import ResponseFunctionFileReader
+
                             typed_items.append(ResponseFunctionFileReader.model_validate(item_data))
                         elif item_type == "computer_tool_call":
                             from ..response._types.response_computer_tool_call import ResponseComputerToolCall
+
                             typed_items.append(ResponseComputerToolCall.model_validate(item_data))
                         else:
                             # Skip unknown types for now
                             continue
-                    except Exception as e:
+                    except Exception:
                         # If validation fails, skip the item (but could log for debugging)
                         # print(f"Failed to validate {item_type}: {e}")
                         continue
             else:
                 # Already a typed object, keep as is
                 typed_items.append(item_data)
-        
+
         return typed_items
 
     def _extract_file_mappings(self) -> None:
         """Extract file ID to name mappings from output items."""
         for item in self.output_items:
             # Handle typed objects
-            if hasattr(item, 'type'):
+            if hasattr(item, "type"):
                 item_type = item.type
             else:
                 # Fallback for dict format
@@ -174,11 +185,17 @@ class StreamState:
 
             # Extract from file search results
             if item_type == "file_search_call":
-                results = getattr(item, 'results', None) if hasattr(item, 'results') else item.get("results") if isinstance(item, dict) else None
+                results = (
+                    getattr(item, "results", None)
+                    if hasattr(item, "results")
+                    else item.get("results")
+                    if isinstance(item, dict)
+                    else None
+                )
                 if results:
                     for result in results:
                         # Handle both typed and dict results
-                        if hasattr(result, 'file_id') and hasattr(result, 'filename'):
+                        if hasattr(result, "file_id") and hasattr(result, "filename"):
                             file_id = result.file_id
                             filename = result.filename
                         elif isinstance(result, dict):
@@ -186,17 +203,23 @@ class StreamState:
                             filename = result.get("filename", "")
                         else:
                             continue
-                        
+
                         if file_id and filename:
                             self.file_id_to_name[file_id] = filename
 
             # Extract from document finder results
             elif item_type == "document_finder_call":
-                results = getattr(item, 'results', None) if hasattr(item, 'results') else item.get("results") if isinstance(item, dict) else None
+                results = (
+                    getattr(item, "results", None)
+                    if hasattr(item, "results")
+                    else item.get("results")
+                    if isinstance(item, dict)
+                    else None
+                )
                 if results:
                     for result in results:
                         # Handle both typed and dict results
-                        if hasattr(result, 'doc_id') and hasattr(result, 'title'):
+                        if hasattr(result, "doc_id") and hasattr(result, "title"):
                             doc_id = result.doc_id
                             title = result.title
                         elif isinstance(result, dict):
@@ -204,7 +227,7 @@ class StreamState:
                             title = result.get("title", "")
                         else:
                             continue
-                        
+
                         if doc_id and title:
                             self.file_id_to_name[doc_id] = title
 
@@ -214,29 +237,29 @@ class StreamState:
 
         for item in self.output_items:
             # Handle typed objects
-            if hasattr(item, 'type'):
+            if hasattr(item, "type"):
                 item_type = item.type
             else:
                 # Fallback for dict format
                 item_type = item.get("type", "") if isinstance(item, dict) else ""
-            
+
             if item_type == "reasoning":
                 # Handle typed ResponseReasoningItem
-                if hasattr(item, 'summary'):
+                if hasattr(item, "summary"):
                     summary_list = item.summary
                 else:
                     # Fallback for dict format
                     summary_list = item.get("summary", []) if isinstance(item, dict) else []
-                
+
                 for summary in summary_list:
                     # Handle both typed and dict summary items
-                    if hasattr(summary, 'type') and summary.type == "summary_text":
-                        text = getattr(summary, 'text', '')
+                    if hasattr(summary, "type") and summary.type == "summary_text":
+                        text = getattr(summary, "text", "")
                     elif isinstance(summary, dict) and summary.get("type") == "summary_text":
                         text = summary.get("text", "")
                     else:
                         continue
-                    
+
                     if text:
                         reasoning_texts.append(text)
 
