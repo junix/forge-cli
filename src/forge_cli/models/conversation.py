@@ -65,18 +65,20 @@ class ConversationState:
             content_parts = []
             for content_item in msg.content:
                 # Handle both Pydantic objects and dict formats
-                if hasattr(content_item, 'type') and content_item.type == "input_text":
+                if hasattr(content_item, "type") and content_item.type == "input_text":
                     content_parts.append(content_item.text)
                 elif isinstance(content_item, dict) and content_item.get("type") == "input_text":
                     content_parts.append(content_item.get("text", ""))
-            
+
             content_str = " ".join(content_parts)
-            
-            api_messages.append({
-                "role": msg.role,
-                "content": content_str,
-            })
-        
+
+            api_messages.append(
+                {
+                    "role": msg.role,
+                    "content": content_str,
+                }
+            )
+
         return api_messages
 
     def clear(self) -> None:
@@ -150,14 +152,14 @@ class ConversationState:
         tools_data = data.get("tools", [])
         if tools_data:
             from ..response._types import (
-                FileSearchTool,
-                WebSearchTool,
-                FunctionTool,
                 ComputerTool,
                 DocumentFinderTool,
+                FileSearchTool,
+                FunctionTool,
+                WebSearchTool,
             )
             from ..response._types.file_reader_tool import FileReaderTool
-            
+
             for tool_data in tools_data:
                 if isinstance(tool_data, dict):
                     tool_type = tool_data.get("type")
