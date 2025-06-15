@@ -273,7 +273,7 @@ class PlaintextRenderer(BaseRenderer):
             if hasattr(tool_item, "query") and tool_item.query:
                 parts.append(f' {query}')
             elif hasattr(tool_item, "queries") and tool_item.queries:
-                query = " ".join(" {query}" for query in tool_item.queries)
+                query = " & ".join(f" {query}" for query in tool_item.queries)
                 parts.append(f' {query}')
             if hasattr(tool_item, "results") and tool_item.results:
                 parts.append(f"found {len(tool_item.results)} results")
@@ -285,19 +285,28 @@ class PlaintextRenderer(BaseRenderer):
             if hasattr(tool_item, "queries") and tool_item.queries:
                 query = " ".join(" {query}" for query in tool_item.queries)
                 parts.append(f'󰜏 {query}')
-            if hasattr(tool_item, "results") and tool_item.results:
-                parts.append(f"found {len(tool_item.results)} results")
+            # if hasattr(tool_item, "results") and tool_item.results:
+            #     parts.append(f"found {len(tool_item.results)} results")
 
             return " • ".join(parts) if parts else ""
 
         elif tool_type == "document_finder_call":
-            # Show query and document count
+            # Show queries and document count
             parts = []
-            if hasattr(tool_item, "query") and tool_item.query:
-                parts.append(f'󰈞 {tool_item.query}')
-            if hasattr(tool_item, "results") and tool_item.results:
-                doc_count = len(tool_item.results)
-                parts.append(f"found {doc_count} document{'s' if doc_count != 1 else ''}")
+            if hasattr(tool_item, "queries") and tool_item.queries:
+                # Show all queries
+                queries_text = " ".join(f'"{q}"' for q in tool_item.queries)
+                parts.append(f'󰈞 {queries_text}')
+            elif hasattr(tool_item, "query") and tool_item.query:
+                # Fallback to single query if present
+                parts.append(f'󰈞 "{tool_item.query}"')
+            
+            # # Show document count
+            # if hasattr(tool_item, "count") and tool_item.count is not None:
+            #     parts.append(f"found {tool_item.count} document{'s' if tool_item.count != 1 else ''}")
+            # elif hasattr(tool_item, "results") and tool_item.results:
+            #     doc_count = len(tool_item.results)
+            #     parts.append(f"found {doc_count} document{'s' if doc_count != 1 else ''}")
 
             return " • ".join(parts) if parts else ""
 

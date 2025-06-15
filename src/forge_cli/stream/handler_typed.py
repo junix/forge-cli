@@ -151,7 +151,21 @@ class TypedStreamHandler:
             state.event_count += 1
 
             if self.debug:
-                print(f"[{state.event_count}] {event_type}: {type(event_data)}")
+                if event_data is not None and isinstance(event_data, Response):
+                    # Show the FULL model dump for Response objects
+                    print(f"[{state.event_count}] {event_type}: Response data:")
+                    try:
+                        # Use model_dump() to get the full dictionary representation
+                        import json
+                        full_dump = event_data.model_dump()
+                        # Pretty print the entire response with indentation
+                        print(json.dumps(full_dump, indent=2, ensure_ascii=False))
+                    except Exception as e:
+                        # Fallback if model_dump fails
+                        print(f"  Error dumping model: {e}")
+                        print(f"  Response repr: {repr(event_data)}")
+                else:
+                    print(f"[{state.event_count}] {event_type}: {type(event_data)}")
 
             # Handle snapshot events (events with Response objects)
             if event_data is not None and isinstance(event_data, Response):
