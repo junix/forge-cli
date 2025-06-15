@@ -1,6 +1,6 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Union, TYPE_CHECKING
+from typing import Union, TYPE_CHECKING, List
 
 from openai._utils import PropertyInfo
 from typing_extensions import Annotated, Literal, TypeAlias
@@ -279,3 +279,5 @@ Annotation: TypeAlias = Annotated[
     Union[AnnotationFileCitation, AnnotationURLCitation, AnnotationFilePath],
     PropertyInfo(discriminator="type"),
 ]
+
+AnnotationList: TypeAlias = List[Annotation]

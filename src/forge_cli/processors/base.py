@@ -3,6 +3,8 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+from forge_cli.response._types.response_output_item import ResponseOutputItem
+
 
 class OutputProcessor(ABC):
     """Abstract base class for processing output items."""
@@ -13,7 +15,7 @@ class OutputProcessor(ABC):
         pass
 
     @abstractmethod
-    def process(self, item: Any) -> dict[str, Any] | None:
+    def process(self, item: ResponseOutputItem) -> dict[str, Any] | None: # Keep dict[str, Any] for now, subclasses will refine
         """
         Process the output item and return processed data.
 

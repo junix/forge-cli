@@ -10,6 +10,9 @@ from forge_cli.response._types import (
     ResponseFunctionWebSearch,
     ResponseOutputItem,
 )
+from forge_cli.response._types.response_output_item import ResponseOutputItem
+from forge_cli.models.state import StreamState
+from forge_cli.display.v3.base import Display
 
 
 class TypedOutputProcessor(ABC):
@@ -21,7 +24,7 @@ class TypedOutputProcessor(ABC):
         pass
 
     @abstractmethod
-    def process(self, item: Any, state: Any, display: Any) -> None:
+    def process(self, item: ResponseOutputItem, state: StreamState, display: Display) -> None:
         """
         Process the output item and update display.
 
@@ -62,7 +65,9 @@ class TypedToolProcessor(TypedOutputProcessor):
 
     def extract_results(self, item: Union[ResponseFileSearchToolCall, ResponseDocumentFinderToolCall, ResponseFunctionWebSearch]) -> list[Any]:
         """Extract results from typed tool call."""
-        return list(item.results) if item.results else []
+        # Access 'results' safely as it might be dynamically added
+        results_attr = getattr(item, 'results', None)
+        return list(results_attr) if results_attr else []
 
     def extract_status(self, item: Union[ResponseFileSearchToolCall, ResponseDocumentFinderToolCall, ResponseFunctionWebSearch]) -> str:
         """Extract status from typed tool call."""
