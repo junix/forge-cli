@@ -264,7 +264,7 @@ class StreamHandler:
             "event_count": self.state.response_event_count,
         }
 
-        # Convert to v2 display event format
+        # Convert to v3 display event format
         self.display.handle_event("text_delta", {"text": formatted_content, "metadata": metadata})
 
     def _format_output_items(self) -> str:

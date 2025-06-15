@@ -44,9 +44,8 @@ class SearchConfig:
     web_country: str | None = None
     web_city: str | None = None
 
-    # Display API version (for migration)
-    use_new_display_api: bool = False  # Feature flag for v2 display system
-    display_api_debug: bool = False  # Debug logging for display API migration
+    # Display settings (migrated to v3)
+    display_api_debug: bool = False  # Debug logging for display API
 
     @classmethod
     def from_args(cls, args) -> "SearchConfig":

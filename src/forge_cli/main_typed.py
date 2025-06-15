@@ -30,7 +30,7 @@ def create_display(config: SearchConfig) -> Display:
     # Initialize default displays if not already done
     initialize_default_displays()
 
-    # Get the v2 display directly from registry
+    # Get the v3 display directly from registry
     try:
         return DisplayRegistry.get_display_for_config(config)
     except (ValueError, ImportError):
