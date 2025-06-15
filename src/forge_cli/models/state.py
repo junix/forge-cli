@@ -10,6 +10,16 @@ if TYPE_CHECKING:
 # Import proper types from response system
 from ..response._types.response_output_item import ResponseOutputItem
 from ..response._types.response_usage import ResponseUsage
+from ..response.type_guards import (
+    is_message_item,
+    is_reasoning_item,
+    is_file_search_call,
+    is_document_finder_call,
+    is_file_citation,
+    is_url_citation,
+    is_file_path,
+    is_output_text,
+)
 
 
 class ToolStatus(Enum):
@@ -81,19 +91,37 @@ class StreamState:
     model: str | None = None
 
     def update_from_snapshot(self, snapshot: dict[str, Any]) -> None:
-        """Update state from response snapshot."""
+        """Update state from response snapshot.
+        
+        Expects snapshot to contain typed Response objects or compatible data.
+        """
         if "output" in snapshot:
-            # Convert dict-based output items to typed objects if needed
             output_data = snapshot["output"]
             if output_data:
-                self.output_items = self._convert_output_items(output_data)
+                # Expect typed objects; if dicts are provided, attempt conversion
+                if isinstance(output_data, list):
+                    self.output_items = []
+                    for item in output_data:
+                        if hasattr(item, "type"):
+                            # Already a typed object
+                            self.output_items.append(item)
+                        elif isinstance(item, dict) and "type" in item:
+                            # Try to convert dict to typed object
+                            typed_item = self._convert_single_output_item(item)
+                            if typed_item:
+                                self.output_items.append(typed_item)
+                else:
+                    self.output_items = output_data
+                    
             self._extract_file_mappings()
             self._extract_reasoning()
             self._extract_citations()
 
         if "usage" in snapshot:
             usage_data = snapshot["usage"]
-            if isinstance(usage_data, dict):
+            if isinstance(usage_data, ResponseUsage):
+                self.usage = usage_data
+            elif isinstance(usage_data, dict):
                 # Convert dict to ResponseUsage
                 from ..response._types.response_usage import InputTokensDetails, OutputTokensDetails
 
@@ -103,15 +131,11 @@ class StreamState:
                     total_tokens=usage_data.get("total_tokens", 0),
                     input_tokens_details=InputTokensDetails(
                         cached_tokens=usage_data.get("input_tokens_details", {}).get("cached_tokens", 0)
-                    ),
+                    ) if usage_data.get("input_tokens_details") else None,
                     output_tokens_details=OutputTokensDetails(
                         reasoning_tokens=usage_data.get("output_tokens_details", {}).get("reasoning_tokens", 0)
-                    ),
+                    ) if usage_data.get("output_tokens_details") else None,
                 )
-            elif callable(getattr(usage_data, "model_validate", None)):
-                self.usage = ResponseUsage.model_validate(usage_data)
-            else:
-                self.usage = usage_data
 
         if "id" in snapshot:
             self.response_id = snapshot["id"]
@@ -119,215 +143,106 @@ class StreamState:
         if "model" in snapshot:
             self.model = snapshot["model"]
 
-    def _convert_output_items(self, output_data: list[Any]) -> list[ResponseOutputItem]:
-        """Convert dict-based output items to typed ResponseOutputItem objects."""
-        typed_items = []
-
-        for item_data in output_data:
-            if isinstance(item_data, dict):
-                # Convert dict to proper typed object based on type
-                item_type = item_data.get("type")
-                if item_type:
-                    try:
-                        # Import specific types as needed
-                        if item_type == "message":
-                            from ..response._types.response_output_message import ResponseOutputMessage
-
-                            typed_items.append(ResponseOutputMessage.model_validate(item_data))
-                        elif item_type == "reasoning":
-                            from ..response._types.response_reasoning_item import ResponseReasoningItem
-
-                            typed_items.append(ResponseReasoningItem.model_validate(item_data))
-                        elif item_type == "file_search_call":
-                            from ..response._types.response_file_search_tool_call import ResponseFileSearchToolCall
-
-                            typed_items.append(ResponseFileSearchToolCall.model_validate(item_data))
-                        elif item_type == "document_finder_call":
-                            from ..response._types.response_document_finder_tool_call import (
-                                ResponseDocumentFinderToolCall,
-                            )
-
-                            typed_items.append(ResponseDocumentFinderToolCall.model_validate(item_data))
-                        elif item_type == "function_call":
-                            from ..response._types.response_function_tool_call import ResponseFunctionToolCall
-
-                            typed_items.append(ResponseFunctionToolCall.model_validate(item_data))
-                        elif item_type == "web_search":
-                            from ..response._types.response_function_web_search import ResponseFunctionWebSearch
-
-                            typed_items.append(ResponseFunctionWebSearch.model_validate(item_data))
-                        elif item_type == "file_reader":
-                            from ..response._types.response_function_file_reader import ResponseFunctionFileReader
-
-                            typed_items.append(ResponseFunctionFileReader.model_validate(item_data))
-                        elif item_type == "computer_tool_call":
-                            from ..response._types.response_computer_tool_call import ResponseComputerToolCall
-
-                            typed_items.append(ResponseComputerToolCall.model_validate(item_data))
-                        else:
-                            # Skip unknown types for now
-                            continue
-                    except Exception:
-                        # If validation fails, skip the item (but could log for debugging)
-                        # print(f"Failed to validate {item_type}: {e}")
-                        continue
+    def _convert_single_output_item(self, item_data: dict[str, Any]) -> ResponseOutputItem | None:
+        """Convert a single dict-based output item to typed ResponseOutputItem object.
+        
+        Returns None if conversion fails or type is unknown.
+        """
+        item_type = item_data.get("type")
+        if not item_type:
+            return None
+            
+        try:
+            # Import and validate based on type
+            if item_type == "message":
+                from ..response._types.response_output_message import ResponseOutputMessage
+                return ResponseOutputMessage.model_validate(item_data)
+                
+            elif item_type == "reasoning":
+                from ..response._types.response_reasoning_item import ResponseReasoningItem
+                return ResponseReasoningItem.model_validate(item_data)
+                
+            elif item_type == "file_search_call":
+                from ..response._types.response_file_search_tool_call import ResponseFileSearchToolCall
+                return ResponseFileSearchToolCall.model_validate(item_data)
+                
+            elif item_type == "document_finder_call":
+                from ..response._types.response_document_finder_tool_call import ResponseDocumentFinderToolCall
+                return ResponseDocumentFinderToolCall.model_validate(item_data)
+                
+            elif item_type == "function_call":
+                from ..response._types.response_function_tool_call import ResponseFunctionToolCall
+                return ResponseFunctionToolCall.model_validate(item_data)
+                
+            elif item_type == "web_search_call":
+                from ..response._types.response_function_web_search import ResponseFunctionWebSearch
+                return ResponseFunctionWebSearch.model_validate(item_data)
+                
+            elif item_type == "file_reader_call":
+                from ..response._types.response_function_file_reader import ResponseFunctionFileReader
+                return ResponseFunctionFileReader.model_validate(item_data)
+                
+            elif item_type == "computer_tool_call":
+                from ..response._types.response_computer_tool_call import ResponseComputerToolCall
+                return ResponseComputerToolCall.model_validate(item_data)
+                
+            elif item_type == "code_interpreter_call":
+                from ..response._types.response_code_interpreter_tool_call import ResponseCodeInterpreterToolCall
+                return ResponseCodeInterpreterToolCall.model_validate(item_data)
+                
             else:
-                # Already a typed object, keep as is
-                typed_items.append(item_data)
-
-        return typed_items
+                # Unknown type
+                return None
+                
+        except Exception:
+            # Validation failed
+            return None
 
     def _extract_file_mappings(self) -> None:
         """Extract file ID to name mappings from output items."""
         for item in self.output_items:
-            # Handle typed objects
-            if getattr(item, "type", None):
-                item_type = item.type
-            else:
-                # Fallback for dict format
-                item_type = item.get("type", "") if isinstance(item, dict) else ""
-
             # Extract from file search results
-            if item_type == "file_search_call":
-                results = (
-                    getattr(item, "results", None)
-                    if getattr(item, "results", None) is not None
-                    else item.get("results")
-                    if isinstance(item, dict)
-                    else None
-                )
-                if results:
-                    for result in results:
-                        # Handle both typed and dict results
-                        if getattr(result, "file_id", None) and getattr(result, "filename", None):
-                            file_id = result.file_id
-                            filename = result.filename
-                        elif isinstance(result, dict):
-                            file_id = result.get("file_id", "")
-                            filename = result.get("filename", "")
-                        else:
-                            continue
-
-                        if file_id and filename:
-                            self.file_id_to_name[file_id] = filename
+            if is_file_search_call(item):
+                if item.results:
+                    for result in item.results:
+                        if result.file_id and result.filename:
+                            self.file_id_to_name[result.file_id] = result.filename
 
             # Extract from document finder results
-            elif item_type == "document_finder_call":
-                results = (
-                    getattr(item, "results", None)
-                    if getattr(item, "results", None) is not None
-                    else item.get("results")
-                    if isinstance(item, dict)
-                    else None
-                )
-                if results:
-                    for result in results:
-                        # Handle both typed and dict results
-                        if getattr(result, "doc_id", None) and getattr(result, "title", None):
-                            doc_id = result.doc_id
-                            title = result.title
-                        elif isinstance(result, dict):
-                            doc_id = result.get("doc_id", "")
-                            title = result.get("title", "")
-                        else:
-                            continue
-
-                        if doc_id and title:
-                            self.file_id_to_name[doc_id] = title
+            elif is_document_finder_call(item):
+                if item.results:
+                    for result in item.results:
+                        if result.doc_id and result.title:
+                            self.file_id_to_name[result.doc_id] = result.title
 
     def _extract_reasoning(self) -> None:
         """Extract reasoning text from output items."""
         reasoning_texts = []
 
         for item in self.output_items:
-            # Handle typed objects
-            if hasattr(item, "type"):
-                item_type = item.type
-            else:
-                # Fallback for dict format
-                item_type = item.get("type", "") if isinstance(item, dict) else ""
-
-            if item_type == "reasoning":
-                # Handle typed ResponseReasoningItem
-                if hasattr(item, "summary"):
-                    summary_list = item.summary
-                else:
-                    # Fallback for dict format
-                    summary_list = item.get("summary", []) if isinstance(item, dict) else []
-
-                for summary in summary_list:
-                    # Handle both typed and dict summary items
-                    if hasattr(summary, "type") and summary.type == "summary_text":
-                        text = getattr(summary, "text", "")
-                    elif isinstance(summary, dict) and summary.get("type") == "summary_text":
-                        text = summary.get("text", "")
-                    else:
-                        continue
-
-                    if text:
-                        reasoning_texts.append(text)
+            if is_reasoning_item(item):
+                if item.summary:
+                    for summary in item.summary:
+                        # Check for both "summary_text" and "text" types (API variation)
+                        if hasattr(summary, "type") and summary.type in ["summary_text", "text"]:
+                            if summary.text:
+                                reasoning_texts.append(summary.text)
 
         self.current_reasoning = "\n\n".join(reasoning_texts)
 
     def _extract_citations(self) -> None:
         """Extract citations from message content annotations."""
-        from ..response._types.annotations import AnnotationFileCitation, AnnotationFilePath, AnnotationURLCitation
-
         citations = []
 
         for item in self.output_items:
-            # Handle typed objects
-            if hasattr(item, "type"):
-                item_type = item.type
-            else:
-                # Fallback for dict format
-                item_type = item.get("type", "") if isinstance(item, dict) else ""
-
-            if item_type == "message":
-                # Handle typed ResponseOutputMessage
-                if hasattr(item, "content"):
-                    content_list = item.content
-                else:
-                    # Fallback for dict format
-                    content_list = item.get("content", []) if isinstance(item, dict) else []
-
-                for content in content_list:
-                    # Handle both typed and dict content items
-                    if hasattr(content, "type") and content.type == "output_text":
-                        annotations = getattr(content, "annotations", [])
-                    elif isinstance(content, dict) and content.get("type") == "output_text":
-                        annotations = content.get("annotations", [])
-                    else:
-                        continue
-
-                    for annotation in annotations:
-                        # Handle both typed and dict annotations
-                        if hasattr(annotation, "type"):
-                            annotation_type = annotation.type
-                        elif isinstance(annotation, dict):
-                            annotation_type = annotation.get("type", "")
-                        else:
-                            continue
-
-                        # Convert dict annotations to typed objects if needed
-                        if isinstance(annotation, dict):
-                            try:
-                                if annotation_type == "file_citation":
-                                    typed_annotation = AnnotationFileCitation.model_validate(annotation)
-                                elif annotation_type == "url_citation":
-                                    typed_annotation = AnnotationURLCitation.model_validate(annotation)
-                                elif annotation_type == "file_path":
-                                    typed_annotation = AnnotationFilePath.model_validate(annotation)
-                                else:
-                                    continue
-                                citations.append(typed_annotation)
-                            except Exception:
-                                # If validation fails, skip the annotation
-                                continue
-                        else:
-                            # Already a typed object
-                            if annotation_type in ["file_citation", "url_citation", "file_path"]:
-                                citations.append(annotation)
+            if is_message_item(item):
+                if item.content:
+                    for content in item.content:
+                        if is_output_text(content) and content.annotations:
+                            for annotation in content.annotations:
+                                # Type guards ensure these are properly typed
+                                if is_file_citation(annotation) or is_url_citation(annotation) or is_file_path(annotation):
+                                    citations.append(annotation)
 
         self.citations = citations
 

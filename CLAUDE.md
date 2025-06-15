@@ -111,6 +111,298 @@ All Pydantic models are organized in the `models/` directory with specific purpo
 
 The `Any` type provides no validation, no IDE support, and no runtime type checking. It should only be used as a last resort when dealing with truly unknown external data that will be validated elsewhere.
 
+### TypeGuard Functions for Type-Safe Code
+
+The project uses **TypeGuard functions** (Python 3.10+) to enable proper type narrowing and eliminate defensive programming patterns. TypeGuards are located in `response/type_guards.py` and provide type-safe access to Response API objects.
+
+**Benefits of TypeGuards:**
+- **Type Safety**: Proper type narrowing ensures compile-time and runtime safety
+- **IDE Support**: Full autocomplete and type hints within conditional blocks
+- **Code Clarity**: Intent is clear - checking type, not defensive programming
+- **Performance**: Simple string comparison, no runtime overhead
+
+**Example Usage:**
+```python
+# GOOD: Using TypeGuard functions
+from forge_cli.response.type_guards import is_file_search_call, is_message_item
+
+# Type narrowing with full IDE support
+if is_file_search_call(item):
+    # Type checker knows item is ResponseFileSearchToolCall
+    for query in item.queries:  # Full autocomplete!
+        process_query(query)
+    
+    if item.results:
+        for result in item.results:
+            print(f"Found: {result.filename}")
+
+# BAD: Defensive programming patterns to avoid
+if hasattr(item, "queries") and item.queries:  # No type information
+    for query in item.queries:  # No autocomplete
+        process_query(query)
+
+# BAD: Using cast without verification
+from typing import cast
+file_search = cast(ResponseFileSearchToolCall, item)  # Unsafe assertion
+```
+
+**Available TypeGuards:**
+- Output item guards: `is_message_item()`, `is_reasoning_item()`, `is_file_search_call()`, etc.
+- Annotation guards: `is_file_citation()`, `is_url_citation()`, `is_file_path()`
+- Content guards: `is_output_text()`, `is_output_refusal()`
+- Event guards: `is_text_delta_event()`, `is_response_completed_event()`
+- Helper functions: `get_tool_queries()`, `get_tool_results()`, `get_tool_content()`
+
+See [ADR-010](docs/adr/CLAUDE-010-response-type-guards.md) for detailed design rationale and migration guide.
+
+### Advanced Type System Design
+
+#### Using TYPE_CHECKING for Import Optimization
+
+The `TYPE_CHECKING` constant prevents circular imports and reduces runtime overhead:
+
+```python
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    # These imports are only for type checking, not runtime
+    from forge_cli.response._types.response import Response
+    from forge_cli.models.state import StreamState
+
+class Processor:
+    def process(self, response: "Response", state: "StreamState") -> None:
+        # Forward references with quotes avoid runtime import
+        pass
+```
+
+**Benefits:**
+- Prevents circular import errors
+- Reduces module loading time
+- Keeps type information for static analysis
+
+#### Using cast() Safely
+
+While we prefer TypeGuards, `cast()` has legitimate uses when you have verified the type through other means:
+
+```python
+from typing import cast, Dict, Any
+from pydantic import BaseModel
+
+# GOOD: Cast after validation
+def parse_config(data: Dict[str, Any]) -> SearchConfig:
+    # Pydantic validates the data
+    validated = SearchConfig.model_validate(data)
+    # Cast is safe here because model_validate ensures correct type
+    return cast(SearchConfig, validated)
+
+# GOOD: Cast with runtime check
+def get_tool_name(item: Any) -> str:
+    if not isinstance(item, dict) or "name" not in item:
+        raise ValueError("Invalid tool item")
+    # We've verified the structure, cast is acceptable
+    return cast(str, item["name"])
+
+# BAD: Blind cast without verification
+def unsafe_cast(item: Any) -> FileSearchCall:
+    return cast(FileSearchCall, item)  # DANGER: No verification!
+```
+
+#### Protocol Classes for Duck Typing
+
+Use Protocol classes to define interfaces without inheritance:
+
+```python
+from typing import Protocol, runtime_checkable
+
+@runtime_checkable
+class Searchable(Protocol):
+    """Any object that can be searched."""
+    queries: list[str]
+    max_results: int
+    
+    def search(self) -> list[dict]: ...
+
+# Works with any class that matches the protocol
+def process_search(searchable: Searchable) -> None:
+    results = searchable.search()
+    print(f"Found {len(results)} results for {searchable.queries}")
+
+# Runtime checking
+if isinstance(obj, Searchable):
+    process_search(obj)
+```
+
+#### Generic Types for Reusable Components
+
+Create flexible, type-safe components with generics:
+
+```python
+from typing import Generic, TypeVar, Optional
+
+T = TypeVar("T")
+K = TypeVar("K")
+V = TypeVar("V")
+
+class Registry(Generic[K, V]):
+    """Type-safe registry pattern."""
+    def __init__(self) -> None:
+        self._items: dict[K, V] = {}
+    
+    def register(self, key: K, value: V) -> None:
+        self._items[key] = value
+    
+    def get(self, key: K) -> Optional[V]:
+        return self._items.get(key)
+
+# Usage with full type safety
+processor_registry: Registry[str, BaseProcessor] = Registry()
+processor_registry.register("file_search", FileSearchProcessor())
+```
+
+#### Literal Types for Exhaustive Matching
+
+Use Literal types for exhaustive pattern matching:
+
+```python
+from typing import Literal, Union, assert_never
+
+ToolType = Literal["file_search", "web_search", "code_analyzer"]
+
+def get_tool_icon(tool_type: ToolType) -> str:
+    if tool_type == "file_search":
+        return "📁"
+    elif tool_type == "web_search":
+        return "🌐"
+    elif tool_type == "code_analyzer":
+        return "🔍"
+    else:
+        # Type checker ensures all cases are handled
+        assert_never(tool_type)
+```
+
+#### Type Aliases for Complex Types
+
+Simplify complex type annotations with aliases:
+
+```python
+from typing import TypeAlias, Union, Dict, List
+
+# Define complex types once
+CitationMap: TypeAlias = Dict[str, List[Annotation]]
+ToolResult: TypeAlias = Union[FileSearchResult, WebSearchResult, CodeAnalysisResult]
+EventHandler: TypeAlias = Callable[[str, Dict[str, Any]], Awaitable[None]]
+
+# Use simple aliases throughout code
+class CitationProcessor:
+    def __init__(self) -> None:
+        self.citations: CitationMap = {}
+    
+    def process_result(self, result: ToolResult) -> None:
+        # Clean, readable type annotations
+        pass
+```
+
+#### Overloading for Better Type Inference
+
+Use `@overload` to provide precise type information for different call patterns:
+
+```python
+from typing import overload, Union, Literal
+
+@overload
+def get_config(key: Literal["model"]) -> str: ...
+
+@overload
+def get_config(key: Literal["temperature"]) -> float: ...
+
+@overload
+def get_config(key: Literal["tools"]) -> list[str]: ...
+
+@overload
+def get_config(key: str) -> Any: ...
+
+def get_config(key: str) -> Any:
+    """Get configuration value with correct type."""
+    config = load_config()
+    return config.get(key)
+
+# Type checker knows the return type
+model: str = get_config("model")  # ✓ Correct
+temp: float = get_config("temperature")  # ✓ Correct
+```
+
+#### NewType for Domain Modeling
+
+Create distinct types for domain concepts:
+
+```python
+from typing import NewType
+
+# Create distinct types for IDs
+FileId = NewType("FileId", str)
+UserId = NewType("UserId", str)
+VectorStoreId = NewType("VectorStoreId", str)
+
+def process_file(file_id: FileId, user_id: UserId) -> None:
+    # Type system prevents mixing up IDs
+    pass
+
+# Must explicitly create the new type
+file_id = FileId("file_123")
+user_id = UserId("user_456")
+
+# This would be a type error:
+# process_file(user_id, file_id)  # ✗ Wrong order!
+```
+
+#### Type Narrowing Best Practices
+
+Combine multiple techniques for robust type narrowing:
+
+```python
+from typing import Union, Optional
+
+def process_item(item: Union[Dict[str, Any], BaseModel, None]) -> str:
+    # Guard against None
+    if item is None:
+        return "No item"
+    
+    # Narrow to BaseModel
+    if isinstance(item, BaseModel):
+        # Type checker knows item is BaseModel
+        return item.model_dump_json()
+    
+    # Must be Dict[str, Any] now
+    if "type" in item and item["type"] == "file_search":
+        # Use TypeGuard for further narrowing
+        if is_file_search_call(item):
+            return f"File search: {item.queries}"
+    
+    return str(item)
+```
+
+#### Const and Final for Immutability
+
+Use `Final` and `Literal` for constants:
+
+```python
+from typing import Final, Literal
+
+# Runtime constant
+MAX_RETRIES: Final[int] = 3
+API_VERSION: Final[Literal["v1"]] = "v1"
+
+class APIClient:
+    # Class-level constant
+    BASE_URL: Final[str] = "https://api.example.com"
+    
+    def __init__(self) -> None:
+        # Instance constant (can't be reassigned)
+        self.session_id: Final[str] = generate_session_id()
+```
+
+These advanced typing techniques work together to create a robust, maintainable type system that catches errors at development time while providing excellent IDE support and documentation.
+
 ### Error Handling Philosophy
 
 **IMPORTANT**: Avoid defensive programming patterns that silently ignore or mask errors. This project follows a "fail-fast" approach:
@@ -634,6 +926,7 @@ The project includes comprehensive ADRs documenting design decisions:
 - **[CLAUDE-003](docs/adr/CLAUDE-003-file-search-annotation-display.md)**: File search citation display architecture
 - **[CLAUDE-004](docs/adr/CLAUDE-004-snapshot-based-streaming-design.md)**: Snapshot-based streaming approach
 - **[CLAUDE-009](docs/adr/CLAUDE-009-code-analyzer-tool.md)**: Code Analyzer tool design and integration (DRAFT)
+- **[CLAUDE-010](docs/adr/CLAUDE-010-response-type-guards.md)**: TypeGuard functions for Response types
 
 ## Contributing
 
