@@ -1,7 +1,7 @@
-import aiohttp
 from loguru import logger
 
 from .config import BASE_URL
+from .http_client import async_make_request
 
 
 async def async_create_vectorstore(
@@ -44,17 +44,23 @@ async def async_create_vectorstore(
         payload["metadata"] = metadata
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Vector store creation failed with status {response.status}: {error_text}")
-                    return None
-
-                result = await response.json()
-                return result
+        status_code, response_data = await async_make_request("POST", url, json_payload=payload)
+        if status_code == 200 and isinstance(response_data, dict):
+            return response_data
+        elif status_code == 200 and isinstance(response_data, str):
+            logger.error(f"Vector store creation failed: Server returned 200 but response was not valid JSON. Name: {name}, Custom ID: {custom_id}. Content: {response_data}")
+            return None
+        # Non-200 errors are raised by async_make_request.
+        # If we reach here for other statuses, it's an issue with async_make_request or unhandled case.
+        # However, the design is that async_make_request handles raising exceptions for errors.
+        # So, this path should ideally not be hit for error statuses.
+        # If it's a non-200 status that async_make_request didn't raise for, log it.
+        elif status_code != 200: # Should have been raised by http_client
+             logger.error(f"Vector store creation for {name} returned unhandled status {status_code}. Data: {response_data}")
+             return None
+        return None # Fallback
     except Exception as e:
-        logger.error(f"Error creating vector store: {str(e)}")
+        logger.error(f"Error creating vector store '{name}': {str(e)}")
         return None
 
 
@@ -88,17 +94,18 @@ async def async_query_vectorstore(
         payload["filters"] = filters
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Vector store query failed with status {response.status}: {error_text}")
-                    return None
-
-                result = await response.json()
-                return result
+        status_code, response_data = await async_make_request("POST", url, json_payload=payload)
+        if status_code == 200 and isinstance(response_data, dict):
+            return response_data
+        elif status_code == 200 and isinstance(response_data, str):
+            logger.error(f"Vector store query failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}")
+            return None
+        elif status_code != 200: # Should have been raised by http_client
+             logger.error(f"Vector store query for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}")
+             return None
+        return None # Fallback
     except Exception as e:
-        logger.error(f"Error querying vector store: {str(e)}")
+        logger.error(f"Error querying vector store {vector_store_id}: {str(e)}")
         return None
 
 
@@ -115,20 +122,21 @@ async def async_get_vectorstore(vector_store_id: str) -> dict[str, str | int | f
     url = f"{BASE_URL}/v1/vector_stores/{vector_store_id}"
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 404:
-                    logger.warning(f"Vector store with ID {vector_store_id} not found")
-                    return None
-                elif response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Get vector store failed with status {response.status}: {error_text}")
-                    return None
-
-                result = await response.json()
-                return result
+        status_code, response_data = await async_make_request("GET", url)
+        if status_code == 200 and isinstance(response_data, dict):
+            return response_data
+        elif status_code == 404:
+            # Logging handled by async_make_request
+            return None
+        elif status_code == 200 and isinstance(response_data, str):
+            logger.error(f"Get vector store failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}")
+            return None
+        elif status_code != 200: # Should have been raised by http_client
+             logger.error(f"Get vector store for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}")
+             return None
+        return None # Fallback
     except Exception as e:
-        logger.error(f"Error getting vector store: {str(e)}")
+        logger.error(f"Error getting vector store {vector_store_id}: {str(e)}")
         return None
 
 
@@ -145,20 +153,21 @@ async def async_delete_vectorstore(vector_store_id: str) -> bool:
     url = f"{BASE_URL}/v1/vector_stores/{vector_store_id}"
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.delete(url) as response:
-                if response.status == 404:
-                    logger.warning(f"Vector store with ID {vector_store_id} not found")
-                    return False
-                elif response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Delete vector store failed with status {response.status}: {error_text}")
-                    return False
-
-                result = await response.json()
-                return result.get("deleted", False)
+        status_code, response_data = await async_make_request("DELETE", url)
+        if status_code == 200 and isinstance(response_data, dict):
+            return response_data.get("deleted", False)
+        elif status_code == 404:
+            # Logging handled by async_make_request
+            return False
+        elif status_code == 200 and isinstance(response_data, str): # Should be JSON
+            logger.error(f"Delete vector store failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}")
+            return False
+        elif status_code != 200: # Should have been raised by http_client
+             logger.error(f"Delete vector store for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}")
+             return False
+        return False # Fallback
     except Exception as e:
-        logger.error(f"Error deleting vector store: {str(e)}")
+        logger.error(f"Error deleting vector store {vector_store_id}: {str(e)}")
         return False
 
 
@@ -180,17 +189,18 @@ async def async_join_files_to_vectorstore(
     payload = {"join_file_ids": file_ids}
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Join files to vector store failed with status {response.status}: {error_text}")
-                    return None
-
-                result = await response.json()
-                return result
+        status_code, response_data = await async_make_request("POST", url, json_payload=payload)
+        if status_code == 200 and isinstance(response_data, dict):
+            return response_data
+        elif status_code == 200 and isinstance(response_data, str):
+            logger.error(f"Join files to vector store failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}")
+            return None
+        elif status_code != 200: # Should have been raised by http_client
+             logger.error(f"Join files to vector store for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}")
+             return None
+        return None # Fallback
     except Exception as e:
-        logger.error(f"Error joining files to vector store: {str(e)}")
+        logger.error(f"Error joining files to vector store {vector_store_id}: {str(e)}")
         return None
 
 
@@ -214,18 +224,19 @@ async def async_get_vectorstore_summary(
     params = {"model": model, "max_tokens": max_tokens}
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params) as response:
-                if response.status == 404:
-                    logger.warning(f"Vector store with ID {vector_store_id} not found")
-                    return None
-                elif response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Get vector store summary failed with status {response.status}: {error_text}")
-                    return None
-
-                result = await response.json()
-                return result
+        status_code, response_data = await async_make_request("GET", url, params=params)
+        if status_code == 200 and isinstance(response_data, dict):
+            return response_data
+        elif status_code == 404:
+            # Logging handled by async_make_request
+            return None
+        elif status_code == 200 and isinstance(response_data, str):
+            logger.error(f"Get vector store summary failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}")
+            return None
+        elif status_code != 200: # Should have been raised by http_client
+             logger.error(f"Get vector store summary for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}")
+             return None
+        return None # Fallback
     except Exception as e:
-        logger.error(f"Error getting vector store summary: {str(e)}")
+        logger.error(f"Error getting vector store summary for {vector_store_id}: {str(e)}")
         return None

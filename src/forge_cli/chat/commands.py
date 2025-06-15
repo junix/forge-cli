@@ -311,71 +311,47 @@ class NewCommand(ChatCommand):
         return True
 
 
-class EnableWebSearchCommand(ChatCommand):
-    """Enable web search tool."""
+class ToggleToolCommand(ChatCommand):
+    """Generic command to enable or disable a tool."""
 
-    name = "enable-web-search"
-    description = "Enable web search tool"
-    aliases = ["ews"]
+    def __init__(
+        self,
+        tool_name: str,
+        action: str, # "enable" or "disable"
+        command_name: str,
+        description: str,
+        aliases: list[str],
+    ):
+        self.tool_name = tool_name
+        self.action = action
+        self.name = command_name # From ChatCommand
+        self.description = description # From ChatCommand
+        self.aliases = aliases # From ChatCommand
+
+        # For more descriptive messages, create a display-friendly name
+        self.tool_display_name = tool_name.replace("-", " ").capitalize()
+
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Enable web search."""
-        if "web-search" not in controller.config.enabled_tools:
-            controller.config.enabled_tools.append("web-search")
-            controller.display.show_status("✅ Web search enabled")
+        """Enable or disable the specified tool."""
+        enabled_tools = controller.config.enabled_tools
+
+        if self.action == "enable":
+            if self.tool_name not in enabled_tools:
+                enabled_tools.append(self.tool_name)
+                controller.display.show_status(f"✅ {self.tool_display_name} enabled")
+            else:
+                controller.display.show_status(f"{self.tool_display_name} is already enabled")
+        elif self.action == "disable":
+            if self.tool_name in enabled_tools:
+                enabled_tools.remove(self.tool_name)
+                controller.display.show_status(f"❌ {self.tool_display_name} disabled")
+            else:
+                controller.display.show_status(f"{self.tool_display_name} is already disabled")
         else:
-            controller.display.show_status("Web search is already enabled")
-        return True
+            # Should not happen if constructor is used correctly
+            controller.display.show_error(f"Invalid action '{self.action}' for {self.tool_name}")
 
-
-class DisableWebSearchCommand(ChatCommand):
-    """Disable web search tool."""
-
-    name = "disable-web-search"
-    description = "Disable web search tool"
-    aliases = ["dws"]
-
-    async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Disable web search."""
-        if "web-search" in controller.config.enabled_tools:
-            controller.config.enabled_tools.remove("web-search")
-            controller.display.show_status("❌ Web search disabled")
-        else:
-            controller.display.show_status("Web search is already disabled")
-        return True
-
-
-class EnableFileSearchCommand(ChatCommand):
-    """Enable file search tool."""
-
-    name = "enable-file-search"
-    description = "Enable file search tool"
-    aliases = ["efs"]
-
-    async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Enable file search."""
-        if "file-search" not in controller.config.enabled_tools:
-            controller.config.enabled_tools.append("file-search")
-            controller.display.show_status("✅ File search enabled")
-        else:
-            controller.display.show_status("File search is already enabled")
-        return True
-
-
-class DisableFileSearchCommand(ChatCommand):
-    """Disable file search tool."""
-
-    name = "disable-file-search"
-    description = "Disable file search tool"
-    aliases = ["dfs"]
-
-    async def execute(self, args: str, controller: "ChatController") -> bool:
-        """Disable file search."""
-        if "file-search" in controller.config.enabled_tools:
-            controller.config.enabled_tools.remove("file-search")
-            controller.display.show_status("❌ File search disabled")
-        else:
-            controller.display.show_status("File search is already disabled")
         return True
 
 
@@ -401,10 +377,36 @@ class CommandRegistry:
             ModelCommand(),
             ToolsCommand(),
             NewCommand(),
-            EnableWebSearchCommand(),
-            DisableWebSearchCommand(),
-            EnableFileSearchCommand(),
-            DisableFileSearchCommand(),
+            # Web Search Toggle Commands
+            ToggleToolCommand(
+                tool_name="web-search",
+                action="enable",
+                command_name="enable-web-search",
+                description="Enable web search tool",
+                aliases=["ews"],
+            ),
+            ToggleToolCommand(
+                tool_name="web-search",
+                action="disable",
+                command_name="disable-web-search",
+                description="Disable web search tool",
+                aliases=["dws"],
+            ),
+            # File Search Toggle Commands
+            ToggleToolCommand(
+                tool_name="file-search",
+                action="enable",
+                command_name="enable-file-search",
+                description="Enable file search tool",
+                aliases=["efs"],
+            ),
+            ToggleToolCommand(
+                tool_name="file-search",
+                action="disable",
+                command_name="disable-file-search",
+                description="Disable file search tool",
+                aliases=["dfs"],
+            ),
         ]
 
         for cmd in default_commands:
