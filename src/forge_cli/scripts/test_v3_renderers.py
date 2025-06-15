@@ -15,6 +15,19 @@ from forge_cli.display.v3.base import Display
 from forge_cli.display.v3.renderers.json import JsonRenderer
 from forge_cli.display.v3.renderers.rich import RichRenderer
 
+# Use string literals for event types instead of enum (simpler and more direct)
+class EventType:
+    """Simple event type constants for testing."""
+    STREAM_START = "stream_start"
+    STREAM_END = "stream_end"
+    REASONING_START = "reasoning_start"
+    REASONING_DELTA = "reasoning_delta"
+    REASONING_COMPLETE = "reasoning_complete"
+    TOOL_START = "tool_start"
+    TOOL_COMPLETE = "tool_complete"
+    TEXT_DELTA = "text_delta"
+    CITATION_FOUND = "citation_found"
+
 
 async def test_json_renderer():
     """Test JSON renderer output."""
@@ -27,28 +40,28 @@ async def test_json_renderer():
 
     # Simulate a complete stream
     display.handle_event(
-        EventType.STREAM_START.value,
+        EventType.STREAM_START,
         {"query": "What is machine learning?", "model": "qwen-max-latest", "effort": "low", "temperature": 0.7},
     )
 
-    display.handle_event(EventType.REASONING_START.value, {})
-    display.handle_event(EventType.REASONING_DELTA.value, {"text": "The user is asking about machine learning..."})
-    display.handle_event(EventType.REASONING_COMPLETE.value, {})
+    display.handle_event(EventType.REASONING_START, {})
+    display.handle_event(EventType.REASONING_DELTA, {"text": "The user is asking about machine learning..."})
+    display.handle_event(EventType.REASONING_COMPLETE, {})
 
     display.handle_event(
-        EventType.TOOL_START.value,
+        EventType.TOOL_START,
         {"tool_id": "search_001", "tool_type": "web_search", "parameters": {"query": "machine learning definition"}},
     )
 
-    display.handle_event(EventType.TOOL_COMPLETE.value, {"tool_id": "search_001", "results_count": 3})
+    display.handle_event(EventType.TOOL_COMPLETE, {"tool_id": "search_001", "results_count": 3})
 
     display.handle_event(
-        EventType.TEXT_DELTA.value, {"text": "Machine learning is a subset of artificial intelligence "}
+        EventType.TEXT_DELTA, {"text": "Machine learning is a subset of artificial intelligence "}
     )
-    display.handle_event(EventType.TEXT_DELTA.value, {"text": "that enables systems to learn from data."})
+    display.handle_event(EventType.TEXT_DELTA, {"text": "that enables systems to learn from data."})
 
     display.handle_event(
-        EventType.CITATION_FOUND.value,
+        EventType.CITATION_FOUND,
         {
             "citation_num": 1,
             "citation_text": "Machine learning is a method of data analysis",
@@ -57,7 +70,7 @@ async def test_json_renderer():
         },
     )
 
-    display.handle_event(EventType.STREAM_END.value, {"usage": {"total_tokens": 150}})
+    display.handle_event(EventType.STREAM_END, {"usage": {"total_tokens": 150}})
 
     display.complete()
 
@@ -110,36 +123,36 @@ async def test_rich_renderer():
 
         # Simulate a stream with various events
         display.handle_event(
-            EventType.STREAM_START.value,
+            EventType.STREAM_START,
             {"query": "Explain quantum computing", "model": "qwen-max-latest", "effort": "high"},
         )
 
         # Add some delay for visual effect
         await asyncio.sleep(0.5)
 
-        display.handle_event(EventType.REASONING_START.value, {})
+        display.handle_event(EventType.REASONING_START, {})
         display.handle_event(
-            EventType.REASONING_DELTA.value, {"text": "Quantum computing is a complex topic that involves..."}
+            EventType.REASONING_DELTA, {"text": "Quantum computing is a complex topic that involves..."}
         )
 
         await asyncio.sleep(0.5)
 
-        display.handle_event(EventType.TOOL_START.value, {"tool_id": "file_001", "tool_type": "file_search"})
+        display.handle_event(EventType.TOOL_START, {"tool_id": "file_001", "tool_type": "file_search"})
 
         await asyncio.sleep(1)
 
-        display.handle_event(EventType.TOOL_COMPLETE.value, {"tool_id": "file_001", "results_count": 5})
+        display.handle_event(EventType.TOOL_COMPLETE, {"tool_id": "file_001", "results_count": 5})
 
         display.handle_event(
-            EventType.TEXT_DELTA.value, {"text": "Quantum computing uses quantum mechanical phenomena "}
+            EventType.TEXT_DELTA, {"text": "Quantum computing uses quantum mechanical phenomena "}
         )
         await asyncio.sleep(0.3)
-        display.handle_event(EventType.TEXT_DELTA.value, {"text": "like superposition and entanglement "})
+        display.handle_event(EventType.TEXT_DELTA, {"text": "like superposition and entanglement "})
         await asyncio.sleep(0.3)
-        display.handle_event(EventType.TEXT_DELTA.value, {"text": "to perform computations."})
+        display.handle_event(EventType.TEXT_DELTA, {"text": "to perform computations."})
 
         display.handle_event(
-            EventType.CITATION_FOUND.value,
+            EventType.CITATION_FOUND,
             {
                 "citation_num": 1,
                 "citation_text": "Quantum bits can exist in multiple states",
