@@ -169,13 +169,13 @@ class TypedStreamHandler:
         self.processor_registry = default_typed_registry
 
     async def handle_stream(
-        self, stream: AsyncIterator[tuple[str, dict[str, Any] | Response | None]], initial_request: str
+        self, stream: AsyncIterator[tuple[str, Response | None]], initial_request: str
     ) -> StreamState:
         """
-        Handle streaming events from either dict or typed API.
+        Handle streaming events from typed API.
 
         Args:
-            stream: Iterator yielding (event_type, data) where data can be dict or Response
+            stream: Iterator yielding (event_type, Response) tuples
             initial_request: The initial query/request text
 
         Returns:
@@ -193,181 +193,37 @@ class TypedStreamHandler:
             state.event_count += 1
 
             if self.debug:
-                print(f"[{state.event_count}] {event_type}")
+                print(f"[{state.event_count}] {event_type}: {type(event_data)}")
 
-            # Route events based on type
-            if event_type == "response.created":
-                self._handle_response_created(event_data, state)
+            # Handle snapshot events (events with Response objects)
+            if event_data is not None and isinstance(event_data, Response):
+                # Update state from Response
+                state.update_from_snapshot(event_data)
+                
+                # Render the complete Response snapshot using v3 display
+                self.display.handle_response(event_data)
 
-            elif event_type == "response.output_item.added":
-                # Update from snapshot for snapshot-based streaming
-                if event_data:
-                    state.update_from_snapshot(event_data)
-                    # In v3, we render the complete Response snapshot
-                    if isinstance(event_data, Response):
-                        self.display.handle_response(event_data)
-
-            elif event_type == "response.output_text.delta":
-                # Update from snapshot and render complete response
-                if event_data:
-                    state.update_from_snapshot(event_data)
-                    # In v3, we render the complete Response snapshot
-                    if isinstance(event_data, Response):
-                        self.display.handle_response(event_data)
-
-            elif event_type.startswith("response.reasoning_summary_text."):
-                # Handle reasoning events - in v3, just render the complete response
-                if event_data:
-                    state.update_from_snapshot(event_data)
-                    if isinstance(event_data, Response):
-                        self.display.handle_response(event_data)
-
-            elif "searching" in event_type or "in_progress" in event_type:
-                self._handle_tool_search(event_type, event_data, state, current_time - last_event_time)
-
-            elif "completed" in event_type and "call" in event_type:
-                self._handle_tool_complete(event_type, event_data, state, current_time - start_time)
-
-            elif event_type == "response.completed":
-                if event_data:
-                    state.update_from_snapshot(event_data)
-                    # Final response snapshot
-                    if isinstance(event_data, Response):
-                        self.display.handle_response(event_data)
-
+            # Handle lifecycle events
             elif event_type == "done":
+                # Stream completed
+                self.display.complete()
                 break
+
+            elif event_type == "error":
+                # Stream error
+                error_msg = "Stream error occurred"
+                if event_data and hasattr(event_data, 'message'):
+                    error_msg = event_data.message
+                self.display.show_error(error_msg)
+                break
+
+            # Debug logging for non-snapshot events
+            if self.debug and event_data is None:
+                print(f"  └─ Event {event_type} (no data)")
 
             last_event_time = current_time
 
-        # Final processing
-        self.display.complete()
-
         return state
 
-    def _handle_response_created(self, data: dict[str, Any] | Response | None, state: StreamState) -> None:
-        """Handle response created event."""
-        if isinstance(data, Response):
-            state.response_id = data.id
-            state.model = data.model
-        elif isinstance(data, dict):
-            state.response_id = data.get("id")
-            state.model = data.get("model")
-
-    def _extract_text(self, data: Response | None) -> str:
-        """Extract text from typed Response object."""
-        if data is None:
-            return ""
-        return data.output_text or ""
-
-    def _extract_reasoning_text(self, data: dict[str, Any] | Response | None) -> str:
-        """Extract reasoning text from event data."""
-        if isinstance(data, Response):
-            # Extract from typed Response object
-            for item in data.output:
-                if hasattr(item, "type") and item.type == "reasoning":
-                    if hasattr(item, "summary") and item.summary:
-                        # Concatenate all summary texts
-                        texts = []
-                        for summary in item.summary:
-                            if hasattr(summary, "text") and summary.text:
-                                texts.append(summary.text)
-                        return " ".join(texts)
-        elif isinstance(data, dict):
-            # For reasoning delta events, the text might be directly in the data
-            text = data.get("text", "")
-            if text:
-                return text
-
-            # Or in a reasoning structure
-            reasoning = data.get("reasoning", {})
-            if isinstance(reasoning, dict):
-                # Could be in summary
-                summary = reasoning.get("summary", "")
-                if summary:
-                    return summary
-                # Or in summary_text
-                summary_text = reasoning.get("summary_text", "")
-                if summary_text:
-                    return summary_text
-
-            # Or check in output items for reasoning
-            output = data.get("output", [])
-            for item in output:
-                if isinstance(item, dict) and item.get("type") == "reasoning":
-                    # Extract from summary items
-                    for summary in item.get("summary", []):
-                        if isinstance(summary, dict) and summary.get("type") in ["summary_text", "text"]:
-                            return summary.get("text", "")
-        return ""
-
-    # _process_output_items removed - v3 handles complete Response snapshots
-
-    def _handle_tool_search(
-        self, event_type: str, data: dict[str, Any] | Response | None, state: StreamState, query_time: float
-    ) -> None:
-        """Handle tool search events."""
-        # Extract tool type
-        tool_type = event_type.split(".")[1].replace("_call", "")
-
-        # Create or update tool state
-        if tool_type not in state.tool_states:
-            state.tool_states[tool_type] = ToolState(tool_type=tool_type)
-
-        tool_state = state.tool_states[tool_type]
-        tool_state.status = "searching"
-        tool_state.query_time = query_time
-
-        # Extract queries
-        if isinstance(data, Response):
-            # Extract from typed Response
-            for item in data.output:
-                if hasattr(item, "type") and tool_type in item.type:
-                    if hasattr(item, "queries"):
-                        tool_state.queries = item.queries
-                        tool_state.query = ", ".join(item.queries)
-        elif isinstance(data, dict):
-            # Extract from dict
-            queries = data.get("queries", [])
-            if queries:
-                tool_state.queries = queries
-                tool_state.query = ", ".join(queries)
-
-        # In v3, we rely on the response snapshot to show tool status
-        # The rich renderer will extract tool information from the response object
-
-    def _handle_tool_complete(
-        self, event_type: str, data: dict[str, Any] | Response | None, state: StreamState, retrieval_time: float
-    ) -> None:
-        """Handle tool completion events."""
-        # Extract tool type
-        tool_type = event_type.split(".")[1].replace("_call", "")
-
-        if tool_type in state.tool_states:
-            tool_state = state.tool_states[tool_type]
-            tool_state.status = "completed"
-            tool_state.retrieval_time = retrieval_time
-
-            # Extract results count
-            if isinstance(data, Response):
-                # Count from typed Response
-                results_count = 0
-                for item in data.output:
-                    if hasattr(item, "type") and tool_type in item.type:
-                        if hasattr(item, "results") and item.results:
-                            results_count = len(item.results)
-                tool_state.results_count = results_count
-            elif isinstance(data, dict):
-                # Count from dict
-                output = data.get("output", [])
-                for item in output:
-                    if isinstance(item, dict) and tool_type in item.get("type", ""):
-                        results = item.get("results", [])
-                        tool_state.results_count = len(results)
-
-            # In v3, tool status is shown through the complete Response snapshot
-            pass
-
-
-# Export the typed handler as the default
-StreamHandler = TypedStreamHandler
+    # Note: Most processing logic has been moved to v3 renderers
+    # The TypedStreamHandler now focuses purely on routing Response objects to displays

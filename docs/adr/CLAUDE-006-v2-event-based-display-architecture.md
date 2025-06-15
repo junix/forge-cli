@@ -2,11 +2,13 @@
 
 ## Status
 
-Accepted - **Implemented**
+~~Accepted~~ - **Superseded by V3 Architecture (ADR-007)**
 
 ## Date
 
-2025-06-14
+2025-06-14 *(Superseded: 2025-06-15)*
+
+> **⚠️ This ADR is superseded by ADR-008 (V3 Response Snapshot Display Architecture).** The V2 system described here has been replaced with a dramatically simpler approach that uses single `render_response(Response)` method instead of complex event handling.
 
 ## Context
 

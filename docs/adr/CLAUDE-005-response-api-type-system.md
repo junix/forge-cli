@@ -1,9 +1,10 @@
 # ADR-005: Response API Type System Architecture
 
-**Status:** Active  
-**Date:** 2025-06-14  
+**Status:** Active *(Updated for Typed-Only Architecture)*  
+**Date:** 2025-06-14 *(Updated: 2025-06-15)*  
 **Deciders:** Development Team  
-**Technical Story:** Comprehensive type system for Knowledge Forge Response API
+**Technical Story:** Comprehensive type system for Knowledge Forge Response API  
+**Updated By:** ADR-007 (Typed-Only Architecture Migration)
 
 ## Context
 
@@ -15,7 +16,9 @@ The Knowledge Forge Response API requires a sophisticated type system to handle:
 - Real-time event-driven updates for UI components
 - Type safety and validation across complex data structures
 
-The system must support both synchronous and streaming modes while maintaining backward compatibility with existing chat completion APIs.
+The system must support both synchronous and streaming modes while maintaining OpenAI API compatibility.
+
+> **🔄 Update (2025-06-15)**: Following ADR-007, the system now uses **typed-only architecture**. All dict-based legacy APIs and adapter classes have been removed for improved type safety and performance.
 
 ## Decision
 
