@@ -7,12 +7,12 @@ and other styling constants used across the v3 display renderers.
 # Icons for different tools and components
 ICONS = {
     # Tool icons (matching existing codebase usage)
-    "file_search": " 󱁴 ",         # matches rich.py:302
-    "web_search": " 󰖟 ",          # matches rich.py:303
-    "code_analyzer": "🔧",       # matches rich.py:307
-    "file_reader": " 󰑇 ",         # matches rich.py:305
-    "document_finder": "  ",     # matches rich.py:304
-    "code_interpreter": " 󱄕 ",    # matches rich.py:306
+    "file_search_call": " 󱁴 ",         # matches rich.py:302
+    "web_search_call": " 󰖟 ",          # matches rich.py:303
+    "code_analyzer_call": "🔧",       # matches rich.py:307
+    "file_reader_call": " 󰑇 ",         # matches rich.py:305
+    "document_finder_call": "  ",     # matches rich.py:304
+    "code_interpreter_call": " 󱄕 ",    # matches rich.py:306
     "function_call": "  ",       # matches rich.py:307
     
     # Status icons (matching existing usage)
@@ -57,3 +57,13 @@ STATUS_ICONS = {
     "interpreting": " 󱄕 ",
     "default": "  ",
 }
+
+
+def pack_queries(*queries) -> str:
+    if len(queries) == 0:
+        return ""
+    if len(queries) == 1:
+        return f"  {queries[0]}"
+    if len(queries) == 2:
+        return f"   {queries[0]}  {queries[1]}"
+    return f"   {queries[0]}  {queries[1]}  {queries[2]} • {len(queries) - 3} more"

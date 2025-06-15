@@ -11,6 +11,7 @@ from rich.text import Text
 from forge_cli.response._types.response import Response
 
 from ..base import BaseRenderer
+from ..style import ICONS, STATUS_ICONS, pack_queries
 
 
 class PlaintextDisplayConfig(BaseModel):
@@ -221,7 +222,7 @@ class PlaintextRenderer(BaseRenderer):
     def _add_status_header(self, text: Text, response: Response) -> None:
         """Add status header information."""
         # Main title
-        text.append("🔥 Knowledge Forge Response", style=self._styles["header"])
+        text.append(f"{ICONS['processing']}Knowledge Forge Response", style=self._styles["header"])
         text.append("\n")
 
         # Response details
@@ -272,22 +273,25 @@ class PlaintextRenderer(BaseRenderer):
             if hasattr(tool_item, "query") and tool_item.query:
                 parts.append(f" {query}")
             elif hasattr(tool_item, "queries") and tool_item.queries:
-                query = " & ".join(f" {query}" for query in tool_item.queries)
-                parts.append(f" {query}")
+                # Use pack_queries for beautiful display
+                shortened_queries = [q[:30] + "..." if len(q) > 30 else q for q in tool_item.queries]
+                packed = pack_queries(*[f'"{{q}}"' for q in shortened_queries])
+                parts.append(packed)
             if hasattr(tool_item, "results") and tool_item.results:
                 parts.append(f"found {len(tool_item.results)} results")
 
-            return " • ".join(parts) if parts else ""
+            return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
         elif tool_type == "web_search_call":
             # Show search query and results
+            parts = []
             if hasattr(tool_item, "queries") and tool_item.queries:
                 query = " ".join(" {query}" for query in tool_item.queries)
-                parts.append(f"󰜏 {query}")
+                parts.append(packed)
             # if hasattr(tool_item, "results") and tool_item.results:
             #     parts.append(f"found {len(tool_item.results)} results")
 
-            return " • ".join(parts) if parts else ""
+            return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
         elif tool_type == "document_finder_call":
             # Show queries and document count
@@ -295,10 +299,10 @@ class PlaintextRenderer(BaseRenderer):
             if hasattr(tool_item, "queries") and tool_item.queries:
                 # Show all queries
                 queries_text = " ".join(f'"{q}"' for q in tool_item.queries)
-                parts.append(f"󰈞 {queries_text}")
+                parts.append(packed)
             elif hasattr(tool_item, "query") and tool_item.query:
                 # Fallback to single query if present
-                parts.append(f'󰈞 "{tool_item.query}"')
+                parts.append(f'{ICONS["query"]}"{tool_item.query}"')
 
             # # Show document count
             # if hasattr(tool_item, "count") and tool_item.count is not None:
@@ -307,16 +311,16 @@ class PlaintextRenderer(BaseRenderer):
             #     doc_count = len(tool_item.results)
             #     parts.append(f"found {doc_count} document{'s' if doc_count != 1 else ''}")
 
-            return " • ".join(parts) if parts else ""
+            return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
         elif tool_type == "file_reader_call":
             # Show file name and status
             parts = []
             if hasattr(tool_item, "file_name") and tool_item.file_name:
-                parts.append(f"󰑇 {tool_item.file_name}")
+                parts.append(f'{ICONS["file_reader"]}{tool_item.file_name}')
             elif hasattr(tool_item, "file_id") and tool_item.file_id:
-                parts.append(f"󰻾 {tool_item.file_id}")
-            return " • ".join(parts) if parts else ""
+                parts.append(f'{ICONS["file_reader"]}{tool_item.file_id}')
+            return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
         else:
             return ""
@@ -434,12 +438,12 @@ class PlaintextRenderer(BaseRenderer):
         """Add a single tool execution item with colorful display."""
         # Tool icon
         tool_icon = self._get_tool_icon(tool_item.type)
-        text.append(f"{tool_icon} ", style=self._styles["tool_icon"])
+        text.append(f"{tool_icon}", style=self._styles["tool_icon"])
 
         # Tool name with vibrant color
         tool_name = tool_item.type.replace("_call", "").replace("_", " ").title()
         text.append(f"{tool_name}", style=self._styles["tool_name"])
-        text.append(" • ", style=self._styles["separator"])
+        text.append(f" {ICONS['bullet']} ", style=self._styles["separator"])
 
         # Status with appropriate color and icon using the pattern
         icon, style = self.status_icon(tool_item.status)
@@ -449,7 +453,7 @@ class PlaintextRenderer(BaseRenderer):
         # Tool-specific details with cyan color
         details = self._get_tool_details(tool_item)
         if details:
-            text.append(" • ", style=self._styles["separator"])
+            text.append(f" {ICONS['bullet']} ", style=self._styles["separator"])
             text.append(details, style=self._styles["tool_details"])
 
         text.append("\n\n")
@@ -525,9 +529,9 @@ class PlaintextRenderer(BaseRenderer):
 
         text.append("# ", style=self._styles["info"])
         text.append(f"{self._render_count}", style=self._styles["warning"])
-        text.append(" ⇓ ", style=self._styles["usage_label"])
+        text.append(f" {ICONS['input_tokens']}", style=self._styles["usage_label"])
         text.append(f"{usage.input_tokens or 0}", style=self._styles["usage"])
-        text.append(" ⇑ ", style=self._styles["usage_label"])
+        text.append(f" {ICONS['output_tokens']}", style=self._styles["usage_label"])
         text.append(f"{usage.output_tokens or 0}", style=self._styles["usage"])
         text.append("\n")
 
@@ -558,23 +562,11 @@ class PlaintextRenderer(BaseRenderer):
 
     def _get_status_icon(self, status: str) -> str:
         """Get icon for status."""
-        return {
-            "completed": "✅",
-            "failed": "❌",
-            "in_progress": "⏳",
-            "incomplete": "⚠️",
-        }.get(status, "ℹ️")
+        return STATUS_ICONS.get(status, STATUS_ICONS["default"])
 
     def _get_tool_icon(self, tool_type: str) -> str:
         """Get icon for tool type."""
-        return {
-            "file_search_call": "📄",
-            "web_search_call": "🌐",
-            "document_finder_call": "🔍",
-            "file_reader_call": "📖",
-            "code_interpreter_call": "💻",
-            "function_call": "🔧",
-        }.get(tool_type, "🛠️")
+        return ICONS.get(tool_type, ICONS["processing"])
 
     def _get_tool_status_style(self, status: str) -> str:
         """Get style for tool status."""

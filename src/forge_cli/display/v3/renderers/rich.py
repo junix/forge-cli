@@ -13,6 +13,7 @@ from rich.text import Text
 from forge_cli.response._types.response import Response
 
 from ..base import BaseRenderer
+from ..style import ICONS, STATUS_ICONS, pack_queries
 
 
 class RichDisplayConfig(BaseModel):
@@ -158,16 +159,19 @@ class RichRenderer(BaseRenderer):
                 # Get tool-specific icon and format the tool call in a single beautiful line
                 tool_icon = self._get_tool_icon(item.type)
                 tool_name = item.type.replace("_call", "").replace("_", " ").title()
+                
+                # Get status icon
+                status_icon = STATUS_ICONS.get(item.status, STATUS_ICONS["default"])
 
                 # Create concise result summary based on tool type
                 result_summary = self._get_tool_result_summary(item)
 
-                # Format: Icon + Bold Name → Status • Result
-                # Example: 🌐 **Web Search** → _completed_ • "weather today" found 5 results
-                tool_line = f"{tool_icon} **{tool_name}** → _{item.status}_"
+                # Format: Tool Icon + Bold Name + Status Icon + Status + Result
+                # Example: 󱁴 **File Search** ✓ _completed_ → "query" found 5 results
+                tool_line = f"{tool_icon}**{tool_name}** {status_icon}_{item.status}_"
 
                 if result_summary:
-                    tool_line += f" • {result_summary}"
+                    tool_line += f" {ICONS['arrow']} {result_summary}"
 
                 md_parts.append(tool_line)
             elif item.type == "reasoning":
@@ -178,7 +182,9 @@ class RichRenderer(BaseRenderer):
                     quoted_lines: list[str] = []
                     for summary in item.summary:
                         if hasattr(summary, "text") and summary.text:
-                            for line in summary.text.strip().splitlines():
+                            # summary = f"{ICONS['thinking']} thinking\n\n" + summary.text.strip()
+                            summary = summary.text.strip()
+                            for line in summary.splitlines():
                                 # Prefix each line with '> '. If the line is empty we
                                 # still add a lone '>' to preserve paragraph spacing
                                 # inside the same quote block.
@@ -200,17 +206,17 @@ class RichRenderer(BaseRenderer):
                     # Note: AnnotationFileCitation uses 'index' not 'page_number'
                     page = f" p.{citation.index}" if citation.index is not None else ""
                     quote = f' — "{citation.snippet.strip()}"' if citation.snippet else ""
-                    ref_lines.append(f"{idx}. {source}{page}{quote}")
+                    ref_lines.append(f"{ICONS['bullet']}[{idx}] {source}{page}{quote}")
                 elif citation.type == "url_citation":
                     # Use typed properties from AnnotationURLCitation
                     url = citation.url
                     title = citation.title if hasattr(citation, "title") and citation.title else url
                     quote = f' — "{citation.snippet.strip()}"' if citation.snippet else ""
-                    ref_lines.append(f"{idx}. {title} ({url}){quote}")
+                    ref_lines.append(f"{ICONS['bullet']}[{idx}] {title} ({url}){quote}")
                 elif citation.type == "file_path":
                     # Use typed properties from AnnotationFilePath
                     source = citation.file_id or "unknown_file"
-                    ref_lines.append(f"{idx}. {source}")
+                    ref_lines.append(f"{ICONS['bullet']}[{idx}] {source}")
             md_parts.append("\n".join(ref_lines))
 
         # Create markdown content
@@ -226,9 +232,9 @@ class RichRenderer(BaseRenderer):
         if response.status:
             title_parts.append(response.status)
 
-        # Usage information with arrows
+        # Usage information with icons from style.py
         if response.usage:
-            usage_part = f"↑ {response.usage.input_tokens or 0} ↓ {response.usage.output_tokens or 0}"
+            usage_part = f"{ICONS['input_tokens']}{response.usage.input_tokens or 0} {ICONS['output_tokens']}{response.usage.output_tokens or 0}"
             title_parts.append(usage_part)
 
         panel_title = " / ".join(title_parts)
@@ -265,7 +271,7 @@ class RichRenderer(BaseRenderer):
             return None
 
         ann_text = Text()
-        ann_text.append("📎 References: ", style="dim")
+        ann_text.append(f"{ICONS['citation']}References: ", style="dim")
 
         for i, annotation in enumerate(annotations):
             if i > 0:
@@ -298,15 +304,7 @@ class RichRenderer(BaseRenderer):
 
     def _get_tool_icon(self, tool_type: str) -> str:
         """Get icon for tool type."""
-        icons = {
-            "file_search_call": "📄",
-            "web_search_call": "🌐",
-            "document_finder_call": "🔍",
-            "file_reader_call": "📖",
-            "code_interpreter_call": "💻",
-            "function_call": "🔧",
-        }
-        return icons.get(tool_type, "🛠️")
+        return ICONS.get(tool_type, ICONS["processing"])
 
     def _get_tool_status_style(self, status: str) -> str:
         """Get style for tool status."""
@@ -328,48 +326,36 @@ class RichRenderer(BaseRenderer):
             query_parts = []
             if hasattr(tool_item, "query") and tool_item.query:
                 query = tool_item.query[:40] + "..." if len(tool_item.query) > 40 else tool_item.query
-                query_parts.append(f'🔍 "{query}"')
+                query_parts.append(f'{ICONS["query"]}"{query}"')
             elif hasattr(tool_item, "queries") and tool_item.queries:
-                if len(tool_item.queries) == 1:
-                    query = (
-                        tool_item.queries[0][:40] + "..." if len(tool_item.queries[0]) > 40 else tool_item.queries[0]
-                    )
-                    query_parts.append(f'🔍 "{query}"')
-                else:
-                    # Show multiple queries with & separator
-                    queries_preview = []
-                    for q in tool_item.queries[:2]:  # Show first 2 queries
-                        shortened = q[:20] + "..." if len(q) > 20 else q
-                        queries_preview.append(f'"{shortened}"')
-                    query_text = " & ".join(queries_preview)
-                    if len(tool_item.queries) > 2:
-                        query_text += f" & {len(tool_item.queries) - 2} more"
-                    query_parts.append(f"🔍 {query_text}")
+                # Use pack_queries for beautiful multi-query display
+                shortened_queries = [q[:30] + "..." if len(q) > 30 else q for q in tool_item.queries]
+                packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
+                query_parts.append(packed)
 
             # Add results information
             if hasattr(tool_item, "results") and tool_item.results:
                 result_count = len(tool_item.results)
                 if hasattr(tool_item, "vector_store_ids") and tool_item.vector_store_ids:
                     stores = len(tool_item.vector_store_ids)
-                    query_parts.append(f"📊 {result_count} results from {stores} store{'s' if stores > 1 else ''}")
+                    query_parts.append(f"{ICONS['check']}{result_count} results from {stores} store{'s' if stores > 1 else ''}")
                 else:
-                    query_parts.append(f"📊 {result_count} result{'s' if result_count != 1 else ''}")
+                    query_parts.append(f"{ICONS['check']}{result_count} result{'s' if result_count != 1 else ''}")
 
             if query_parts:
-                return " → ".join(query_parts)
+                return f" {ICONS['arrow']} ".join(query_parts)
             elif tool_item.status == "searching":
-                return "🔍 initializing search..."
+                return f"{ICONS['searching']}initializing search..."
             return "preparing file search"
 
         elif tool_type == "web_search_call":
             # Show web search with globe icon
             parts = []
             if hasattr(tool_item, "queries") and tool_item.queries:
-                # Join multiple queries with +
-                query_text = " + ".join(f'"{q[:30]}..."' if len(q) > 30 else f'"{q}"' for q in tool_item.queries[:2])
-                if len(tool_item.queries) > 2:
-                    query_text += f" +{len(tool_item.queries) - 2} more"
-                parts.append(f"🌐 {query_text}")
+                # Use pack_queries for beautiful display
+                shortened_queries = [q[:30] + "..." if len(q) > 30 else q for q in tool_item.queries]
+                packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
+                parts.append(packed)
 
                 if hasattr(tool_item, "results") and tool_item.results:
                     result_count = len(tool_item.results)
@@ -387,24 +373,25 @@ class RichRenderer(BaseRenderer):
                                 pass
 
                     if domains:
-                        parts.append(f"📰 {result_count} results ({', '.join(domains[:2])}...)")
+                        parts.append(f"{ICONS['check']}{result_count} results ({', '.join(domains[:2])}...)")
                     else:
-                        parts.append(f"📰 {result_count} results")
+                        parts.append(f"{ICONS['check']}{result_count} results")
 
             if parts:
-                return " → ".join(parts)
-            return "🌐 initializing web search..."
+                return f" {ICONS['arrow']} ".join(parts)
+            return f"{ICONS['searching']}initializing web search..."
 
         elif tool_type == "document_finder_call":
             # Show document search with magnifying glass
             parts = []
             if hasattr(tool_item, "queries") and tool_item.queries:
-                # Show all queries joined
-                queries_text = " & ".join(f'"{q[:25]}..."' if len(q) > 25 else f'"{q}"' for q in tool_item.queries)
-                parts.append(f"📑 {queries_text}")
+                # Use pack_queries for consistent display
+                shortened_queries = [q[:25] + "..." if len(q) > 25 else q for q in tool_item.queries]
+                packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
+                parts.append(packed)
             elif hasattr(tool_item, "query") and tool_item.query:
                 query = tool_item.query[:40] + "..." if len(tool_item.query) > 40 else tool_item.query
-                parts.append(f'📑 "{query}"')
+                parts.append(f'{ICONS["query"]}"{query}"')
 
             if hasattr(tool_item, "results") and tool_item.results:
                 doc_count = len(tool_item.results)
@@ -418,13 +405,13 @@ class RichRenderer(BaseRenderer):
 
                 if doc_types:
                     types_str = ", ".join(list(doc_types)[:3])
-                    parts.append(f"📚 {doc_count} document{'s' if doc_count != 1 else ''} ({types_str})")
+                    parts.append(f"{ICONS['check']}{doc_count} document{'s' if doc_count != 1 else ''} ({types_str})")
                 else:
-                    parts.append(f"📚 {doc_count} document{'s' if doc_count != 1 else ''}")
+                    parts.append(f"{ICONS['check']}{doc_count} document{'s' if doc_count != 1 else ''}")
 
             if parts:
-                return " → ".join(parts)
-            return "📑 initializing document search..."
+                return f" {ICONS['arrow']} ".join(parts)
+            return f"{ICONS['searching']}initializing document search..."
 
         elif tool_type == "file_reader_call":
             # Show file reading with book icon and detailed info
@@ -436,9 +423,9 @@ class RichRenderer(BaseRenderer):
                 # Show file extension
                 ext = name.split(".")[-1].lower() if "." in name else "file"
                 name_short = name[:30] + "..." if len(name) > 30 else name
-                parts.append(f'📖 "{name_short}" [{ext.upper()}]')
+                parts.append(f'{ICONS["file_reader"]}"{name_short}" [{ext.upper()}]')
             elif hasattr(tool_item, "file_id") and tool_item.file_id:
-                parts.append(f"📖 file:{tool_item.file_id[:12]}...")
+                parts.append(f"{ICONS['file_reader']}file:{tool_item.file_id[:12]}...")
 
             # Content information
             if hasattr(tool_item, "content") and tool_item.content:
@@ -454,19 +441,19 @@ class RichRenderer(BaseRenderer):
                 # Show preview of content type
                 content_preview = tool_item.content[:100].strip()
                 if content_preview.startswith("{") or content_preview.startswith("["):
-                    parts.append(f"💾 loaded {size_str} (JSON)")
+                    parts.append(f"{ICONS['check']}loaded {size_str} (JSON)")
                 elif content_preview.startswith("<?xml"):
-                    parts.append(f"💾 loaded {size_str} (XML)")
+                    parts.append(f"{ICONS['check']}loaded {size_str} (XML)")
                 elif content_preview.startswith("<!DOCTYPE") or content_preview.startswith("<html"):
-                    parts.append(f"💾 loaded {size_str} (HTML)")
+                    parts.append(f"{ICONS['check']}loaded {size_str} (HTML)")
                 else:
-                    parts.append(f"💾 loaded {size_str}")
+                    parts.append(f"{ICONS['check']}loaded {size_str}")
             elif hasattr(tool_item, "results") and tool_item.results:
-                parts.append("✅ loaded successfully")
+                parts.append(f"{ICONS['completed']}loaded successfully")
 
             if parts:
-                return " → ".join(parts)
-            return "📖 loading file..."
+                return f" {ICONS['arrow']} ".join(parts)
+            return f"{ICONS['processing']}loading file..."
 
         elif tool_type == "code_interpreter_call":
             # Show code execution with computer icon
@@ -491,30 +478,30 @@ class RichRenderer(BaseRenderer):
                 ]
                 if lines:
                     code_preview = lines[0][:35] + "..." if len(lines[0]) > 35 else lines[0]
-                    parts.append(f"💻 {lang}: `{code_preview}`")
+                    parts.append(f"{ICONS['code']}{lang}: `{code_preview}`")
 
                     # Show line count for longer code
                     total_lines = len([l for l in tool_item.code.split("\n") if l.strip()])
                     if total_lines > 5:
-                        parts.append(f"📄 {total_lines} lines")
+                        parts.append(f"{ICONS['code']}{total_lines} lines")
 
             # Show output if available
             if hasattr(tool_item, "output") and tool_item.output:
                 output_preview = (
                     str(tool_item.output)[:30] + "..." if len(str(tool_item.output)) > 30 else str(tool_item.output)
                 )
-                parts.append(f"📤 output: {output_preview}")
+                parts.append(f"{ICONS['output_tokens']}output: {output_preview}")
 
             if parts:
-                return " → ".join(parts)
-            return "💻 executing code..."
+                return f" {ICONS['arrow']} ".join(parts)
+            return f"{ICONS['processing']}executing code..."
 
         elif tool_type == "function_call":
             # Show function call with wrench icon
             parts = []
             if hasattr(tool_item, "function"):
                 func_name = tool_item.function
-                parts.append(f"🔧 {func_name}")
+                parts.append(f"{ICONS['function_call']}{func_name}")
 
                 # Show argument preview if available
                 if hasattr(tool_item, "arguments"):
@@ -530,30 +517,30 @@ class RichRenderer(BaseRenderer):
                             arg_preview = ", ".join(f"{k}={v}" for k, v in list(args.items())[:2])
                             if len(args) > 2:
                                 arg_preview += f", +{len(args) - 2} more"
-                            parts.append(f"📋 ({arg_preview})")
+                            parts.append(f"{ICONS['code']}({arg_preview})")
                     except:
-                        parts.append("📋 (with arguments)")
+                        parts.append(f"{ICONS['code']}(with arguments)")
 
             # Show result preview if available
             if hasattr(tool_item, "output") and tool_item.output:
                 output_str = (
                     str(tool_item.output)[:40] + "..." if len(str(tool_item.output)) > 40 else str(tool_item.output)
                 )
-                parts.append(f"✨ {output_str}")
+                parts.append(f"{ICONS['check']}{output_str}")
 
             if parts:
-                return " → ".join(parts)
-            return "🔧 calling function..."
+                return f" {ICONS['arrow']} ".join(parts)
+            return f"{ICONS['processing']}calling function..."
 
         # Default fallback
         if hasattr(tool_item, "results") and tool_item.results:
-            return f"📊 {len(tool_item.results)} results"
+            return f"{ICONS['check']}{len(tool_item.results)} results"
         return ""
 
     # Additional methods for chat mode and error handling
     def render_error(self, error: str) -> None:
         """Render error message."""
-        error_panel = Panel(Text(f"❌ Error: {error}", style="red bold"), title="Error", border_style="red")
+        error_panel = Panel(Text(f"{ICONS['error']}Error: {error}", style="red bold"), title="Error", border_style="red")
 
         if self._live and self._live_started:
             self._live.update(error_panel)
