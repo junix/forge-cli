@@ -21,7 +21,7 @@ from forge_cli.sdk.files import (
     async_upload_file,
     async_wait_for_task_completion,
 )
-from forge_cli.sdk.types import File
+from forge_cli.sdk.types import DeleteResponse, File, TaskStatus
 from forge_cli.sdk.utils import print_file_results
 
 
@@ -117,7 +117,7 @@ async def upload_file_async(
             file_path, purpose=purpose, custom_id=custom_id, skip_exists=skip_exists
         )
 
-        # Print upload results
+        # Print upload results - using a list of File objects
         print_file_results([upload_result])
 
         file_id = upload_result.id
@@ -127,7 +127,7 @@ async def upload_file_async(
         if task_id:
             print(f"Waiting for file processing (task: {task_id})...")
             try:
-                final_status = await async_wait_for_task_completion(task_id)
+                final_status: TaskStatus = await async_wait_for_task_completion(task_id)
                 print(f"Processing completed with status: {final_status.status}")
 
                 # Show error message if processing failed
@@ -173,19 +173,22 @@ async def fetch_file_async(file_id: str, dump: bool = False):
         print(f"Error fetching file: {e}")
 
 
-async def delete_file_async(file_id: str):
+async def delete_file_async(file_id: str) -> DeleteResponse | None:
     """
     Delete a file using the SDK.
 
     Args:
         file_id: The ID of the file to delete
+        
+    Returns:
+        DeleteResponse object if successful, None otherwise
     """
     try:
         print(f"Deleting file with ID: {file_id}")
 
-        success = await async_delete_file(file_id)
+        delete_response = await async_delete_file(file_id)
 
-        if success:
+        if delete_response and delete_response.deleted:
             print(f"File {file_id} deleted successfully!")
         else:
             print(f"Failed to delete file with ID: {file_id}")
@@ -199,7 +202,7 @@ def print_document_info(document: File):
     Print key information about a document.
 
     Args:
-        document: The document data dictionary
+        document: The File object containing document information
     """
     print("=== Document Information ===")
     print(f"Document ID: {document.id}")
@@ -228,12 +231,12 @@ def print_document_info(document: File):
             print(f"\nSummary: {summary_display}")
 
 
-async def dump_document_to_file(document: File, file_id: str):
+async def dump_document_to_file(document: File, file_id: str) -> None:
     """
     Dump document data to a JSON file.
 
     Args:
-        document: The document data dictionary
+        document: The File object containing document information
         file_id: The file ID to use for the filename
     """
     try:
