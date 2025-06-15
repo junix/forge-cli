@@ -268,12 +268,20 @@ class RichRenderer(BaseRenderer):
         reasoning_parts = []
 
         for item in response.output:
-            if item.type == "reasoning":
-                # Extract reasoning content
-                if hasattr(item, "content") and item.content:
-                    reasoning_text = Text("🤔 AI Reasoning:\n", style="yellow bold")
-                    reasoning_text.append(item.content, style="italic dim")
-                    reasoning_parts.append(reasoning_text)
+            if hasattr(item, "type") and item.type == "reasoning":
+                # Extract reasoning content from summary items
+                if hasattr(item, "summary") and item.summary:
+                    # Collect all reasoning text from summary items
+                    reasoning_texts = []
+                    for summary in item.summary:
+                        if hasattr(summary, "text") and summary.text:
+                            reasoning_texts.append(summary.text)
+                    
+                    if reasoning_texts:
+                        reasoning_content = "\n\n".join(reasoning_texts)
+                        reasoning_text = Text("🤔 AI Reasoning:\n", style="yellow bold")
+                        reasoning_text.append(reasoning_content, style="italic dim")
+                        reasoning_parts.append(reasoning_text)
 
         if reasoning_parts:
             return Panel(Group(*reasoning_parts), title="💭 Reasoning", border_style="yellow", padding=(0, 1))
