@@ -13,7 +13,7 @@ from forge_cli.config import SearchConfig
 from forge_cli.dataset import TestDataset
 
 # Registry no longer needed - using v3 directly
-from forge_cli.processors.registry_typed import initialize_typed_registry
+# Note: Registry system removed - all processing now handled by v3 renderers
 from forge_cli.response._types import FileSearchTool, InputMessage, Request, WebSearchTool
 from forge_cli.sdk import astream_typed_response, async_get_vectorstore
 from forge_cli.stream.handler_typed import TypedStreamHandler
@@ -127,8 +127,7 @@ def prepare_request(config: SearchConfig, question: str, conversation_history: l
 
 async def process_search(config: SearchConfig, question: str) -> dict[str, str | int | float | bool | list] | None:
     """Process search with the typed API."""
-    # Initialize typed processor registry
-    initialize_typed_registry()
+    # Note: Registry initialization removed - processing handled by v3 renderers
 
     # Create display
     display = create_display(config)
@@ -180,8 +179,7 @@ async def process_search(config: SearchConfig, question: str) -> dict[str, str |
 
 async def start_chat_mode(config: SearchConfig, initial_question: str | None = None) -> None:
     """Start interactive chat mode with typed API."""
-    # Initialize typed processor registry
-    initialize_typed_registry()
+    # Note: Registry initialization removed - processing handled by v3 renderers
 
     # Create display
     display = create_display(config)

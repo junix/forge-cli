@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from ..display.v3.base import Display
-from ..processors.registry_typed import default_typed_registry, initialize_typed_registry
+# Note: Registry system removed - all processing now done in v3 renderers
 from ..response._types import Response
 
 # Removed MigrationHelper - using typed Response directly
@@ -121,10 +121,7 @@ class TypedStreamHandler:
         """Initialize with display and debug settings."""
         self.display = display
         self.debug = debug
-        # Initialize typed registry if not already done
-        if not default_typed_registry._processors:
-            initialize_typed_registry()
-        self.processor_registry = default_typed_registry
+        # Note: Registry system removed - processing now handled directly by v3 renderers
 
     async def handle_stream(
         self, stream: AsyncIterator[tuple[str, Response | None]], initial_request: str
