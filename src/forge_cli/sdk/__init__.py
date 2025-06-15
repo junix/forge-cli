@@ -20,11 +20,8 @@ from .files import (
     async_wait_for_task_completion,
 )
 
-# Note: Legacy dict-based response functions are deprecated
-# Use typed_api functions instead for new code
 from .response import (
-    async_fetch_response,  # Keep this as it returns typed Response
-    validate_input_messages,  # Keep this utility function
+    async_fetch_response,  # Fetch existing responses by ID - returns typed Response
 )
 from .typed_api import (
     astream_typed_response,
@@ -75,9 +72,8 @@ __all__ = [
     "create_typed_request",
     "create_file_search_tool",
     "create_web_search_tool",
-    # Legacy response operations (kept for compatibility)
-    "async_fetch_response",  # Returns typed Response
-    "validate_input_messages",  # Utility function
+    # Response fetch operation  
+    "async_fetch_response",  # Fetch existing responses by ID
     # Utility functions
     "print_file_results",
     "print_vectorstore_results",

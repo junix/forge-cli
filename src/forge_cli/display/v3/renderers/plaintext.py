@@ -270,10 +270,10 @@ class PlaintextRenderer(BaseRenderer):
             # Show query and result count
             parts = []
             if hasattr(tool_item, "query") and tool_item.query:
-                parts.append(f' {query}')
+                parts.append(f" {query}")
             elif hasattr(tool_item, "queries") and tool_item.queries:
                 query = " & ".join(f" {query}" for query in tool_item.queries)
-                parts.append(f' {query}')
+                parts.append(f" {query}")
             if hasattr(tool_item, "results") and tool_item.results:
                 parts.append(f"found {len(tool_item.results)} results")
 
@@ -283,7 +283,7 @@ class PlaintextRenderer(BaseRenderer):
             # Show search query and results
             if hasattr(tool_item, "queries") and tool_item.queries:
                 query = " ".join(" {query}" for query in tool_item.queries)
-                parts.append(f'󰜏 {query}')
+                parts.append(f"󰜏 {query}")
             # if hasattr(tool_item, "results") and tool_item.results:
             #     parts.append(f"found {len(tool_item.results)} results")
 
@@ -295,11 +295,11 @@ class PlaintextRenderer(BaseRenderer):
             if hasattr(tool_item, "queries") and tool_item.queries:
                 # Show all queries
                 queries_text = " ".join(f'"{q}"' for q in tool_item.queries)
-                parts.append(f'󰈞 {queries_text}')
+                parts.append(f"󰈞 {queries_text}")
             elif hasattr(tool_item, "query") and tool_item.query:
                 # Fallback to single query if present
                 parts.append(f'󰈞 "{tool_item.query}"')
-            
+
             # # Show document count
             # if hasattr(tool_item, "count") and tool_item.count is not None:
             #     parts.append(f"found {tool_item.count} document{'s' if tool_item.count != 1 else ''}")
@@ -313,7 +313,7 @@ class PlaintextRenderer(BaseRenderer):
             # Show file name and status
             parts = []
             if hasattr(tool_item, "file_name") and tool_item.file_name:
-                parts.append(f'󰑇 {tool_item.file_name}')
+                parts.append(f"󰑇 {tool_item.file_name}")
             elif hasattr(tool_item, "file_id") and tool_item.file_id:
                 parts.append(f"󰻾 {tool_item.file_id}")
             return " • ".join(parts) if parts else ""
@@ -338,7 +338,7 @@ class PlaintextRenderer(BaseRenderer):
             if line.startswith("# "):
                 # Create centered header by calculating padding
                 header_text = line[2:]
-                console_width = getattr(self._console.size, 'width', 80)  # Default to 80 if size unavailable
+                console_width = getattr(self._console.size, "width", 80)  # Default to 80 if size unavailable
                 header_width = len(header_text)
                 padding = max(0, (console_width - header_width) // 2)
                 centered_header = " " * padding + header_text
@@ -347,16 +347,16 @@ class PlaintextRenderer(BaseRenderer):
             elif line.startswith("## "):
                 # Create centered header by calculating padding
                 header_text = line[3:]
-                console_width = getattr(self._console.size, 'width', 80)  # Default to 80 if size unavailable
+                console_width = getattr(self._console.size, "width", 80)  # Default to 80 if size unavailable
                 header_width = len(header_text)
                 padding = max(0, (console_width - header_width) // 2)
                 centered_header = " " * padding + header_text
                 text.append(centered_header, style="bold white")
                 text.append("\n")
             elif line.startswith("### "):
-                # Create centered header by calculating padding  
+                # Create centered header by calculating padding
                 header_text = line[4:]
-                console_width = getattr(self._console.size, 'width', 80)  # Default to 80 if size unavailable
+                console_width = getattr(self._console.size, "width", 80)  # Default to 80 if size unavailable
                 header_width = len(header_text)
                 padding = max(0, (console_width - header_width) // 2)
                 centered_header = " " * padding + header_text
@@ -421,7 +421,6 @@ class PlaintextRenderer(BaseRenderer):
 
         return result
 
-
     def status_icon(self, status: str) -> tuple[str, str]:
         """Get icon for status."""
         return {
@@ -455,25 +454,26 @@ class PlaintextRenderer(BaseRenderer):
 
         text.append("\n\n")
 
-    def _add_citation_list(self, text: Text, citations: list[dict[str, Any]]) -> None:
-        """Add citation list with proper formatting."""
+    def _add_citation_list(self, text: Text, citations: list[Any]) -> None:
+        """Add citation list with proper formatting using type-based API."""
         # Use compact format for file citations
         text.append("ref:\n", style=self._styles["citation_ref"])
-        
+
         for i, citation in enumerate(citations, 1):
-            if citation.get("type") == "file_citation":
-                # Compact format: 1. filename, P{index}
-                source = citation.get("file_name") or citation.get("file_id", "Unknown")
-                page = f", P{citation['page_number']}" if citation.get("page_number") is not None else ""
+            if citation.type == "file_citation":
+                # Compact format: 1. filename, P{index} - using typed properties
+                source = citation.filename or citation.file_id or "Unknown"
+                page = f", P{citation.index}" if citation.index is not None else ""
                 text.append(f"{i}. {source}{page}\n", style=self._styles["citation_source"])
-                
-            elif citation.get("type") == "url_citation":
-                # URL format: 1. title (domain)
-                title = citation.get("title", "Web Page")
-                url = citation.get("url", "")
+
+            elif citation.type == "url_citation":
+                # URL format: 1. title (domain) - using typed properties
+                title = citation.title if hasattr(citation, "title") and citation.title else "Web Page"
+                url = citation.url
                 if url:
                     try:
                         from urllib.parse import urlparse
+
                         domain = urlparse(url).netloc
                         if domain.startswith("www."):
                             domain = domain[4:]
@@ -482,9 +482,13 @@ class PlaintextRenderer(BaseRenderer):
                         text.append(f"{i}. {title}\n", style=self._styles["citation_source"])
                 else:
                     text.append(f"{i}. {title}\n", style=self._styles["citation_source"])
+            elif citation.type == "file_path":
+                # File path format - using typed properties
+                source = citation.file_id or "Unknown"
+                text.append(f"{i}. {source}\n", style=self._styles["citation_source"])
             else:
                 # Fallback format
-                source = citation.get("file_name", citation.get("url", "Unknown"))
+                source = getattr(citation, "filename", getattr(citation, "url", "Unknown"))
                 text.append(f"{i}. {source}\n", style=self._styles["citation_source"])
 
     # Remove old methods that are no longer needed
@@ -527,8 +531,9 @@ class PlaintextRenderer(BaseRenderer):
         text.append(f"{usage.output_tokens or 0}", style=self._styles["usage"])
         text.append("\n")
 
-    def _extract_all_citations(self, response: Response) -> list[dict[str, Any]]:
-        """Extract all citations from response annotations."""
+    def _extract_all_citations(self, response: Response) -> list[Any]:
+        """Extract all citations from response annotations using type-based API."""
+
         citations = []
 
         for item in response.output:
@@ -536,29 +541,9 @@ class PlaintextRenderer(BaseRenderer):
                 for content in item.content:
                     if content.type == "output_text" and content.annotations:
                         for annotation in content.annotations:
-                            if annotation.type in ["file_citation", "url_citation"]:
-                                citation_data = {
-                                    "type": annotation.type,
-                                    "text": getattr(annotation, "snippet", ""),  # Use snippet instead of text
-                                }
-
-                                if annotation.type == "file_citation":
-                                    citation_data.update(
-                                        {
-                                            "file_id": getattr(annotation, "file_id", ""),
-                                            "file_name": getattr(annotation, "filename", ""),  # Use filename instead of file_name
-                                            "page_number": getattr(annotation, "index", None),  # Use index instead of page_number
-                                        }
-                                    )
-                                elif annotation.type == "url_citation":
-                                    citation_data.update(
-                                        {
-                                            "url": getattr(annotation, "url", ""),
-                                            "title": getattr(annotation, "title", ""),
-                                        }
-                                    )
-
-                                citations.append(citation_data)
+                            # Only include citation types
+                            if annotation.type in ["file_citation", "url_citation", "file_path"]:
+                                citations.append(annotation)
 
         return citations
 

@@ -67,15 +67,7 @@ async def async_create_typed_response(
                                     # A more robust stream handling might be needed if multiple JSON data objects are sent
                                     # before the "response.completed" event line.
                                     # For now, let's assume the last data object before "done" or the one tied to "response.completed" event is it.
-                                    # The original code snippet for async_create_response had:
-                                    # if current_event_type == "response.completed":
-                                    #    final_response = data
-                                    # This implies we need to track current_event_type here too if we want to be precise.
-                                    # Let's assume for now the API sends the full response object as data with the "response.completed" event type.
-                                    # This part of the logic might need refinement based on actual API stream behavior.
-                                    # The provided code snippet for async_create_typed_response's streaming part is a bit ambiguous.
-                                    # It checks for `data.get("type") == "response.completed"` which is unusual for SSE data field.
-                                    # Let's stick to the pattern from `async_create_response` where `current_event_type` is key.
+                                    # Stream processing based on event types and response snapshots
                                     # To simplify, we will assume the *last* JSON payload received on the stream before 'done' is the full response
                                     # if `response.completed` event was seen.
                                     # A better approach for robust streaming is to accumulate data based on event types.

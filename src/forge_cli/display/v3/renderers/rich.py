@@ -147,7 +147,14 @@ class RichRenderer(BaseRenderer):
                             pass
                     elif content.type == "output_refusal":
                         md_parts.append(f"> ⚠️ Response refused: {content.refusal}")
-            elif item.type in ["file_search_call", "web_search_call", "document_finder_call", "file_reader_call", "code_interpreter_call", "function_call"]:
+            elif item.type in [
+                "file_search_call",
+                "web_search_call",
+                "document_finder_call",
+                "file_reader_call",
+                "code_interpreter_call",
+                "function_call",
+            ]:
                 # Get tool-specific icon and format the tool call in a single beautiful line
                 tool_icon = self._get_tool_icon(item.type)
                 tool_name = item.type.replace("_call", "").replace("_", " ").title()
@@ -182,20 +189,28 @@ class RichRenderer(BaseRenderer):
                     if quoted_lines:
                         md_parts.append("\n".join(quoted_lines))
 
-        # References section
+        # References section - using type-based API
         citations = self._extract_all_citations(response)
         if citations:
             ref_lines = ["**References**"]
             for idx, citation in enumerate(citations, 1):
-                if citation["type"] == "file_citation":
-                    source = citation.get("file_name") or citation.get("file_id", "unknown_file")
-                    page = f" p.{citation.get('page_number')}" if citation.get("page_number") else ""
-                    quote = f' — "{citation.get("text", "").strip()}"' if citation.get("text") else ""
+                if citation.type == "file_citation":
+                    # Use typed properties from AnnotationFileCitation
+                    source = citation.filename or citation.file_id or "unknown_file"
+                    # Note: AnnotationFileCitation uses 'index' not 'page_number'
+                    page = f" p.{citation.index}" if citation.index is not None else ""
+                    quote = f' — "{citation.snippet.strip()}"' if citation.snippet else ""
                     ref_lines.append(f"{idx}. {source}{page}{quote}")
-                else:
-                    url = citation.get("url", "")
-                    quote = f' — "{citation.get("text", "").strip()}"' if citation.get("text") else ""
-                    ref_lines.append(f"{idx}. {url}{quote}")
+                elif citation.type == "url_citation":
+                    # Use typed properties from AnnotationURLCitation
+                    url = citation.url
+                    title = citation.title if hasattr(citation, "title") and citation.title else url
+                    quote = f' — "{citation.snippet.strip()}"' if citation.snippet else ""
+                    ref_lines.append(f"{idx}. {title} ({url}){quote}")
+                elif citation.type == "file_path":
+                    # Use typed properties from AnnotationFilePath
+                    source = citation.file_id or "unknown_file"
+                    ref_lines.append(f"{idx}. {source}")
             md_parts.append("\n".join(ref_lines))
 
         # Create markdown content
@@ -228,11 +243,9 @@ class RichRenderer(BaseRenderer):
             padding=(1, 2),
         )
 
+    def _extract_all_citations(self, response: Response) -> list[Any]:
+        """Extract all citations from response annotations using type-based API."""
 
-
-
-    def _extract_all_citations(self, response: Response) -> list[dict[str, Any]]:
-        """Extract all citations from response annotations."""
         citations = []
 
         for item in response.output:
@@ -240,24 +253,9 @@ class RichRenderer(BaseRenderer):
                 for content in item.content:
                     if content.type == "output_text" and content.annotations:
                         for annotation in content.annotations:
-                            if annotation.type in ["file_citation", "url_citation"]:
-                                citation_data = {
-                                    "type": annotation.type,
-                                    "text": getattr(annotation, "text", ""),
-                                }
-
-                                if annotation.type == "file_citation":
-                                    citation_data.update(
-                                        {
-                                            "file_id": getattr(annotation, "file_id", ""),
-                                            "file_name": getattr(annotation, "file_name", ""),
-                                            "page_number": getattr(annotation, "page_number", None),
-                                        }
-                                    )
-                                elif annotation.type == "url_citation":
-                                    citation_data["url"] = getattr(annotation, "url", "")
-
-                                citations.append(citation_data)
+                            # Only include citation types, not file_path
+                            if annotation.type in ["file_citation", "url_citation", "file_path"]:
+                                citations.append(annotation)
 
         return citations
 
@@ -333,7 +331,9 @@ class RichRenderer(BaseRenderer):
                 query_parts.append(f'🔍 "{query}"')
             elif hasattr(tool_item, "queries") and tool_item.queries:
                 if len(tool_item.queries) == 1:
-                    query = tool_item.queries[0][:40] + "..." if len(tool_item.queries[0]) > 40 else tool_item.queries[0]
+                    query = (
+                        tool_item.queries[0][:40] + "..." if len(tool_item.queries[0]) > 40 else tool_item.queries[0]
+                    )
                     query_parts.append(f'🔍 "{query}"')
                 else:
                     # Show multiple queries with & separator
@@ -379,17 +379,18 @@ class RichRenderer(BaseRenderer):
                         if hasattr(r, "url"):
                             try:
                                 from urllib.parse import urlparse
+
                                 domain = urlparse(r.url).netloc
                                 if domain and domain not in domains:
                                     domains.append(domain.replace("www.", ""))
                             except:
                                 pass
-                    
+
                     if domains:
                         parts.append(f"📰 {result_count} results ({', '.join(domains[:2])}...)")
                     else:
                         parts.append(f"📰 {result_count} results")
-            
+
             if parts:
                 return " → ".join(parts)
             return "🌐 initializing web search..."
@@ -404,23 +405,23 @@ class RichRenderer(BaseRenderer):
             elif hasattr(tool_item, "query") and tool_item.query:
                 query = tool_item.query[:40] + "..." if len(tool_item.query) > 40 else tool_item.query
                 parts.append(f'📑 "{query}"')
-            
+
             if hasattr(tool_item, "results") and tool_item.results:
                 doc_count = len(tool_item.results)
                 # Show document types if available
                 doc_types = set()
                 for r in tool_item.results:
                     if hasattr(r, "file_name") and r.file_name:
-                        ext = r.file_name.split('.')[-1].lower() if '.' in r.file_name else None
+                        ext = r.file_name.split(".")[-1].lower() if "." in r.file_name else None
                         if ext:
                             doc_types.add(ext)
-                
+
                 if doc_types:
                     types_str = ", ".join(list(doc_types)[:3])
                     parts.append(f"📚 {doc_count} document{'s' if doc_count != 1 else ''} ({types_str})")
                 else:
                     parts.append(f"📚 {doc_count} document{'s' if doc_count != 1 else ''}")
-            
+
             if parts:
                 return " → ".join(parts)
             return "📑 initializing document search..."
@@ -428,17 +429,17 @@ class RichRenderer(BaseRenderer):
         elif tool_type == "file_reader_call":
             # Show file reading with book icon and detailed info
             parts = []
-            
+
             # File identification
             if hasattr(tool_item, "file_name") and tool_item.file_name:
                 name = tool_item.file_name
                 # Show file extension
-                ext = name.split('.')[-1].lower() if '.' in name else "file"
+                ext = name.split(".")[-1].lower() if "." in name else "file"
                 name_short = name[:30] + "..." if len(name) > 30 else name
                 parts.append(f'📖 "{name_short}" [{ext.upper()}]')
             elif hasattr(tool_item, "file_id") and tool_item.file_id:
                 parts.append(f"📖 file:{tool_item.file_id[:12]}...")
-            
+
             # Content information
             if hasattr(tool_item, "content") and tool_item.content:
                 content_len = len(tool_item.content)
@@ -449,7 +450,7 @@ class RichRenderer(BaseRenderer):
                     size_str = f"{content_len / 1024:.1f}KB"
                 else:
                     size_str = f"{content_len} chars"
-                
+
                 # Show preview of content type
                 content_preview = tool_item.content[:100].strip()
                 if content_preview.startswith("{") or content_preview.startswith("["):
@@ -462,7 +463,7 @@ class RichRenderer(BaseRenderer):
                     parts.append(f"💾 loaded {size_str}")
             elif hasattr(tool_item, "results") and tool_item.results:
                 parts.append("✅ loaded successfully")
-            
+
             if parts:
                 return " → ".join(parts)
             return "📖 loading file..."
@@ -481,23 +482,29 @@ class RichRenderer(BaseRenderer):
                     lang = "C/C++"
                 else:
                     lang = "Code"
-                
+
                 # Extract first meaningful line
-                lines = [line.strip() for line in tool_item.code.split("\n") if line.strip() and not line.strip().startswith("#")]
+                lines = [
+                    line.strip()
+                    for line in tool_item.code.split("\n")
+                    if line.strip() and not line.strip().startswith("#")
+                ]
                 if lines:
                     code_preview = lines[0][:35] + "..." if len(lines[0]) > 35 else lines[0]
                     parts.append(f"💻 {lang}: `{code_preview}`")
-                    
+
                     # Show line count for longer code
                     total_lines = len([l for l in tool_item.code.split("\n") if l.strip()])
                     if total_lines > 5:
                         parts.append(f"📄 {total_lines} lines")
-            
+
             # Show output if available
             if hasattr(tool_item, "output") and tool_item.output:
-                output_preview = str(tool_item.output)[:30] + "..." if len(str(tool_item.output)) > 30 else str(tool_item.output)
+                output_preview = (
+                    str(tool_item.output)[:30] + "..." if len(str(tool_item.output)) > 30 else str(tool_item.output)
+                )
                 parts.append(f"📤 output: {output_preview}")
-            
+
             if parts:
                 return " → ".join(parts)
             return "💻 executing code..."
@@ -508,12 +515,17 @@ class RichRenderer(BaseRenderer):
             if hasattr(tool_item, "function"):
                 func_name = tool_item.function
                 parts.append(f"🔧 {func_name}")
-                
+
                 # Show argument preview if available
                 if hasattr(tool_item, "arguments"):
                     try:
                         import json
-                        args = json.loads(tool_item.arguments) if isinstance(tool_item.arguments, str) else tool_item.arguments
+
+                        args = (
+                            json.loads(tool_item.arguments)
+                            if isinstance(tool_item.arguments, str)
+                            else tool_item.arguments
+                        )
                         if isinstance(args, dict):
                             arg_preview = ", ".join(f"{k}={v}" for k, v in list(args.items())[:2])
                             if len(args) > 2:
@@ -521,12 +533,14 @@ class RichRenderer(BaseRenderer):
                             parts.append(f"📋 ({arg_preview})")
                     except:
                         parts.append("📋 (with arguments)")
-            
+
             # Show result preview if available
             if hasattr(tool_item, "output") and tool_item.output:
-                output_str = str(tool_item.output)[:40] + "..." if len(str(tool_item.output)) > 40 else str(tool_item.output)
+                output_str = (
+                    str(tool_item.output)[:40] + "..." if len(str(tool_item.output)) > 40 else str(tool_item.output)
+                )
                 parts.append(f"✨ {output_str}")
-            
+
             if parts:
                 return " → ".join(parts)
             return "🔧 calling function..."
