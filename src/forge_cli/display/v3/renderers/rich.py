@@ -4,11 +4,10 @@ import time
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, validator
-from rich.console import Console, Group
+from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.table import Table
 from rich.text import Text
 
 from forge_cli.response._types.response import Response
@@ -28,7 +27,7 @@ class RichDisplayConfig(BaseModel):
     refresh_rate: int = Field(10, description="Live display refresh rate per second")
 
     @validator("refresh_rate")
-    def validate_refresh_rate(cls, v):
+    def validate_refresh_rate(cls, v):  # noqa: N805
         if v < 1 or v > 30:
             raise ValueError("Refresh rate must be between 1 and 30")
         return v
@@ -149,13 +148,21 @@ class RichRenderer(BaseRenderer):
                     elif content.type == "output_refusal":
                         md_parts.append(f"> ⚠️ Response refused: {content.refusal}")
             elif item.type in ["file_search_call", "web_search_call", "document_finder_call", "file_reader_call", "code_interpreter_call", "function_call"]:
-                details = []
-                if hasattr(item, "queries") and item.queries:
-                    details.append(f"{len(item.queries)} queries")
-                if hasattr(item, "results") and item.results:
-                    details.append(f"{len(item.results)} results")
-                detail_str = f" — {'; '.join(details)}" if details else ""
-                md_parts.append(f"- 🛠️ {item.type.replace('_', ' ').title()} ({item.status}){detail_str}")
+                # Get tool-specific icon and format the tool call in a single beautiful line
+                tool_icon = self._get_tool_icon(item.type)
+                tool_name = item.type.replace("_call", "").replace("_", " ").title()
+
+                # Create concise result summary based on tool type
+                result_summary = self._get_tool_result_summary(item)
+
+                # Format: Icon + Bold Name → Status • Result
+                # Example: 🌐 **Web Search** → _completed_ • "weather today" found 5 results
+                tool_line = f"{tool_icon} **{tool_name}** → _{item.status}_"
+
+                if result_summary:
+                    tool_line += f" • {result_summary}"
+
+                md_parts.append(tool_line)
             elif item.type == "reasoning":
                 if hasattr(item, "summary") and item.summary:
                     # Combine all reasoning lines into a single continuous Markdown
@@ -196,19 +203,19 @@ class RichRenderer(BaseRenderer):
 
         # Create the new title format: full_id / status / ↑ input ↓ output
         title_parts = []
-        
+
         # Full message ID
         title_parts.append(response.id)
-        
+
         # Status
         if response.status:
             title_parts.append(response.status)
-        
+
         # Usage information with arrows
         if response.usage:
             usage_part = f"↑ {response.usage.input_tokens or 0} ↓ {response.usage.output_tokens or 0}"
             title_parts.append(usage_part)
-        
+
         panel_title = " / ".join(title_parts)
 
         # Determine panel style based on response status
@@ -221,128 +228,8 @@ class RichRenderer(BaseRenderer):
             padding=(1, 2),
         )
 
-    def _create_response_body(self, response: Response) -> Group | None:
-        """Create the main response content from output items."""
-        content_parts = []
 
-        for item in response.output:
-            if item.type == "message":
-                # Handle message content
-                for content in item.content:
-                    if content.type == "output_text":
-                        # Render text as markdown
-                        try:
-                            md_content = Markdown(content.text)
-                            content_parts.append(md_content)
-                        except Exception:
-                            # Fallback to plain text
-                            content_parts.append(Text(content.text))
 
-                        # Add annotations if available
-                        if content.annotations and self._config.show_citations:
-                            ann_text = self._format_inline_annotations(content.annotations)
-                            if ann_text:
-                                content_parts.append(ann_text)
-
-                    elif content.type == "output_refusal":
-                        # Handle refusal content
-                        refusal_text = Text(f"⚠️ Response refused: {content.refusal}", style="red italic")
-                        content_parts.append(refusal_text)
-
-        return Group(*content_parts) if content_parts else None
-
-    def _create_tool_information(self, response: Response) -> Panel | None:
-        """Create tool execution information panel."""
-        if not self._config.show_tool_details:
-            return None
-
-        tool_parts = []
-
-        for item in response.output:
-            if hasattr(item, "status") and hasattr(item, "type"):
-                if item.type in ["file_search_call", "web_search_call", "document_finder_call", "file_reader_call"]:
-                    tool_info = self._format_tool_item(item)
-                    if tool_info:
-                        tool_parts.append(tool_info)
-
-        if tool_parts:
-            return Panel(Group(*tool_parts), title="🛠️ Tool Execution", border_style="blue", padding=(0, 1))
-
-        return None
-
-    def _format_tool_item(self, tool_item: Any) -> Text | None:
-        """Format individual tool item information."""
-        tool_text = Text()
-
-        # Tool type and status
-        tool_icon = self._get_tool_icon(tool_item.type)
-        status_style = self._get_tool_status_style(tool_item.status)
-
-        tool_text.append(f"{tool_icon} ", style="")
-        tool_text.append(f"{tool_item.type.replace('_', ' ').title()}: ", style="bold")
-        tool_text.append(f"{tool_item.status}", style=status_style)
-
-        # Add specific tool information
-        if hasattr(tool_item, "queries") and tool_item.queries:
-            tool_text.append(f" | Queries: {len(tool_item.queries)}", style="dim")
-
-        if hasattr(tool_item, "results") and tool_item.results:
-            tool_text.append(f" | Results: {len(tool_item.results)}", style="dim")
-
-        return tool_text
-
-    def _create_reasoning_content(self, response: Response) -> Panel | None:
-        """Create reasoning content panel if available."""
-        reasoning_parts = []
-
-        for item in response.output:
-            if hasattr(item, "type") and item.type == "reasoning":
-                # Extract reasoning content from summary items
-                if hasattr(item, "summary") and item.summary:
-                    # Collect all reasoning text from summary items
-                    reasoning_texts = []
-                    for summary in item.summary:
-                        if hasattr(summary, "text") and summary.text:
-                            reasoning_texts.append(summary.text)
-
-                    if reasoning_texts:
-                        reasoning_content = "\n\n".join(reasoning_texts)
-                        reasoning_text = Text("🤔 AI Reasoning:\n", style="yellow bold")
-                        reasoning_text.append(reasoning_content, style="italic dim")
-                        reasoning_parts.append(reasoning_text)
-
-        if reasoning_parts:
-            return Panel(Group(*reasoning_parts), title="💭 Reasoning", border_style="yellow", padding=(0, 1))
-
-        return None
-
-    def _create_citation_content(self, response: Response) -> Panel | None:
-        """Create citations panel from annotations."""
-        citations = self._extract_all_citations(response)
-
-        if not citations:
-            return None
-
-        # Create citations table
-        table = Table(title="Citations", show_header=True, header_style="bold cyan")
-        table.add_column("Ref", style="cyan", width=6)
-        table.add_column("Source", style="blue")
-        table.add_column("Page", width=8)
-        table.add_column("Quote", style="dim")
-
-        for i, citation in enumerate(citations, 1):
-            ref = f"[{i}]"
-            source = citation.get("file_name", citation.get("url", "Unknown"))
-            page = str(citation.get("page_number", "")) if citation.get("page_number") else "-"
-            quote = citation.get("text", "")
-
-            # Truncate quote if too long
-            if len(quote) > 60:
-                quote = quote[:57] + "..."
-
-            table.add_row(ref, source, page, quote)
-
-        return Panel(table, title="📚 Sources", border_style="cyan")
 
     def _extract_all_citations(self, response: Response) -> list[dict[str, Any]]:
         """Extract all citations from response annotations."""
@@ -433,6 +320,117 @@ class RichRenderer(BaseRenderer):
             "failed": "bold red",
         }
         return status_styles.get(status, "white")
+
+    def _get_tool_result_summary(self, tool_item: Any) -> str:
+        """Create a concise, beautiful summary of tool results."""
+        tool_type = tool_item.type
+
+        if tool_type == "file_search_call":
+            # Show query/queries and result count
+            query_str = ""
+            if hasattr(tool_item, "query") and tool_item.query:
+                query = tool_item.query[:40] + "..." if len(tool_item.query) > 40 else tool_item.query
+                query_str = f'"{query}"'
+            elif hasattr(tool_item, "queries") and tool_item.queries:
+                if len(tool_item.queries) == 1:
+                    query = tool_item.queries[0][:40] + "..." if len(tool_item.queries[0]) > 40 else tool_item.queries[0]
+                    query_str = f'"{query}"'
+                else:
+                    query_str = f"{len(tool_item.queries)} queries"
+
+            if hasattr(tool_item, "results") and tool_item.results:
+                if query_str:
+                    return f"{query_str} → found {len(tool_item.results)} results"
+                else:
+                    return f"found {len(tool_item.results)} results"
+            elif query_str:
+                return f"searching {query_str}"
+            return "initializing search"
+
+        elif tool_type == "web_search_call":
+            # Show the search query and result count
+            if hasattr(tool_item, "queries") and tool_item.queries:
+                query = tool_item.queries[0][:50] + "..." if len(tool_item.queries[0]) > 50 else tool_item.queries[0]
+
+                if hasattr(tool_item, "results") and tool_item.results:
+                    return f'"{query}" → {len(tool_item.results)} results'
+                else:
+                    return f'searching "{query}"'
+            return "initializing web search"
+
+        elif tool_type == "document_finder_call":
+            # Show query and results
+            query_str = ""
+            if hasattr(tool_item, "query") and tool_item.query:
+                query = tool_item.query[:40] + "..." if len(tool_item.query) > 40 else tool_item.query
+                query_str = f'"{query}"'
+            elif hasattr(tool_item, "queries") and tool_item.queries:
+                if len(tool_item.queries) == 1:
+                    query = tool_item.queries[0][:40] + "..." if len(tool_item.queries[0]) > 40 else tool_item.queries[0]
+                    query_str = f'"{query}"'
+                else:
+                    query_str = f"{len(tool_item.queries)} queries"
+            
+            if hasattr(tool_item, "results") and tool_item.results:
+                doc_count = len(tool_item.results)
+                if query_str:
+                    return f"{query_str} → found {doc_count} document{'s' if doc_count != 1 else ''}"
+                else:
+                    return f"found {doc_count} document{'s' if doc_count != 1 else ''}"
+            elif query_str:
+                return f"searching {query_str}"
+            return "initializing search"
+
+        elif tool_type == "file_reader_call":
+            # Show file being read with more context
+            file_info = ""
+            
+            # Try to get file name first (most useful)
+            if hasattr(tool_item, "file_name") and tool_item.file_name:
+                name = tool_item.file_name[:35] + "..." if len(tool_item.file_name) > 35 else tool_item.file_name
+                file_info = f'"{name}"'
+            elif hasattr(tool_item, "file_id") and tool_item.file_id:
+                file_info = f"file:{tool_item.file_id[:12]}..."
+            
+            # Check if there's content or results
+            if hasattr(tool_item, "content") and tool_item.content:
+                content_preview = tool_item.content[:50].replace('\n', ' ') + "..." if len(tool_item.content) > 50 else tool_item.content.replace('\n', ' ')
+                if file_info:
+                    return f"{file_info} → loaded ({len(tool_item.content)} chars)"
+                else:
+                    return f"loaded {len(tool_item.content)} characters"
+            elif hasattr(tool_item, "results") and tool_item.results:
+                if file_info:
+                    return f"{file_info} → loaded successfully"
+                else:
+                    return "file loaded"
+            elif file_info:
+                return f"reading {file_info}"
+            return "loading file"
+
+        elif tool_type == "code_interpreter_call":
+            # Show what code is doing
+            if hasattr(tool_item, "code") and tool_item.code:
+                # Extract first meaningful line of code
+                lines = [line.strip() for line in tool_item.code.split("\n") if line.strip() and not line.strip().startswith("#")]
+                if lines:
+                    code_preview = lines[0][:40] + "..." if len(lines[0]) > 40 else lines[0]
+                    return f"executing `{code_preview}`"
+            return "running code"
+
+        elif tool_type == "function_call":
+            # Show function name and args preview
+            if hasattr(tool_item, "function"):
+                func_name = tool_item.function
+                if hasattr(tool_item, "arguments"):
+                    return f"calling {func_name}(...)"
+                return f"calling {func_name}"
+            return "executing function"
+
+        # Default fallback
+        if hasattr(tool_item, "results") and tool_item.results:
+            return f"{len(tool_item.results)} results"
+        return ""
 
     # Additional methods for chat mode and error handling
     def render_error(self, error: str) -> None:
