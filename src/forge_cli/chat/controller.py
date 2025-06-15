@@ -11,17 +11,48 @@ from .commands import CommandRegistry
 
 
 class ChatController:
-    """Controls the chat interaction flow."""
+    """Manages the interactive chat session, including user input, commands, and API communication.
+
+    This class orchestrates the entire chat experience, handling everything
+    from reading user input and parsing commands to sending requests to the
+    language model and displaying responses.
+
+    Attributes:
+        config (SearchConfig): The configuration settings for the chat session.
+        display (Display): The display handler for rendering output.
+        conversation (ConversationState): The current state of the conversation,
+            including messages and tool configurations.
+        commands (CommandRegistry): The registry of available chat commands.
+        running (bool): A flag indicating whether the chat loop is active.
+            (Note: Actual loop is managed in main.py for v3).
+    """
 
     def __init__(self, config: SearchConfig, display: Display):
+        """Initializes the ChatController.
+
+        Args:
+            config: The `SearchConfig` object containing chat settings.
+            display: The `Display` object for rendering output.
+        """
         self.config = config
         self.display = display
         self.conversation = ConversationState(model=config.model, tools=self.prepare_typed_tools())
         self.commands = CommandRegistry()
-        self.running = False
+        self.running = False # Actual loop is in main.py for v3
 
     def _prepare_tool_config(self, tool_type: str, config: SearchConfig) -> dict | None:
-        """Helper method to prepare individual tool configuration."""
+        """Prepares the configuration for a single tool based on its type and global config.
+
+        This is a helper method used by `prepare_tools` and `prepare_typed_tools`.
+
+        Args:
+            tool_type: The type of the tool (e.g., "file-search", "web-search").
+            config: The main `SearchConfig` object.
+
+        Returns:
+            A dictionary containing the tool-specific configuration if the tool
+            is enabled and its prerequisites are met, otherwise None.
+        """
         if tool_type == "file-search":
             if "file-search" in config.enabled_tools and config.vec_ids:
                 return {
@@ -40,7 +71,16 @@ class ChatController:
         return None
 
     def prepare_tools(self) -> list[dict[str, str | bool | list[str]]]:
-        """Prepare tools configuration based on config."""
+        """Prepares a list of tool configurations in dictionary format.
+
+        This method generates tool configurations compatible with older or
+        non-typed SDK versions. It uses `_prepare_tool_config` to get
+        individual tool settings.
+
+        Returns:
+            A list of dictionaries, where each dictionary represents the
+            configuration for an enabled tool.
+        """
         tools = []
 
         # File search tool
@@ -60,7 +100,16 @@ class ChatController:
         return tools
 
     def prepare_typed_tools(self) -> list[Tool]:
-        """Prepare typed tools configuration based on config."""
+        """Prepares a list of typed tool objects (e.g., `FileSearchTool`, `WebSearchTool`).
+
+        This method generates tool configurations as typed objects, suitable for
+        use with the typed SDK. It utilizes `_prepare_tool_config` and then
+        constructs the specific tool model instances.
+
+        Returns:
+            A list of `Tool` instances (e.g., `FileSearchTool`, `WebSearchTool`)
+            for enabled tools.
+        """
         from ..response._types import FileSearchTool, WebSearchTool
 
         tools = []
@@ -90,13 +139,23 @@ class ChatController:
         return tools
 
     async def start_chat_loop(self) -> None:
-        """Start the interactive chat loop."""
+        """Starts the interactive chat loop.
+
+        Note:
+            This method is currently a placeholder for backward compatibility.
+            The main chat loop logic has been moved to `main.py` for v3.
+        """
         # This method is kept for backward compatibility
         # The actual loop is now in main.py
         pass
 
     def show_welcome(self) -> None:
-        """Show welcome message and chat info."""
+        """Displays a welcome message to the user.
+
+        The message includes information about the current model, session ID,
+        and enabled tools. It attempts to use the display's `show_welcome`
+        method if available, otherwise falls back to a default formatted message.
+        """
         if hasattr(self.display, "show_welcome"):
             self.display.show_welcome(self.config)
         else:
@@ -116,7 +175,17 @@ class ChatController:
             self.display.show_status("\n".join(lines))
 
     async def get_user_input(self) -> str | None:
-        """Get input from the user with prompt_toolkit support for auto-completion."""
+        """Gets input from the user.
+
+        This method attempts to use `prompt_toolkit` for a richer input
+        experience with command auto-completion if `prompt_toolkit` is installed
+        and the session is interactive. Otherwise, it falls back to the
+        display's `prompt_for_input` method or the basic `input()` function.
+
+        Returns:
+            The user's input as a string, or None if input fails (e.g., EOF).
+            The returned string is stripped of leading/trailing whitespace.
+        """
         try:
             # Try to use prompt_toolkit for better input experience
             import sys
@@ -232,11 +301,19 @@ class ChatController:
                 return None
 
     async def process_input(self, user_input: str) -> bool:
-        """
-        Process user input - either as command or message.
+        """Processes the user's input, determining if it's a command or a message.
+
+        If the input is recognized as a command (e.g., starts with `/`),
+        it's handled by `handle_command`. Otherwise, it's treated as a
+        message to be sent to the language model via `send_message`.
+        Empty messages are not sent.
+
+        Args:
+            user_input: The raw input string from the user.
 
         Returns:
-            True to continue chat, False to exit
+            bool: True if the chat session should continue, False if a command
+            (like `/exit`) signals to terminate the session.
         """
         # Parse for commands
         command_name, args = self.commands.parse_command(user_input)
@@ -255,11 +332,19 @@ class ChatController:
             return True
 
     async def handle_command(self, command_name: str, args: str) -> bool:
-        """
-        Handle a chat command.
+        """Executes a parsed chat command.
+
+        Retrieves the command from the `CommandRegistry` and calls its
+        `execute` method. If the command is not found, an error message
+        is displayed.
+
+        Args:
+            command_name: The name of the command to execute.
+            args: The arguments string for the command.
 
         Returns:
-            True to continue chat, False to exit
+            bool: The result of the command's `execute` method, indicating
+            whether to continue or exit the chat.
         """
         command = self.commands.get_command(command_name)
 
@@ -271,7 +356,17 @@ class ChatController:
         return await command.execute(args, self)
 
     async def send_message(self, content: str) -> None:
-        """Send a message and get response."""
+        """Sends a message to the language model and handles the response.
+
+        The user's message is added to the conversation history.
+        A request is prepared using `prepare_request`, and then sent to the
+        model via `astream_typed_response`. The response stream is handled by
+        `TypedStreamHandler`, and the assistant's reply is added back to the
+        conversation.
+
+        Args:
+            content: The text content of the user's message.
+        """
         # Add user message to conversation
         user_message = self.conversation.add_user_message(content)
 
@@ -374,27 +469,47 @@ class ChatController:
                 delattr(self.display, "_in_chat_mode")
 
     def prepare_request(self) -> dict[str, str | int | float | bool | list]:
-        """Prepare API request with conversation history."""
+        """Prepares the request dictionary for the API call.
+
+        This method compiles the conversation history and current configuration
+        settings (model, tools, etc.) into the format expected by the
+        SDK's `astream_typed_response` function.
+
+        Returns:
+            A dictionary representing the API request.
+        """
         # Update tools in case they changed
-        self.conversation.tools = self.prepare_tools()
+        self.conversation.tools = self.prepare_tools() # Uses dict-based tools for now
 
         # The SDK expects "input_messages"
         request = {
-            "input_messages": self.conversation.to_api_format(),
+            "input_messages": self.conversation.to_api_format(), # Converts messages
             "model": self.config.model,
             "effort": self.config.effort,
-            "store": True,
+            "store": True, # Assuming we always want to store in chat context
             "debug": self.config.debug,
+            # Temperature and max_output_tokens are handled by prepare_typed_tools
+            # when constructing the Typed Request object in send_message.
         }
 
-        # Add tools if any
+        # Add tools if any (these are dict-based tools for the request dict)
         if self.conversation.tools:
             request["tools"] = self.conversation.tools
 
         return request
 
     def _extract_text_from_content_item(self, content_item: any) -> str | None:
-        """Extract text from a single content item (dict or typed object)."""
+        """Extracts text from a single content item.
+
+        A content item can be a string, a dictionary (e.g., `{"type": "text", "text": "..."}`),
+        or a typed content part object (e.g., `ContentPart`).
+
+        Args:
+            content_item: The content item to extract text from.
+
+        Returns:
+            The extracted text as a string, or None if no text is found.
+        """
         if isinstance(content_item, str):
             return content_item
         if isinstance(content_item, dict):
@@ -408,7 +523,19 @@ class ChatController:
         return None
 
     def extract_text_from_message(self, message_item: dict[str, str | int | float | bool | list | dict]) -> str | None:
-        """Extract text content from a message item."""
+        """Extracts the primary text content from a message dictionary.
+
+        A message item (typically from an API response) can have its content
+        represented in various ways (string, list of content parts). This method
+        iterates through possible structures to find the textual content.
+
+        Args:
+            message_item: A dictionary representing a message, usually part of
+                an API response.
+
+        Returns:
+            The extracted text content as a string, or None if not found.
+        """
         content = message_item.get("content", [])
 
         if isinstance(content, str):
@@ -422,7 +549,19 @@ class ChatController:
         return None
 
     def extract_text_from_typed_response(self, response: "Response") -> str | None:
-        """Extract text content from a typed response object."""
+        """Extracts the primary text content from a typed API `Response` object.
+
+        This method navigates the structure of a `Response` object (which might
+        contain multiple output items like messages or tool calls) to find and
+        return the first piece of textual assistant content.
+
+        Args:
+            response: The typed `Response` object from the API.
+
+        Returns:
+            The extracted text content from the assistant's message, or None
+            if not found.
+        """
         from ..response._types import ResponseOutputMessage
 
         if hasattr(response, "output") and response.output:
