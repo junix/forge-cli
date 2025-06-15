@@ -1,13 +1,14 @@
 import unittest
 import uuid
 
+from forge_cli.core.chunk import Chunk  # To compare behavior or check instance
+
 # Assuming the Page model is in src.forge_cli.core.page
 # Adjust the import path if necessary
-from src.forge_cli.core.page import Page
-from src.forge_cli.core.chunk import Chunk # To compare behavior or check instance
+from forge_cli.core.page import Page
+
 
 class TestPage(unittest.TestCase):
-
     def test_page_instantiation_with_specific_and_inherited_fields(self):
         """Test Page creation with its specific fields and inherited Chunk fields."""
         page_id = str(uuid.uuid4())
@@ -16,20 +17,14 @@ class TestPage(unittest.TestCase):
         metadata = {"source": "web"}
         index = 0
 
-        page = Page(
-            id=page_id,
-            content=content,
-            url=url,
-            metadata=metadata,
-            index=index
-        )
+        page = Page(id=page_id, content=content, url=url, metadata=metadata, index=index)
 
         self.assertEqual(page.id, page_id)
         self.assertEqual(page.content, content)
         self.assertEqual(page.url, url)
         self.assertEqual(page.metadata, metadata)
         self.assertEqual(page.index, index)
-        self.assertTrue(isinstance(page, Chunk)) # Verify inheritance
+        self.assertTrue(isinstance(page, Chunk))  # Verify inheritance
 
     def test_page_instantiation_minimal(self):
         """Test Page creation with minimal fields (assuming url is key)."""
@@ -37,14 +32,14 @@ class TestPage(unittest.TestCase):
         # For now, let's assume 'url' is a primary specific field.
         # And 'content' might be optional in Chunk, 'id' has default factory.
         url = "https://example.com/another-page"
-        page = Page(url=url) # Potentially add other fields if instantiation fails
+        page = Page(url=url)  # Potentially add other fields if instantiation fails
 
-        self.assertIsNotNone(page.id) # Inherited from Chunk
+        self.assertIsNotNone(page.id)  # Inherited from Chunk
         self.assertTrue(isinstance(uuid.UUID(page.id, version=4), uuid.UUID))
         self.assertEqual(page.url, url)
-        self.assertIsNone(page.content) # Default from Chunk
-        self.assertEqual(page.metadata, {}) # Default from Chunk
-        self.assertIsNone(page.index) # Default from Chunk
+        self.assertIsNone(page.content)  # Default from Chunk
+        self.assertEqual(page.metadata, {})  # Default from Chunk
+        self.assertIsNone(page.index)  # Default from Chunk
 
     def test_page_url_field(self):
         """Test the Page-specific 'url' field."""
@@ -79,5 +74,5 @@ class TestPage(unittest.TestCase):
         self.assertEqual(page_with_meta.metadata, custom_metadata)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

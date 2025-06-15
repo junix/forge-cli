@@ -1,15 +1,15 @@
 import unittest
 import uuid
 
-from src.forge_cli.core.document_content import DocumentContent
-from src.forge_cli.core.chunk import Chunk
-from src.forge_cli.core.page import Page
+from forge_cli.core.chunk import Chunk
+from forge_cli.core.document_content import DocumentContent
+from forge_cli.core.page import Page
+
 
 class TestDocumentContent(unittest.TestCase):
-
     def test_instantiation_basic_required_id(self):
         """Test DocumentContent instantiation with required 'id' and default optionals."""
-        doc_id = "test_id_123" # Must be provided
+        doc_id = "test_id_123"  # Must be provided
 
         dc = DocumentContent(id=doc_id)
 
@@ -30,7 +30,7 @@ class TestDocumentContent(unittest.TestCase):
 
     def test_instantiation_all_fields(self):
         """Test DocumentContent creation with all fields provided."""
-        doc_id = str(uuid.uuid4()) # Example of a generated ID, but must be passed
+        doc_id = str(uuid.uuid4())  # Example of a generated ID, but must be passed
         chunk1 = Chunk(content="First chunk")
         page1 = Page(url="https://example.com/page1", content="Page content")
 
@@ -45,7 +45,7 @@ class TestDocumentContent(unittest.TestCase):
             file_type="application/pdf",
             encoding="UTF-8",
             metadata={"source": "upload", "version": "1.0"},
-            segments=[chunk1, page1]
+            segments=[chunk1, page1],
         )
 
         self.assertEqual(dc.id, doc_id)
@@ -106,15 +106,11 @@ class TestDocumentContent(unittest.TestCase):
         self.assertIsNone(dc1.file_type)
 
         # Setting some optional fields
-        dc2 = DocumentContent(
-            id=doc_id,
-            abstract="Test Abstract",
-            file_type="text/markdown",
-            language="fr"
-        )
+        dc2 = DocumentContent(id=doc_id, abstract="Test Abstract", file_type="text/markdown", language="fr")
         self.assertEqual(dc2.abstract, "Test Abstract")
         self.assertEqual(dc2.file_type, "text/markdown")
         self.assertEqual(dc2.language, "fr")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

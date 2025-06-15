@@ -1,17 +1,17 @@
 import unittest
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from src.forge_cli.core.document import Document
-from src.forge_cli.core.document_content import DocumentContent
-from src.forge_cli.core.chunk import Chunk
+from forge_cli.core.chunk import Chunk
+from forge_cli.core.document import Document
+from forge_cli.core.document_content import DocumentContent
+
 
 class TestDocument(unittest.TestCase):
-
     def test_instantiation_basic_required_fields(self):
         """Test Document instantiation with required fields and default optionals."""
         doc_id = str(uuid.uuid4())
-        md5 = "d41d8cd98f00b204e9800998ecf8427e" # example md5
+        md5 = "d41d8cd98f00b204e9800998ecf8427e"  # example md5
         mime = "text/plain"
         doc_title = "My Test Document"
 
@@ -41,16 +41,14 @@ class TestDocument(unittest.TestCase):
         doc_title = "Comprehensive Document"
 
         # Create a DocumentContent object
-        dc_id = "dc_content_id_001" # DocumentContent also requires an id
+        dc_id = "dc_content_id_001"  # DocumentContent also requires an id
         doc_content_obj = DocumentContent(
-            id=dc_id,
-            abstract="Abstract of content.",
-            segments=[Chunk(content="chunk in content")]
+            id=dc_id, abstract="Abstract of content.", segments=[Chunk(content="chunk in content")]
         )
 
         custom_metadata = {"category": "testing", "status": "draft"}
         vector_ids = ["vs_1", "vs_2"]
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         specific_url = "https://example.com/document.pdf"
         specific_author = "Test Author"
 
@@ -65,7 +63,7 @@ class TestDocument(unittest.TestCase):
             url=specific_url,
             metadata=custom_metadata,
             vector_store_ids=vector_ids,
-            content=doc_content_obj
+            content=doc_content_obj,
         )
 
         self.assertEqual(doc.id, doc_id)
@@ -88,12 +86,10 @@ class TestDocument(unittest.TestCase):
         mime = "application/json"
         doc_title = "Document with Content"
 
-        dc_id = "dc_for_doc_002" # DocumentContent requires an id
+        dc_id = "dc_for_doc_002"  # DocumentContent requires an id
         doc_content_obj = DocumentContent(id=dc_id, file_type="text/plain")
 
-        doc_with_content = Document(
-            id=doc_id, md5sum=md5, mime_type=mime, title=doc_title, content=doc_content_obj
-        )
+        doc_with_content = Document(id=doc_id, md5sum=md5, mime_type=mime, title=doc_title, content=doc_content_obj)
         self.assertIs(doc_with_content.content, doc_content_obj)
         self.assertIsInstance(doc_with_content.content, DocumentContent)
 
@@ -130,8 +126,8 @@ class TestDocument(unittest.TestCase):
         self.assertIsNone(doc_no_dt.updated_at)
 
         # Test providing specific datetimes
-        specific_created_at = datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        specific_updated_at = datetime(2023, 1, 2, 12, 0, 0, tzinfo=timezone.utc)
+        specific_created_at = datetime(2023, 1, 1, 12, 0, 0, tzinfo=UTC)
+        specific_updated_at = datetime(2023, 1, 2, 12, 0, 0, tzinfo=UTC)
 
         doc_specific_dt = Document(
             id=str(uuid.uuid4()),
@@ -139,10 +135,11 @@ class TestDocument(unittest.TestCase):
             mime_type=mime,
             title="Specific DT Doc",
             created_at=specific_created_at,
-            updated_at=specific_updated_at
+            updated_at=specific_updated_at,
         )
         self.assertEqual(doc_specific_dt.created_at, specific_created_at)
         self.assertEqual(doc_specific_dt.updated_at, specific_updated_at)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

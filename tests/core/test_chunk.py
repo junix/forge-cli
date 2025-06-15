@@ -3,22 +3,17 @@ import uuid
 
 # Assuming the Chunk model is in src.models.chunk
 # Adjust the import path if necessary
-from src.forge_cli.core.chunk import Chunk
+from forge_cli.core.chunk import Chunk
+
 
 class TestChunk(unittest.TestCase):
-
     def test_chunk_instantiation_with_optional_fields(self):
         """Test Chunk creation with all fields provided."""
         chunk_id = str(uuid.uuid4())
         content = "This is a test chunk."
         index = 1
         metadata = {"source": "test_document.txt"}
-        chunk = Chunk(
-            id=chunk_id,
-            content=content,
-            index=index,
-            metadata=metadata
-        )
+        chunk = Chunk(id=chunk_id, content=content, index=index, metadata=metadata)
         self.assertEqual(chunk.id, chunk_id)
         self.assertEqual(chunk.content, content)
         self.assertEqual(chunk.index, index)
@@ -31,10 +26,10 @@ class TestChunk(unittest.TestCase):
         chunk = Chunk(content=content)
 
         self.assertIsNotNone(chunk.id)
-        self.assertTrue(isinstance(uuid.UUID(chunk.id, version=4), uuid.UUID)) # Check if it's a valid UUIDv4
+        self.assertTrue(isinstance(uuid.UUID(chunk.id, version=4), uuid.UUID))  # Check if it's a valid UUIDv4
         self.assertEqual(chunk.content, content)
-        self.assertIsNone(chunk.index) # Default for index is None
-        self.assertEqual(chunk.metadata, {}) # Default metadata should be empty dict
+        self.assertIsNone(chunk.index)  # Default for index is None
+        self.assertEqual(chunk.metadata, {})  # Default metadata should be empty dict
 
     def test_chunk_metadata(self):
         """Test the metadata field can store and retrieve arbitrary key-value pairs."""
@@ -59,14 +54,13 @@ class TestChunk(unittest.TestCase):
         chunk_none_meta = Chunk(content="content", metadata=None)
         self.assertIsNone(chunk_none_meta.metadata)
 
-
     def test_chunk_id_generation_and_usage(self):
         """Test ID is generated if not provided, and used if provided."""
         # ID generated (content is optional, but providing it for clarity)
         chunk_generated_id = Chunk(content="content1")
         self.assertIsNotNone(chunk_generated_id.id)
         self.assertTrue(isinstance(uuid.UUID(chunk_generated_id.id, version=4), uuid.UUID))
-        self.assertIsNone(chunk_generated_id.index) # Check default
+        self.assertIsNone(chunk_generated_id.index)  # Check default
 
         # ID provided
         provided_id = str(uuid.uuid4())
@@ -74,5 +68,6 @@ class TestChunk(unittest.TestCase):
         self.assertEqual(chunk_provided_id.id, provided_id)
         self.assertEqual(chunk_provided_id.index, 0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
