@@ -10,14 +10,11 @@ from typing import Optional
 # Import the TestDataset loader
 from forge_cli.dataset import TestDataset
 
-# Add parent directory to path for SDK import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Use absolute imports from top-level directory
 from forge_cli.chat.controller import ChatController
 from forge_cli.config import SearchConfig
 # Registry no longer needed - using v3 directly
-from forge_cli.display.v3.base import Display
 from forge_cli.processors.registry_typed import initialize_typed_registry
 from forge_cli.sdk import astream_typed_response, async_get_vectorstore
 from forge_cli.stream.handler_typed import TypedStreamHandler
