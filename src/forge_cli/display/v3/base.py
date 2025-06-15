@@ -1,4 +1,4 @@
-"""Base display interface for v2 - pure rendering without input handling."""
+"""Base display interface for v3 - pure rendering without input handling."""
 
 from abc import ABC, abstractmethod
 from typing import Protocol
