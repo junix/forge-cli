@@ -326,110 +326,214 @@ class RichRenderer(BaseRenderer):
         tool_type = tool_item.type
 
         if tool_type == "file_search_call":
-            # Show query/queries and result count
-            query_str = ""
+            # Show query/queries with search icon and result count
+            query_parts = []
             if hasattr(tool_item, "query") and tool_item.query:
                 query = tool_item.query[:40] + "..." if len(tool_item.query) > 40 else tool_item.query
-                query_str = f'"{query}"'
+                query_parts.append(f'🔍 "{query}"')
             elif hasattr(tool_item, "queries") and tool_item.queries:
                 if len(tool_item.queries) == 1:
                     query = tool_item.queries[0][:40] + "..." if len(tool_item.queries[0]) > 40 else tool_item.queries[0]
-                    query_str = f'"{query}"'
+                    query_parts.append(f'🔍 "{query}"')
                 else:
-                    query_str = f"{len(tool_item.queries)} queries"
+                    # Show multiple queries with & separator
+                    queries_preview = []
+                    for q in tool_item.queries[:2]:  # Show first 2 queries
+                        shortened = q[:20] + "..." if len(q) > 20 else q
+                        queries_preview.append(f'"{shortened}"')
+                    query_text = " & ".join(queries_preview)
+                    if len(tool_item.queries) > 2:
+                        query_text += f" & {len(tool_item.queries) - 2} more"
+                    query_parts.append(f"🔍 {query_text}")
 
+            # Add results information
             if hasattr(tool_item, "results") and tool_item.results:
-                if query_str:
-                    return f"{query_str} → found {len(tool_item.results)} results"
+                result_count = len(tool_item.results)
+                if hasattr(tool_item, "vector_store_ids") and tool_item.vector_store_ids:
+                    stores = len(tool_item.vector_store_ids)
+                    query_parts.append(f"📊 {result_count} results from {stores} store{'s' if stores > 1 else ''}")
                 else:
-                    return f"found {len(tool_item.results)} results"
-            elif query_str:
-                return f"searching {query_str}"
-            return "initializing search"
+                    query_parts.append(f"📊 {result_count} result{'s' if result_count != 1 else ''}")
+
+            if query_parts:
+                return " → ".join(query_parts)
+            elif tool_item.status == "searching":
+                return "🔍 initializing search..."
+            return "preparing file search"
 
         elif tool_type == "web_search_call":
-            # Show the search query and result count
+            # Show web search with globe icon
+            parts = []
             if hasattr(tool_item, "queries") and tool_item.queries:
-                query = tool_item.queries[0][:50] + "..." if len(tool_item.queries[0]) > 50 else tool_item.queries[0]
+                # Join multiple queries with +
+                query_text = " + ".join(f'"{q[:30]}..."' if len(q) > 30 else f'"{q}"' for q in tool_item.queries[:2])
+                if len(tool_item.queries) > 2:
+                    query_text += f" +{len(tool_item.queries) - 2} more"
+                parts.append(f"🌐 {query_text}")
 
                 if hasattr(tool_item, "results") and tool_item.results:
-                    return f'"{query}" → {len(tool_item.results)} results'
-                else:
-                    return f'searching "{query}"'
-            return "initializing web search"
+                    result_count = len(tool_item.results)
+                    # Show top domains if available
+                    domains = []
+                    for r in tool_item.results[:3]:
+                        if hasattr(r, "url"):
+                            try:
+                                from urllib.parse import urlparse
+                                domain = urlparse(r.url).netloc
+                                if domain and domain not in domains:
+                                    domains.append(domain.replace("www.", ""))
+                            except:
+                                pass
+                    
+                    if domains:
+                        parts.append(f"📰 {result_count} results ({', '.join(domains[:2])}...)")
+                    else:
+                        parts.append(f"📰 {result_count} results")
+            
+            if parts:
+                return " → ".join(parts)
+            return "🌐 initializing web search..."
 
         elif tool_type == "document_finder_call":
-            # Show query and results
-            query_str = ""
-            if hasattr(tool_item, "query") and tool_item.query:
+            # Show document search with magnifying glass
+            parts = []
+            if hasattr(tool_item, "queries") and tool_item.queries:
+                # Show all queries joined
+                queries_text = " & ".join(f'"{q[:25]}..."' if len(q) > 25 else f'"{q}"' for q in tool_item.queries)
+                parts.append(f"📑 {queries_text}")
+            elif hasattr(tool_item, "query") and tool_item.query:
                 query = tool_item.query[:40] + "..." if len(tool_item.query) > 40 else tool_item.query
-                query_str = f'"{query}"'
-            elif hasattr(tool_item, "queries") and tool_item.queries:
-                if len(tool_item.queries) == 1:
-                    query = tool_item.queries[0][:40] + "..." if len(tool_item.queries[0]) > 40 else tool_item.queries[0]
-                    query_str = f'"{query}"'
-                else:
-                    query_str = f"{len(tool_item.queries)} queries"
+                parts.append(f'📑 "{query}"')
             
             if hasattr(tool_item, "results") and tool_item.results:
                 doc_count = len(tool_item.results)
-                if query_str:
-                    return f"{query_str} → found {doc_count} document{'s' if doc_count != 1 else ''}"
+                # Show document types if available
+                doc_types = set()
+                for r in tool_item.results:
+                    if hasattr(r, "file_name") and r.file_name:
+                        ext = r.file_name.split('.')[-1].lower() if '.' in r.file_name else None
+                        if ext:
+                            doc_types.add(ext)
+                
+                if doc_types:
+                    types_str = ", ".join(list(doc_types)[:3])
+                    parts.append(f"📚 {doc_count} document{'s' if doc_count != 1 else ''} ({types_str})")
                 else:
-                    return f"found {doc_count} document{'s' if doc_count != 1 else ''}"
-            elif query_str:
-                return f"searching {query_str}"
-            return "initializing search"
+                    parts.append(f"📚 {doc_count} document{'s' if doc_count != 1 else ''}")
+            
+            if parts:
+                return " → ".join(parts)
+            return "📑 initializing document search..."
 
         elif tool_type == "file_reader_call":
-            # Show file being read with more context
-            file_info = ""
+            # Show file reading with book icon and detailed info
+            parts = []
             
-            # Try to get file name first (most useful)
+            # File identification
             if hasattr(tool_item, "file_name") and tool_item.file_name:
-                name = tool_item.file_name[:35] + "..." if len(tool_item.file_name) > 35 else tool_item.file_name
-                file_info = f'"{name}"'
+                name = tool_item.file_name
+                # Show file extension
+                ext = name.split('.')[-1].lower() if '.' in name else "file"
+                name_short = name[:30] + "..." if len(name) > 30 else name
+                parts.append(f'📖 "{name_short}" [{ext.upper()}]')
             elif hasattr(tool_item, "file_id") and tool_item.file_id:
-                file_info = f"file:{tool_item.file_id[:12]}..."
+                parts.append(f"📖 file:{tool_item.file_id[:12]}...")
             
-            # Check if there's content or results
+            # Content information
             if hasattr(tool_item, "content") and tool_item.content:
-                content_preview = tool_item.content[:50].replace('\n', ' ') + "..." if len(tool_item.content) > 50 else tool_item.content.replace('\n', ' ')
-                if file_info:
-                    return f"{file_info} → loaded ({len(tool_item.content)} chars)"
+                content_len = len(tool_item.content)
+                # Format size nicely
+                if content_len > 1024 * 1024:
+                    size_str = f"{content_len / (1024 * 1024):.1f}MB"
+                elif content_len > 1024:
+                    size_str = f"{content_len / 1024:.1f}KB"
                 else:
-                    return f"loaded {len(tool_item.content)} characters"
+                    size_str = f"{content_len} chars"
+                
+                # Show preview of content type
+                content_preview = tool_item.content[:100].strip()
+                if content_preview.startswith("{") or content_preview.startswith("["):
+                    parts.append(f"💾 loaded {size_str} (JSON)")
+                elif content_preview.startswith("<?xml"):
+                    parts.append(f"💾 loaded {size_str} (XML)")
+                elif content_preview.startswith("<!DOCTYPE") or content_preview.startswith("<html"):
+                    parts.append(f"💾 loaded {size_str} (HTML)")
+                else:
+                    parts.append(f"💾 loaded {size_str}")
             elif hasattr(tool_item, "results") and tool_item.results:
-                if file_info:
-                    return f"{file_info} → loaded successfully"
-                else:
-                    return "file loaded"
-            elif file_info:
-                return f"reading {file_info}"
-            return "loading file"
+                parts.append("✅ loaded successfully")
+            
+            if parts:
+                return " → ".join(parts)
+            return "📖 loading file..."
 
         elif tool_type == "code_interpreter_call":
-            # Show what code is doing
+            # Show code execution with computer icon
+            parts = []
             if hasattr(tool_item, "code") and tool_item.code:
-                # Extract first meaningful line of code
+                # Detect language from code
+                code_lower = tool_item.code.lower()
+                if "import" in code_lower or "def " in code_lower:
+                    lang = "Python"
+                elif "const " in code_lower or "function " in code_lower:
+                    lang = "JavaScript"
+                elif "#include" in code_lower:
+                    lang = "C/C++"
+                else:
+                    lang = "Code"
+                
+                # Extract first meaningful line
                 lines = [line.strip() for line in tool_item.code.split("\n") if line.strip() and not line.strip().startswith("#")]
                 if lines:
-                    code_preview = lines[0][:40] + "..." if len(lines[0]) > 40 else lines[0]
-                    return f"executing `{code_preview}`"
-            return "running code"
+                    code_preview = lines[0][:35] + "..." if len(lines[0]) > 35 else lines[0]
+                    parts.append(f"💻 {lang}: `{code_preview}`")
+                    
+                    # Show line count for longer code
+                    total_lines = len([l for l in tool_item.code.split("\n") if l.strip()])
+                    if total_lines > 5:
+                        parts.append(f"📄 {total_lines} lines")
+            
+            # Show output if available
+            if hasattr(tool_item, "output") and tool_item.output:
+                output_preview = str(tool_item.output)[:30] + "..." if len(str(tool_item.output)) > 30 else str(tool_item.output)
+                parts.append(f"📤 output: {output_preview}")
+            
+            if parts:
+                return " → ".join(parts)
+            return "💻 executing code..."
 
         elif tool_type == "function_call":
-            # Show function name and args preview
+            # Show function call with wrench icon
+            parts = []
             if hasattr(tool_item, "function"):
                 func_name = tool_item.function
+                parts.append(f"🔧 {func_name}")
+                
+                # Show argument preview if available
                 if hasattr(tool_item, "arguments"):
-                    return f"calling {func_name}(...)"
-                return f"calling {func_name}"
-            return "executing function"
+                    try:
+                        import json
+                        args = json.loads(tool_item.arguments) if isinstance(tool_item.arguments, str) else tool_item.arguments
+                        if isinstance(args, dict):
+                            arg_preview = ", ".join(f"{k}={v}" for k, v in list(args.items())[:2])
+                            if len(args) > 2:
+                                arg_preview += f", +{len(args) - 2} more"
+                            parts.append(f"📋 ({arg_preview})")
+                    except:
+                        parts.append("📋 (with arguments)")
+            
+            # Show result preview if available
+            if hasattr(tool_item, "output") and tool_item.output:
+                output_str = str(tool_item.output)[:40] + "..." if len(str(tool_item.output)) > 40 else str(tool_item.output)
+                parts.append(f"✨ {output_str}")
+            
+            if parts:
+                return " → ".join(parts)
+            return "🔧 calling function..."
 
         # Default fallback
         if hasattr(tool_item, "results") and tool_item.results:
-            return f"{len(tool_item.results)} results"
+            return f"📊 {len(tool_item.results)} results"
         return ""
 
     # Additional methods for chat mode and error handling
