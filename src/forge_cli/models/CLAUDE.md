@@ -10,10 +10,10 @@ The models module defines all data structures and types used throughout the Forg
 models/
 ├── __init__.py           # Module exports
 ├── conversation.py       # Chat conversation management
-├── events.py            # Event type definitions for streaming
-├── output_types.py      # Response output type structures
 └── state.py             # Stream state management
 ```
+
+**Note:** Output types and event definitions are now centralized in `response/_types/` for consistency with the OpenAPI-generated type system.
 
 ## Architecture & Design
 
@@ -41,35 +41,18 @@ conv.add_message(Message(role="user", content="Hello"))
 conv.add_message(Message(role="assistant", content="Hi there!"))
 ```
 
-#### events.py - Event Type System
+**Note:** Output types and event definitions have been migrated to `response/_types/` directory. For response structures and event types, import from:
 
-- **EventType**: Enum of all possible event types from the API
-- **Event**: Base event structure with type and data
-- **EventData**: Type-safe event data structures
-
-Event types include:
-
-- Response lifecycle: `created`, `in_progress`, `completed`
-- Output streaming: `output_text.delta`, `output_text.done`
-- Tool execution: `file_search_call.searching`, `web_search_call.completed`
-
-#### output_types.py - Response Output Types
-
-Core response structures:
-
-- **SummaryItem**: Brief response summaries
-- **ReasoningItem**: Thinking/analysis blocks
-- **MessageItem**: Final response messages
-- **FileSearchCall**: File search tool invocations
-- **WebSearchCall**: Web search tool invocations
-- **FileReaderCall**: File reading operations
-- **DocumentFinderCall**: Document discovery
-
-Citation and annotation types:
-
-- **Annotation**: Base annotation class
-- **FileCitationAnnotation**: References to file content
-- **UrlCitationAnnotation**: Web URL references
+```python
+from forge_cli.response._types import (
+    ResponseReasoningItem,     # Thinking/analysis blocks
+    ResponseOutputMessage,     # Final response messages  
+    ResponseFileSearchToolCall, # File search tool calls
+    ResponseWebSearchToolCall,  # Web search tool calls
+    Annotation,               # Citation annotations
+    # ... and many more comprehensive types
+)
+```
 
 #### state.py - Stream State Management
 
@@ -104,24 +87,20 @@ When working with this module:
    from forge_cli.models import Conversation, Message
    ```
 
-2. **Create instances with proper types**: Always provide required fields
+2. **Use proper response types**: Import types from `response/_types` for API structures
 
    ```python
-   from forge_cli.models import FileSearchCall, FileCitationAnnotation
+   from forge_cli.response._types import ResponseFileSearchToolCall, Annotation
    
-   # Create a file search call
-   search = FileSearchCall(
-       query="machine learning",
-       vector_store_ids=["vs_123", "vs_456"]
-   )
+   # Work with file search results from API responses
+   if isinstance(item, ResponseFileSearchToolCall):
+       results = item.results or []
+       for result in results:
+           print(f"Found: {result.get('filename', 'Unknown')}")
    
-   # Create a citation
-   citation = FileCitationAnnotation(
-       file_id="file_abc",
-       file_name="research.pdf",
-       quote="The key finding was...",
-       page_number=42
-   )
+   # Handle annotations in responses
+   if isinstance(annotation, Annotation):
+       print(f"Citation: {annotation.text}")
    ```
 
 3. **Handle optional fields**: Many fields have sensible defaults
@@ -144,31 +123,25 @@ When working with this module:
 
 ### Adding New Types
 
-1. **Choose the right file**:
+1. **Choose the right location**:
    - `conversation.py`: Chat-related structures
-   - `events.py`: New event types from API
-   - `output_types.py`: New output formats or tool types
    - `state.py`: State tracking structures
+   - `response/_types/`: API response and request types (preferred for most new types)
 
-2. **Follow existing patterns**:
+2. **For new API types**: Add to `response/_types` directory following OpenAPI patterns
+
+3. **For internal types**: Follow existing patterns in this module:
 
    ```python
    from dataclasses import dataclass, field
-   from typing import Optional, List
+   from typing import Optional
    
    @dataclass
-   class NewToolCall:
-       """Description of what this tool does."""
-       tool_id: str
-       parameters: dict = field(default_factory=dict)
+   class NewStateType:
+       """Description of what this tracks."""
+       identifier: str
+       metadata: dict = field(default_factory=dict)
        status: Optional[str] = None
-   ```
-
-3. **Export from **init**.py**:
-
-   ```python
-   from .output_types import NewToolCall
-   __all__.append("NewToolCall")
    ```
 
 ### Type Annotations
