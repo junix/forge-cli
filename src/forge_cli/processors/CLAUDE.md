@@ -19,7 +19,8 @@ processors/
     ├── file_search.py       # File search tool processor
     ├── web_search.py        # Web search tool processor
     ├── file_reader.py       # File reader tool processor
-    └── document_finder.py   # Document finder processor
+    ├── document_finder.py   # Document finder processor
+    └── code_analyzer.py     # Code analyzer tool processor
 ```
 
 ## Architecture & Design
@@ -94,6 +95,7 @@ def initialize_default_registry() -> ProcessorRegistry:
     registry.register("message", MessageProcessor())
     registry.register("file_search_call", FileSearchProcessor())
     registry.register("web_search_call", WebSearchProcessor())
+    registry.register("code_analyzer_call", CodeAnalyzerProcessor())
     # ... more registrations
     
     return registry
@@ -175,6 +177,13 @@ class BaseToolProcessor(OutputProcessor):
 - Processes document discovery
 - Manages document metadata
 - Handles batch operations
+
+#### code_analyzer.py - Code Analyzer Processor
+
+- Processes code analysis requests.
+- Extracts parameters like code path, analysis types.
+- Handles events related to analysis progress and results.
+- Formats analysis findings for display.
 
 ## Usage Guidelines
 
@@ -332,6 +341,7 @@ EVENT_PROCESSOR_MAP = {
     "web_search_call": WebSearchProcessor,
     "file_reader_call": FileReaderProcessor,
     "document_finder_call": DocumentFinderProcessor,
+    "code_analyzer_call": CodeAnalyzerProcessor,
 }
 ```
 

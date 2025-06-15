@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project provides modern, modular command-line tools and SDK for interacting with the Knowledge Forge API. Built with Python 3.8+ and structured as a proper Python package, it offers comprehensive functionality for file uploads, vector store management, AI-powered question answering, and streaming responses.
+This project provides modern, modular command-line tools and SDK for interacting with the Knowledge Forge API. Built with Python 3.8+ and structured as a proper Python package, it offers comprehensive functionality for file uploads, vector store management, AI-powered question answering, code analysis, and streaming responses.
 
 ## 🆕 Migration to Typed API (In Progress)
 
@@ -31,6 +31,7 @@ forge-cli/
 │   ├── models/                 # Pydantic data models and types (use relative imports)
 │   │   ├── __init__.py         # Model exports
 │   │   ├── api.py              # API request/response models with validation
+│   │   ├── code_analysis.py    # Models for code analysis results
 │   │   ├── conversation.py     # Chat conversation models with validation
 │   │   ├── events.py           # Event type definitions with Pydantic
 │   │   ├── output_types.py     # Response output types with validation
@@ -46,6 +47,7 @@ forge-cli/
 │   │       ├── file_search.py  # File search tool processor
 │   │       ├── web_search.py   # Web search tool processor
 │   │       ├── file_reader.py  # File reader tool processor
+│   │   │   ├── code_analyzer.py # Code analyzer tool processor
 │   │       └── document_finder.py # Document finder processor
 │   ├── display/                # Display strategies (use relative imports)
 │   │   ├── registry.py         # Display factory with v2 architecture
@@ -241,6 +243,9 @@ forge-cli --chat
 
 # Multiple tools with location context
 forge-cli -t file-search -t web-search --vec-id vs_123 --country US --city "San Francisco"
+
+# Code analysis
+forge-cli -t code-analyzer --path ./src -q "Find complex functions"
 ```
 
 ### SDK API Reference
@@ -334,6 +339,19 @@ result = await async_join_files_to_vectorstore(
 )
 ```
 
+#### Code Analyzer API
+
+```python
+from forge_cli.sdk import async_analyze_code
+
+# Analyze code
+analysis_results = await async_analyze_code(
+    path="/path/to/your/codebase",
+    analysis_types=["complexity", "style"], # Example parameters
+    output_format="json" # Example parameter
+)
+```
+
 ## Architecture
 
 ### Modular Design Philosophy
@@ -359,6 +377,7 @@ Each output type has a dedicated processor:
 - `ReasoningProcessor`: Handles thinking/analysis blocks
 - `FileSearchProcessor`: Processes file search tool calls
 - `WebSearchProcessor`: Handles web search operations
+- `CodeAnalyzerProcessor`: Handles code analysis tool calls
 - `MessageProcessor`: Manages final responses with citations
 
 #### Display Strategies
@@ -386,6 +405,9 @@ python -m forge_cli.scripts.hello-file-reader --file-id file_123 -q "Summarize t
 
 # End-to-end workflow
 python -m forge_cli.scripts.simple-flow -f document.pdf -n "My Collection" -q "What is this about?"
+
+# Code analysis script
+python -m forge_cli.scripts.hello-code-analyzer --path ./my_project -q "Check for TODOs"
 ```
 
 ### Advanced Features
@@ -446,6 +468,9 @@ Combine multiple tools in a single query:
 ```bash
 # File search + Web search
 forge-cli -t file-search -t web-search --vec-id vs_123 -q "Compare internal docs with latest industry trends"
+
+# File search + Code Analyzer
+forge-cli -t file-search -t code-analyzer --vec-id vs_docs --path ./repo -q "Analyze code related to search results"
 ```
 
 ### Configuration Options
@@ -538,6 +563,11 @@ The system processes real-time events from the Knowledge Forge API:
 "response.web_search_call.searching"     # Web search started
 "response.web_search_call.completed"     # Web search finished
 
+# Code Analyzer events
+"response.code_analyzer_call.analyzing"  # Code analysis started
+"response.code_analyzer_call.completed"  # Code analysis finished
+"response.code_analysis_item.added"      # Individual analysis finding
+
 # Reasoning/thinking events
 "response.output_item.added"             # Reasoning content
 ```
@@ -603,6 +633,7 @@ The project includes comprehensive ADRs documenting design decisions:
 - **[CLAUDE-002](docs/adr/CLAUDE-002-reasoning-event-handling.md)**: Reasoning event handling in streaming
 - **[CLAUDE-003](docs/adr/CLAUDE-003-file-search-annotation-display.md)**: File search citation display architecture
 - **[CLAUDE-004](docs/adr/CLAUDE-004-snapshot-based-streaming-design.md)**: Snapshot-based streaming approach
+- **[CLAUDE-009](docs/adr/CLAUDE-009-code-analyzer-tool.md)**: Code Analyzer tool design and integration (DRAFT)
 
 ## Contributing
 
