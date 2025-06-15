@@ -2,19 +2,20 @@ import asyncio
 import mimetypes
 from pathlib import Path
 
-import aiohttp # Keep for FormData, can be removed if FormData is handled differently or http_client handles it
+import aiohttp # Keep for FormData
 from loguru import logger
 
 from .config import BASE_URL
 from .http_client import async_make_request
-
+# Import new types
+from .types import File, TaskStatus, DeleteResponse # Updated imports
 
 async def async_upload_file(
     path: str,
     purpose: str = "general",
     custom_id: str = None,
     skip_exists: bool = False,
-) -> dict[str, str | int | float | bool | list | dict]:
+) -> File: # Changed return type
     """
     Asynchronously upload a file to the Knowledge Forge API and return the file details.
 
@@ -25,7 +26,7 @@ async def async_upload_file(
         skip_exists: Whether to skip upload if file with same MD5 exists
 
     Returns:
-        Dict containing file details including id and task_id
+        File object containing file details including id and task_id
     """
     file_path = Path(path)
     if not file_path.exists():
@@ -33,12 +34,10 @@ async def async_upload_file(
 
     url = f"{BASE_URL}/v1/files"
 
-    # Detect the actual content type of the file
     content_type, _ = mimetypes.guess_type(str(file_path))
     if content_type is None:
-        content_type = "application/octet-stream"  # fallback for unknown types
+        content_type = "application/octet-stream"
 
-    # Prepare form data
     form_data = aiohttp.FormData()
     form_data.add_field(
         "file",
@@ -57,18 +56,19 @@ async def async_upload_file(
     status_code, response_data = await async_make_request("POST", url, data=form_data)
 
     if status_code == 200 and isinstance(response_data, dict):
-        return response_data
-    # Non-200 errors including JSON parsing failures for 200 status are raised by async_make_request
-    # If response_data is str for 200, it means JSON parsing failed in async_make_request
+        try:
+            return File.model_validate(response_data) # Parse to File model
+        except Exception as e: # Handle Pydantic validation error
+            logger.error(f"Failed to parse successful file upload response into File model: {e}. Response: {response_data}")
+            raise Exception(f"Upload succeeded but failed to parse response. Error: {e}")
     elif status_code == 200 and isinstance(response_data, str):
          raise Exception(f"Upload failed: Server returned 200 but response was not valid JSON. Response: {response_data}")
-    # For other status codes, async_make_request would have raised an exception.
-    # If it didn't (e.g. a case not covered), raise a generic error.
     else:
+        # Errors are raised by async_make_request or this is a fallback
         raise Exception(f"Upload failed with status {status_code}. Response: {response_data}")
 
 
-async def async_check_task_status(task_id: str) -> dict[str, str | int | float | bool | list | dict]:
+async def async_check_task_status(task_id: str) -> TaskStatus: # Changed return type
     """
     Check the status of a task by its ID.
 
@@ -76,24 +76,27 @@ async def async_check_task_status(task_id: str) -> dict[str, str | int | float |
         task_id: The ID of the task to check
 
     Returns:
-        Dict containing task status information
+        TaskStatus object containing task status information
     """
     url = f"{BASE_URL}/v1/tasks/{task_id}"
 
     status_code, response_data = await async_make_request("GET", url)
 
     if status_code == 200 and isinstance(response_data, dict):
-        return response_data
+        try:
+            return TaskStatus.model_validate(response_data) # Parse to TaskStatus model
+        except Exception as e: # Handle Pydantic validation error
+            logger.error(f"Failed to parse successful task status response into TaskStatus model: {e}. Response: {response_data}")
+            raise Exception(f"Task status check succeeded but failed to parse response. Error: {e}")
     elif status_code == 200 and isinstance(response_data, str):
         raise Exception(f"Task status check failed: Server returned 200 but response was not valid JSON. Response: {response_data}")
     else:
-        # Errors are raised by async_make_request, but as a fallback:
         raise Exception(f"Task status check failed with status {status_code}. Response: {response_data}")
 
 
 async def async_wait_for_task_completion(
     task_id: str, poll_interval: int = 2, max_attempts: int = 60
-) -> dict[str, str | int | float | bool | list | dict]:
+) -> TaskStatus: # Changed return type
     """
     Wait for a task to complete by polling its status.
 
@@ -103,26 +106,24 @@ async def async_wait_for_task_completion(
         max_attempts: Maximum number of status checks before giving up
 
     Returns:
-        Dict containing the final task status
+        TaskStatus object containing the final task status
     """
     attempts = 0
 
     while attempts < max_attempts:
-        task_status = await async_check_task_status(task_id)
-        status = task_status.get("status")
+        task_status_obj = await async_check_task_status(task_id) # Already returns TaskStatus
 
-        # Check if task is complete
-        if status in ["completed", "failed", "completed_with_errors"]:
-            return task_status
+        # Check if task is complete based on the status field of TaskStatus model
+        if task_status_obj.status in ["completed", "failed", "cancelled"]: # Added "cancelled"
+            return task_status_obj
 
-        # Wait before checking again
         await asyncio.sleep(poll_interval)
         attempts += 1
 
-    raise TimeoutError(f"Task {task_id} did not complete within the allowed time")
+    raise TimeoutError(f"Task {task_id} did not complete within the allowed time. Last status: {task_status_obj.status if 'task_status_obj' in locals() else 'unknown'}")
 
 
-async def async_fetch_file(file_id: str) -> dict[str, str | int | float | bool | list | dict] | None:
+async def async_fetch_file(file_id: str) -> Optional[File]: # Changed return type
     """
     Asynchronously fetch file information by its ID.
 
@@ -130,37 +131,33 @@ async def async_fetch_file(file_id: str) -> dict[str, str | int | float | bool |
         file_id: The ID of the file to fetch
 
     Returns:
-        Dict containing file details or None if not found
+        File object containing file details or None if not found
     """
-    url = f"{BASE_URL}/v1/files/{file_id}/content"
+    url = f"{BASE_URL}/v1/files/{file_id}/content" # Assuming content endpoint returns full File object
 
     try:
         status_code, response_data = await async_make_request("GET", url)
 
         if status_code == 200 and isinstance(response_data, dict):
-            return response_data
+            try:
+                return File.model_validate(response_data) # Parse to File model
+            except Exception as e:
+                logger.error(f"Fetch file {file_id} succeeded but failed to parse response into File model: {e}. Response: {response_data}")
+                return None # Or raise, depending on desired strictness
         elif status_code == 404:
-            # Handled by async_make_request logging, no need to log again here.
             return None
         elif status_code == 200 and isinstance(response_data, str):
-            # This case implies JSON parsing failed in async_make_request for a 200 response
             logger.error(f"Fetch file {file_id} failed: Server returned 200 but response was not valid JSON. Content: {response_data}")
             return None
         else:
-            # For other status codes, async_make_request would have raised an exception.
-            # If we reach here for other non-200 cases, it's unexpected.
-            # Specific logging for non-200/404 already done by async_make_request if it didn't raise.
-            # However, async_make_request is designed to raise for unhandled non-200/404.
-            # This path should ideally not be hit if async_make_request works as specified.
             logger.error(f"Fetch file {file_id} returned unhandled status {status_code}. Data: {response_data}")
-            return None
+            return None # Or raise exception
     except Exception as e:
-        # Exceptions from async_make_request (like network errors or specific non-200s) are caught here.
         logger.error(f"Error fetching file {file_id}: {str(e)}")
         return None
 
 
-async def async_delete_file(file_id: str) -> bool:
+async def async_delete_file(file_id: str) -> Optional[DeleteResponse]: # Changed return type
     """
     Asynchronously delete a file by its ID.
 
@@ -168,7 +165,7 @@ async def async_delete_file(file_id: str) -> bool:
         file_id: The ID of the file to delete
 
     Returns:
-        True if successfully deleted, False otherwise
+        DeleteResponse object if successfully deleted, None otherwise
     """
     url = f"{BASE_URL}/v1/files/{file_id}"
 
@@ -176,19 +173,31 @@ async def async_delete_file(file_id: str) -> bool:
         status_code, response_data = await async_make_request("DELETE", url)
 
         if status_code == 200 and isinstance(response_data, dict):
-            return response_data.get("deleted", False)
+            try:
+                # Assuming the response_data for a successful delete matches DeleteResponse structure
+                # e.g., {"id": "file_id", "object": "file", "deleted": True}
+                return DeleteResponse.model_validate(response_data)
+            except Exception as e:
+                logger.error(f"Delete file {file_id} succeeded but failed to parse response into DeleteResponse model: {e}. Response: {response_data}")
+                # Fallback if parsing fails but operation might have succeeded.
+                # Consider if API guarantees this structure or if a simpler True/False based on status is safer.
+                # For now, returning None if parsing fails for a 200.
+                return None
         elif status_code == 404:
-            # Handled by async_make_request logging.
-            return False
-        elif status_code == 200 and isinstance(response_data, str):
+            return None # File not found, so not deleted, but not an error in the call itself
+        elif status_code == 200 and isinstance(response_data, str): # Should be JSON
             logger.error(f"Delete file {file_id} failed: Server returned 200 but response was not valid JSON. Content: {response_data}")
-            return False
+            return None
+        # For other non-200 status codes, async_make_request is expected to raise an exception.
+        # If it doesn't, or if we need to handle specific codes (e.g., 204 No Content for delete),
+        # that logic would be here. A 204 might mean success but no body to parse.
+        # For 204 No Content specifically:
+        # elif status_code == 204:
+        #     return DeleteResponse(id=file_id, object_field="file", deleted=True)
         else:
-            # async_make_request should raise for other error statuses.
-            # This path implies an issue if reached for non-200/404 without an exception.
+            # This path implies an unhandled status or an issue if async_make_request didn't raise.
             logger.error(f"Delete file {file_id} returned unhandled status {status_code}. Data: {response_data}")
-            return False
+            return None
     except Exception as e:
-        # Captures exceptions raised by async_make_request
         logger.error(f"Error deleting file {file_id}: {str(e)}")
-        return False
+        return None
