@@ -198,21 +198,22 @@ class RichRenderer(BaseRenderer):
         # References section - using type-based API
         citations = self._extract_all_citations(response)
         if citations:
-            ref_lines = ["**References**"]
+            ref_lines = ["### References"]
             for idx, citation in enumerate(citations, 1):
                 if citation.type == "file_citation":
                     # Use typed properties from AnnotationFileCitation
                     source = citation.filename or citation.file_id or "unknown_file"
                     # Note: AnnotationFileCitation uses 'index' not 'page_number'
                     page = f" p.{citation.index}" if citation.index is not None else ""
-                    quote = f' — "{citation.snippet.strip()}"' if citation.snippet else ""
-                    ref_lines.append(f"{ICONS['bullet']}[{idx}] {source}{page}{quote}")
+                    ref_lines.append(f"{idx}. {source} 󰭤 {page}")
                 elif citation.type == "url_citation":
                     # Use typed properties from AnnotationURLCitation
                     url = citation.url
-                    title = citation.title if hasattr(citation, "title") and citation.title else url
-                    quote = f' — "{citation.snippet.strip()}"' if citation.snippet else ""
-                    ref_lines.append(f"{ICONS['bullet']}[{idx}] {title} ({url}){quote}")
+                    if not citation.title:
+                        title = url
+                    else:
+                        title = citation.title
+                    ref_lines.append(f"{idx}. [{title}]({url})")
                 elif citation.type == "file_path":
                     # Use typed properties from AnnotationFilePath
                     source = citation.file_id or "unknown_file"
