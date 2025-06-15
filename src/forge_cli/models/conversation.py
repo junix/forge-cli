@@ -69,6 +69,10 @@ class ConversationState:
     model: str = "qwen-max-latest"
     tools: list[dict[str, str | bool | list[str]]] = field(default_factory=list)
     metadata: dict[str, str | int | float | bool] = field(default_factory=dict)
+    # Token usage tracking
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_tokens: int = 0
 
     def add_message(self, message: Message) -> None:
         """Add a message to the conversation."""
@@ -102,6 +106,26 @@ class ConversationState:
         """Get the last n messages."""
         return self.messages[-n:] if n > 0 else []
 
+    def add_token_usage(self, input_tokens: int = 0, output_tokens: int = 0) -> None:
+        """Add token usage to the accumulated totals."""
+        self.total_input_tokens += input_tokens
+        self.total_output_tokens += output_tokens
+        self.total_tokens = self.total_input_tokens + self.total_output_tokens
+
+    def get_token_usage(self) -> dict[str, int]:
+        """Get current token usage statistics."""
+        return {
+            "input_tokens": self.total_input_tokens,
+            "output_tokens": self.total_output_tokens,
+            "total_tokens": self.total_tokens,
+        }
+
+    def reset_token_usage(self) -> None:
+        """Reset token usage counters to zero."""
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
+        self.total_tokens = 0
+
     def save(self, path: Path) -> None:
         """Save conversation to a JSON file."""
         data = {
@@ -110,6 +134,9 @@ class ConversationState:
             "model": self.model,
             "tools": self.tools,
             "metadata": self.metadata,
+            "total_input_tokens": self.total_input_tokens,
+            "total_output_tokens": self.total_output_tokens,
+            "total_tokens": self.total_tokens,
             "messages": [msg.to_dict() for msg in self.messages],
         }
 
@@ -129,6 +156,9 @@ class ConversationState:
             model=data["model"],
             tools=data.get("tools", []),
             metadata=data.get("metadata", {}),
+            total_input_tokens=data.get("total_input_tokens", 0),
+            total_output_tokens=data.get("total_output_tokens", 0),
+            total_tokens=data.get("total_tokens", 0),
         )
 
         # Load messages
