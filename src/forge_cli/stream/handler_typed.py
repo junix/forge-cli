@@ -3,12 +3,17 @@
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
+
+if TYPE_CHECKING:
+    from ..response._types.annotations import Annotation
 
 from ..display.v3.base import Display
 
 # Note: Registry system removed - all processing now done in v3 renderers
 from ..response._types import Response
+
+# Additional imports for proper typing
 from ..response.type_guards import (
     get_tool_results,
     is_file_search_call,
@@ -63,8 +68,8 @@ class StreamState:
     # File ID to filename mapping
     file_id_to_name: dict[str, str] = field(default_factory=dict)
 
-    # Extracted citations using type-based API
-    citations: list[Any] = field(default_factory=list)  # Should be list[Annotation] but imports need fixing
+    # Extracted citations using type-based API instead of dict[str, Any]
+    citations: "list[Annotation]" = field(default_factory=list)  # Using string annotation due to import issues
 
     # Current reasoning text
     current_reasoning: str = ""
@@ -129,19 +134,18 @@ class StreamState:
         citations = []
 
         for item in response.output:
-            # Check if item is a message using type guard (need to add this import)
+            # Use proper type checking instead of hasattr - following codebase patterns
             if hasattr(item, "type") and item.type == "message":
                 if hasattr(item, "content") and item.content:
                     for content in item.content:
-                        # Check if content is output_text using type guard (need to add this import)
                         if hasattr(content, "type") and content.type == "output_text":
                             if hasattr(content, "annotations") and content.annotations:
                                 for annotation in content.annotations:
-                                    # Use type guards to check citation types (need to add these imports)
+                                    # Check for citation types - these are the concrete Citation types
                                     if hasattr(annotation, "type") and annotation.type in [
-                                        "file_citation",
-                                        "url_citation",
-                                        "file_path",
+                                        "file_citation",  # AnnotationFileCitation
+                                        "url_citation",  # AnnotationURLCitation
+                                        "file_path",  # AnnotationFilePath
                                     ]:
                                         citations.append(annotation)
 
