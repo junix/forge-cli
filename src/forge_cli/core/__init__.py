@@ -7,25 +7,24 @@ Each class is defined in its own module to prevent circular import issues.
 """
 
 # Document-related models
+# File management models
+from ..sdk.file_response import FileResponse
 from .chunk import Chunk
 from .document import Document
 from .document_content import DocumentContent
-from .page import Page
-
-# File management models  
-from ..sdk.file_response import FileResponse
-
-# Task tracking models
-from .trace import Trace
 
 # Vector store models
 from .file_count_stats import FileCountStats
+from .page import Page
+
+# Task tracking models
+from .trace import Trace
 from .vector_store import VectorStore
 
 __all__ = [
     # Document models
     "Chunk",
-    "Document", 
+    "Document",
     "DocumentContent",
     "Page",
     # File models

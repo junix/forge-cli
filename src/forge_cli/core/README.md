@@ -129,4 +129,4 @@ All models include:
 - These models are designed to be compatible with the Knowledge Forge Response API
 - Response API specific models are handled in a separate package
 - All models use Pydantic v2 for validation and serialization
-- UUIDs are automatically generated for IDs where appropriate 
+- UUIDs are automatically generated for IDs where appropriate

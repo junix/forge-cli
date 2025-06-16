@@ -427,7 +427,9 @@ class NewCommand(ChatCommand):
         # Create new conversation
         from ..models.conversation import ConversationState
 
-        controller.conversation = ConversationState(model=controller.config.model, tools=controller.prepare_typed_tools())
+        controller.conversation = ConversationState(
+            model=controller.config.model, tools=controller.prepare_typed_tools()
+        )
 
         controller.display.show_status("🆕 Started new conversation.")
         return True
@@ -456,7 +458,6 @@ class InspectCommand(ChatCommand):
         from rich.align import Align
         from rich.panel import Panel
         from rich.table import Table
-        from rich.text import Text
 
         # Create main table for session information
         table = Table(title="📊 Session State Information", show_header=False, box=None)
@@ -503,7 +504,7 @@ class InspectCommand(ChatCommand):
         )
 
         # Use the display's renderer console if available, otherwise fallback to show_status
-        if hasattr(controller.display, '_renderer') and hasattr(controller.display._renderer, '_console'):
+        if hasattr(controller.display, "_renderer") and hasattr(controller.display._renderer, "_console"):
             controller.display._renderer._console.print(panel)
         else:
             # Fallback: convert to string and use show_status
@@ -511,7 +512,7 @@ class InspectCommand(ChatCommand):
             controller.display.show_status(f"🔢 Token Usage: {token_info}")
             controller.display.show_status(f"💬 Turn: {turn_info}")
             # Handle multiline vector store info for fallback display
-            vs_lines = vector_store_info.split('\n')
+            vs_lines = vector_store_info.split("\n")
             if len(vs_lines) == 1:
                 controller.display.show_status(f"🗂️ Vector Store: {vector_store_info}")
             else:
@@ -520,7 +521,9 @@ class InspectCommand(ChatCommand):
                     controller.display.show_status(f"  {line}")
             controller.display.show_status(f"🤖 Model: {model_info}")
             if accessed_files:
-                controller.display.show_status(f"📁 Files: {', '.join(accessed_files[:3])}{'...' if len(accessed_files) > 3 else ''}")
+                controller.display.show_status(
+                    f"📁 Files: {', '.join(accessed_files[:3])}{'...' if len(accessed_files) > 3 else ''}"
+                )
             else:
                 controller.display.show_status("📁 Files: No files accessed")
 
@@ -544,8 +547,9 @@ class InspectCommand(ChatCommand):
         for vec_id in vec_ids:
             try:
                 from ..sdk.vectorstore import async_get_vectorstore
+
                 vs = await async_get_vectorstore(vec_id)
-                if vs and hasattr(vs, 'name') and vs.name:
+                if vs and hasattr(vs, "name") and vs.name:
                     vector_stores.append(f"{vec_id} - {vs.name}")
                 else:
                     vector_stores.append(f"{vec_id} - Unnamed")
@@ -579,7 +583,7 @@ class ToggleToolCommand(ChatCommand):
     def __init__(
         self,
         tool_name: str,
-        action: str, # "enable" or "disable"
+        action: str,  # "enable" or "disable"
         command_name: str,
         description: str,
         aliases: list[str],
@@ -595,13 +599,12 @@ class ToggleToolCommand(ChatCommand):
         """
         self.tool_name = tool_name
         self.action = action
-        self.name = command_name # From ChatCommand
-        self.description = description # From ChatCommand
-        self.aliases = aliases # From ChatCommand
+        self.name = command_name  # From ChatCommand
+        self.description = description  # From ChatCommand
+        self.aliases = aliases  # From ChatCommand
 
         # For more descriptive messages, create a display-friendly name
         self.tool_display_name = tool_name.replace("-", " ").capitalize()
-
 
     async def execute(self, args: str, controller: "ChatController") -> bool:
         """Enables or disables the specified tool based on the `action`.
