@@ -669,9 +669,34 @@ pip install -e .
 
 ### Environment Configuration
 
+Required environment variables:
+
 ```bash
-export KNOWLEDGE_FORGE_URL=http://localhost:9999  # Default server URL
-export OPENAI_API_KEY=your-api-key                # Optional, for some features
+# Knowledge Forge API server (required)
+export KNOWLEDGE_FORGE_URL=http://localhost:9999
+
+# OpenAI API key (optional, for certain features)
+export OPENAI_API_KEY=your-api-key
+
+# Optional: Custom configuration
+export FORGE_CLI_CONFIG_FILE=/path/to/config.json
+```
+
+### Configuration File
+
+Create a configuration file for persistent settings:
+
+```json
+{
+  "default_model": "qwen-max-latest",
+  "default_effort": "medium",
+  "default_tools": ["file_search"],
+  "default_vector_store_ids": ["vs_123"],
+  "chat_settings": {
+    "auto_save": true,
+    "save_directory": "./chat_sessions"
+  }
+}
 ```
 
 ## Usage
@@ -840,17 +865,28 @@ python scripts/create-vectorstore.py
 
 ## Dependencies
 
-Core dependencies (automatically managed by `uv` or `pip`):
+### Core Dependencies
 
-- `aiohttp>=3.8.0` - Async HTTP client for API communication
-- `rich>=12.0.0` - Rich terminal UI components
-- `loguru>=0.6.0` - Advanced logging capabilities
-- `prompt-toolkit>=3.0.0` - Interactive command line features
+Automatically managed by `uv` or `pip`:
 
-Optional dependencies for enhanced functionality:
+- **aiohttp>=3.8.0** - Async HTTP client for API communication
+- **rich>=12.0.0** - Rich terminal UI components with live updates
+- **pydantic>=2.0.0** - Data validation and serialization
+- **loguru>=0.6.0** - Advanced logging with structured output
 
-- `requests>=2.25.0` - Fallback HTTP client
-- Development tools: `pytest`, `black`, `flake8`, `mypy`
+### Optional Dependencies
+
+For enhanced functionality:
+
+- **prompt-toolkit>=3.0.0** - Interactive command line with auto-completion
+- **requests>=2.25.0** - Fallback HTTP client for compatibility
+- **pytest, black, flake8, mypy** - Development and testing tools
+
+### Installation Notes
+
+- **Python 3.10+** required for TypeGuard support and modern typing features
+- **uv** package manager recommended for faster dependency resolution
+- All dependencies include proper type stubs for IDE support
 
 ## Streaming Events
 

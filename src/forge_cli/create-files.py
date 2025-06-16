@@ -225,9 +225,7 @@ def print_document_info(document: File):
 
         # Show summary if available (first 200 chars)
         if content.summary:
-            summary_display = (
-                content.summary[:200] + "..." if len(content.summary) > 200 else content.summary
-            )
+            summary_display = content.summary[:200] + "..." if len(content.summary) > 200 else content.summary
             print(f"\nSummary: {summary_display}")
 
 
