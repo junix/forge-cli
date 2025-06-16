@@ -647,135 +647,55 @@ export OPENAI_API_KEY=your-api-key                # Optional, for some features
 
 ## Usage
 
-### Command Line Interface
-
-The main CLI provides a rich, interactive interface with multiple tools:
+### Quick Start
 
 ```bash
-# Run the main CLI
-forge-cli
+# Basic usage
+forge-cli -q "Your question here"
 
-# Or using Python module
-python -m forge_cli
+# With file search
+forge-cli -q "What's in these docs?" --vec-id vs_123
 
-# Basic file search
-forge-cli -q "What information is in these documents?" --vec-id your-vector-store-id
-
-# Web search
+# With web search
 forge-cli -t web-search -q "Latest AI news"
 
-# Interactive chat mode
+# Interactive chat
 forge-cli --chat
 
-# Multiple tools with location context
-forge-cli -t file-search -t web-search --vec-id vs_123 --country US --city "San Francisco"
-
-# Code analysis
-forge-cli -t code-analyzer --path ./src -q "Find complex functions"
+# Multiple tools
+forge-cli -t file-search -t web-search --vec-id vs_123 -q "Compare docs with web"
 ```
 
-### SDK API Reference
-
-The `sdk.py` module provides a comprehensive async API for all Knowledge Forge operations:
+### SDK API
 
 ```python
-from forge_cli.sdk import async_create_response, astream_response, async_fetch_response
+from forge_cli.sdk import async_create_response, astream_response
 
-# Create a response
-response = await async_create_response(
-    input_messages="Your query here",
-    model="qwen-max-latest", 
-    effort="low",  # "low", "medium", "high"
-    temperature=0.7,
-    max_output_tokens=1000
-)
-
-# Stream a response  
+# Stream response
 async for event_type, event_data in astream_response(
-    input_messages="Tell me about Knowledge Forge",
+    input_messages="Your query",
     model="qwen-max-latest"
 ):
     if event_type == "response.output_text.delta":
-        print(event_data["text"], end="", flush=True)
+        print(event_data["text"], end="")
     elif event_type == "done":
         break
 
-# Fetch by ID
-response = await async_fetch_response(response_id)
+# File operations
+from forge_cli.sdk import async_upload_file, async_create_vectorstore
+
+file_result = await async_upload_file("/path/to/file.pdf")
+vs_result = await async_create_vectorstore("My KB", file_ids=[file_result["id"]])
 ```
 
-#### File API
+### Common Options
 
-```python
-from forge_cli.sdk import async_upload_file, async_fetch_file, async_delete_file
-
-# Upload file
-result = await async_upload_file(
-    path="/path/to/file.pdf",
-    purpose="general",  # or "qa"
-    custom_id="my-file-id",  # optional
-    skip_exists=False
-)
-
-# Wait for processing
-if result.get("task_id"):
-    final_status = await async_wait_for_task_completion(
-        result["task_id"],
-        poll_interval=2,
-        max_attempts=60
-    )
-
-# Fetch file content
-document = await async_fetch_file(file_id)
-
-# Delete file
-success = await async_delete_file(file_id)
-```
-
-#### Vector Store API
-
-```python
-from forge_cli.sdk import (
-    async_create_vectorstore, 
-    async_query_vectorstore,
-    async_join_files_to_vectorstore
-)
-
-# Create vector store
-result = await async_create_vectorstore(
-    name="My Knowledge Base",
-    description="Research papers collection",
-    file_ids=["file_123", "file_456"],  # optional
-    custom_id="my-kb-id",  # optional
-    metadata={"domain": "research"}  # optional
-)
-
-# Query vector store  
-results = await async_query_vectorstore(
-    vector_store_id="vs_12345",
-    query="machine learning techniques", 
-    top_k=5,
-    filters={"domain": "research"}  # optional
-)
-
-# Add files to existing vector store
-result = await async_join_files_to_vectorstore(
-    vector_store_id="vs_12345",
-    file_ids=["file_789", "file_012"]
-)
-```
-
-#### Code Analyzer API
-
-```python
-from forge_cli.sdk import async_analyze_code
-
-# Analyze code
-analysis_results = await async_analyze_code(
-    path="/path/to/your/codebase",
-    analysis_types=["complexity", "style"], # Example parameters
-    output_format="json" # Example parameter
-)
+```bash
+--debug, -d          # Show detailed information
+--chat, -i           # Interactive mode
+--json               # JSON output
+--effort LEVEL       # low/medium/high
+--model MODEL        # AI model to use
 ```
 
 ## Architecture
@@ -820,151 +740,40 @@ Multiple output formats are supported:
 
 ## Example Scripts
 
-The `scripts/` directory contains practical examples:
-
 ```bash
-# Basic async SDK usage
+# Basic examples
 python -m forge_cli.scripts.hello-async
-
-# File search with citations
-python -m forge_cli.scripts.hello-file-search -q "What information is in these documents?"
-
-# Web search capabilities
-python -m forge_cli.scripts.hello-web-search -q "Latest AI developments"
-
-# File reading and analysis
-python -m forge_cli.scripts.hello-file-reader --file-id file_123 -q "Summarize this document"
-
-# End-to-end workflow
-python -m forge_cli.scripts.simple-flow -f document.pdf -n "My Collection" -q "What is this about?"
-
-# Code analysis script
-python -m forge_cli.scripts.hello-code-analyzer --path ./my_project -q "Check for TODOs"
+python -m forge_cli.scripts.hello-file-search -q "What's in these docs?"
+python -m forge_cli.scripts.simple-flow -f document.pdf -q "Summarize this"
 ```
 
-### Advanced Features
-
-#### Interactive Chat Mode
-
-The CLI supports full conversational mode with context preservation:
+### Chat Mode
 
 ```bash
-# Start interactive chat
-forge-cli --chat
-
-# Chat with specific tools enabled
+# Interactive chat with tools
 forge-cli --chat -t file-search --vec-id vs_123
 
-# Available chat commands:
-# /help - Show available commands
-# /save - Save conversation to file
-# /load - Load previous conversation
-# /tools - Manage enabled tools
-# /model - Change AI model
-# /clear - Clear conversation history
-```
-
-#### File Search with Citations
-
-Advanced file search with sophisticated citation tracking:
-
-```bash
-# File search with rich UI
-forge-cli --vec-id vs_123 -q "What information is in these documents?"
-
-# Multiple vector stores
-forge-cli --vec-id vs_123 vs_456 -q "Your question"
-
-# Debug mode for troubleshooting
-forge-cli --debug -q "search query"
-```
-
-**Features:**
-
-- Real-time citation display as [1], [2], etc.
-- Markdown table format: Citation | Document | Page | File ID
-- Live updating display with progress indicators
-- Support for multiple vector stores
-
-#### Web Search Integration
-
-Location-aware web search capabilities:
-
-```bash
-# Basic web search
-forge-cli -t web-search -q "Latest AI news"
-
-# Location-specific search
-forge-cli -t web-search --country US --city "San Francisco" -q "local weather"
-```
-
-#### Multi-Tool Support
-
-Combine multiple tools in a single query:
-
-```bash
-# File search + Web search
-forge-cli -t file-search -t web-search --vec-id vs_123 -q "Compare internal docs with latest industry trends"
-
-# File search + Code Analyzer
-forge-cli -t file-search -t code-analyzer --vec-id vs_docs --path ./repo -q "Analyze code related to search results"
-```
-
-### Configuration Options
-
-All commands support these common options:
-
-```bash
---debug, -d          # Show detailed event information  
---no-color           # Disable colored output
---json               # JSON output for machine parsing
---quiet, -Q          # Minimal output
---throttle N         # Add N ms delay between tokens
---server URL         # Override server URL
---chat, -i           # Start interactive chat mode
---effort LEVEL       # Set effort level (low/medium/high)
---model MODEL        # Specify AI model to use
+# Chat commands: /help, /save, /load, /tools, /model, /clear
 ```
 
 ## Development
 
-### Creating New Tools
-
-When extending the CLI with new functionality:
-
-1. **Add processors** for new output types in `processors/` (use relative imports)
-2. **Register processors** in `processors/registry.py` (use relative imports within processors)
-3. **Add display methods** if needed in `display/` modules (use relative imports)
-4. **Update configuration** in `config.py` for new options (use absolute imports from top-level)
-5. **Create example scripts** in `scripts/` directory (use absolute imports)
-
-### Import Guidelines for Development
-
-- **Top-level files** (`main.py`, `sdk.py`, `config.py`): Use absolute imports (`from forge_cli.module import ...`)
-- **Subdirectory files** (`processors/`, `display/`, `models/`): Use relative imports (`.module`, `..parent.module`)
-- **Scripts**: Use absolute imports since they're standalone utilities
-- **Cross-package imports**: Always use absolute imports when importing from other top-level modules
-
-### Testing
+### Quick Testing
 
 ```bash
-# Run example scripts
+# Test basic functionality
+forge-cli --debug -q "test query"
+
+# Test scripts
 python -m forge_cli.scripts.hello-async
-
-# Test with debug mode
-forge-cli --debug -t file-search --vec-id vs_123 -q "test query"
-
-# Test chat mode
-forge-cli --chat --debug
 ```
 
-### Extending the SDK
+### Extending
 
-The SDK is designed for extension. Add new API endpoints by:
-
-1. Adding async functions following the `async_<action>_<resource>` pattern
-2. Using consistent error handling and return types
-3. Adding comprehensive docstrings and type annotations
+1. Add processors in `processors/` (relative imports)
+2. Register in `processors/registry.py`
+3. Update `config.py` for new options
+4. Follow `async_<action>_<resource>` pattern for SDK functions
 
 ## Dependencies
 
@@ -980,88 +789,33 @@ Optional dependencies for enhanced functionality:
 - `requests>=2.25.0` - Fallback HTTP client
 - Development tools: `pytest`, `black`, `flake8`, `mypy`
 
-## Streaming and Event Handling
+## Streaming Events
 
-The system processes real-time events from the Knowledge Forge API:
-
-### Key Event Types
+Key event types: `response.output_text.delta`, `response.completed`, `response.file_search_call.completed`, `done`
 
 ```python
-# Response lifecycle
-"response.created"              # Response initialized
-"response.in_progress"          # Processing started
-"response.output_text.delta"    # Text content streaming
-"response.output_text.done"     # Text complete
-"response.completed"            # Response finished
-"done"                          # Stream closed
-
-# Tool execution events  
-"response.file_search_call.searching"    # File search started
-"response.file_search_call.completed"    # File search finished
-"response.web_search_call.searching"     # Web search started
-"response.web_search_call.completed"     # Web search finished
-
-# Code Analyzer events
-"response.code_analyzer_call.analyzing"  # Code analysis started
-"response.code_analyzer_call.completed"  # Code analysis finished
-"response.code_analysis_item.added"      # Individual analysis finding
-
-# Reasoning/thinking events
-"response.output_item.added"             # Reasoning content
-```
-
-### Streaming Implementation
-
-```python
-# Async iterator pattern (recommended)
-async for event_type, event_data in astream_response(
-    input_messages="Your query",
-    model="qwen-max-latest"
-):
+# Stream processing
+async for event_type, event_data in astream_response(input_messages="query"):
     if event_type == "response.output_text.delta":
-        print(event_data["text"], end="", flush=True)
+        print(event_data["text"], end="")
     elif event_type == "done":
         break
-
-# The stream handler automatically routes events to appropriate processors
 ```
 
 ## Troubleshooting
 
-### Debug Mode
-
-Enable comprehensive debugging:
-
 ```bash
-# CLI debug mode
+# Debug mode
 forge-cli --debug -q "test query"
 
-# Script debug mode  
-python -m forge_cli.scripts.hello-async --debug
-```
-
-### Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| Import errors | Ensure proper package installation with `uv sync` or `pip install -e .` |
-| Connection refused | Verify Knowledge Forge server is running at correct URL |
-| No response received | Check server logs and API endpoint accessibility |
-| JSON decode errors | Enable `--debug` to see raw API responses |
-| Missing API key | Set `OPENAI_API_KEY` environment variable if required |
-
-### Environment Verification
-
-```bash
 # Check installation
 forge-cli --version
 
-# Test basic functionality
-forge-cli -q "Hello, world!" --debug
-
-# Verify SDK import
-python -c "from forge_cli.sdk import async_create_response; print('SDK OK')"
+# Verify SDK
+python -c "from forge_cli.sdk import async_create_response; print('OK')"
 ```
+
+**Common issues**: Import errors → `uv sync`, Connection refused → Check server URL, Missing API key → Set `OPENAI_API_KEY`
 
 ## Architecture Decision Records
 
