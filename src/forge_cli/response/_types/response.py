@@ -641,26 +641,8 @@ class Response(BaseModel):
                 pass
 
             elif output_item.type == "file_reader_call":
-                file_reader_call = cast(ResponseFunctionFileReader, output_item)
-                if file_reader_call.results:
-                    kept_results = []
-                    for result in file_reader_call.results:
-                        should_keep = True
-
-                        # 检查结果是否可引用，如果可引用则检查是否被实际引用
-                        if result.is_citable():
-                            # Use as_annotation() which uses document segment index for proper comparison
-                            annotation = result.as_annotation()
-                            if annotation and annotation not in referenced_annotations_set:
-                                should_keep = False  # 可引用但未被引用，删除
-                                removed_chunk_count += 1
-                        # 不可引用的结果（如navigate类型）总是保留
-
-                        if should_keep:
-                            kept_results.append(result)
-
-                    # 直接更新结果
-                    file_reader_call._results = kept_results
+                # File reader results are not directly accessible from tool call
+                pass
 
         logger.bind(
             removed_file_results=removed_file_count,
@@ -761,16 +743,8 @@ class Response(BaseModel):
                 pass
 
             elif output_item.type == "file_reader_call":
-                # 处理文件阅读结果 (Chunk对象)
-                file_reader_call = cast(ResponseFunctionFileReader, output_item)
-                if file_reader_call.results:
-                    for result in file_reader_call.results:
-                        # 检查是否可引用
-                        if result.is_citable():
-                            # Use as_annotation() to get document-based annotation
-                            annotation = result.as_annotation()
-                            if annotation is not None:
-                                candidate_annotations.append(annotation)
+                # File reader results are not directly accessible from tool call
+                pass
 
         logger.bind(
             total_candidates=len(candidate_annotations),
