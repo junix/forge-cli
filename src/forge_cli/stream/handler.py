@@ -49,7 +49,9 @@ class TypedStreamHandler:
             # Handle lifecycle events
             elif event_type == "done":
                 # Stream completed
-                self.display.complete()
+                # In chat mode, don't finalize the display as it will be reused
+                if getattr(self.display, '_mode', 'default') != 'chat':
+                    self.display.complete()
                 break
 
             elif event_type == "error":

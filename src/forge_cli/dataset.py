@@ -3,24 +3,23 @@
 
 import json
 import os
-from dataclasses import dataclass
+
+from pydantic import BaseModel, Field
 
 
-@dataclass
-class FileEntry:
+class FileEntry(BaseModel):
     """Represents a file entry in the test dataset."""
 
     file_id: str
     path: str
-    questions: list[str]
+    questions: list[str] = Field(default_factory=list)
 
 
-@dataclass
-class TestDataset:
+class TestDataset(BaseModel):
     """Represents the test dataset configuration."""
 
-    files: list[FileEntry]
-    vectorstore_id: str
+    files: list[FileEntry] = Field(default_factory=list)
+    vectorstore_id: str = ""
 
     @classmethod
     def from_json(cls, json_path: str) -> "TestDataset":
@@ -35,6 +34,7 @@ class TestDataset:
         Raises:
             FileNotFoundError: If the JSON file doesn't exist.
             json.JSONDecodeError: If the JSON file is invalid.
+            ValidationError: If the JSON data doesn't match the expected schema.
         """
         if not os.path.exists(json_path):
             raise FileNotFoundError(f"Test dataset file not found: {json_path}")
@@ -42,13 +42,8 @@ class TestDataset:
         with open(json_path) as f:
             data = json.load(f)
 
-        # Convert file entries
-        files = [
-            FileEntry(file_id=f["file_id"], path=f["path"], questions=f.get("questions", []))
-            for f in data.get("files", [])
-        ]
-
-        return cls(files=files, vectorstore_id=data.get("vectorstore_id", ""))
+        # Use Pydantic's validation to parse the data
+        return cls.model_validate(data)
 
     def to_dict(self) -> dict:
         """Convert TestDataset to a dictionary.
@@ -56,10 +51,7 @@ class TestDataset:
         Returns:
             Dictionary representation of the dataset.
         """
-        return {
-            "files": [{"file_id": f.file_id, "path": f.path, "questions": f.questions} for f in self.files],
-            "vectorstore_id": self.vectorstore_id,
-        }
+        return self.model_dump()
 
     def save_to_json(self, json_path: str) -> None:
         """Save TestDataset to a JSON file.
@@ -68,7 +60,7 @@ class TestDataset:
             json_path: Path where the JSON file should be saved.
         """
         with open(json_path, "w") as f:
-            json.dump(self.to_dict(), f, indent=4)
+            json.dump(self.model_dump(), f, indent=4)
 
     def get_file_by_id(self, file_id: str) -> FileEntry | None:
         """Get a file entry by its ID.

@@ -128,6 +128,11 @@ class Display:
             self._renderer.finalize()
             self._finalized = True
 
+    def reset(self) -> None:
+        """Reset display for reuse (e.g., in chat mode)."""
+        self._finalized = False
+        self._event_count = 0
+
     def show_error(self, error: str) -> None:
         """Show error if renderer supports it."""
         if hasattr(self._renderer, "render_error"):

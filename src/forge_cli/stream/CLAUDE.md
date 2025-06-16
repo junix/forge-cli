@@ -342,13 +342,12 @@ async def _handle_new_feature(self, event_data: dict):
 
 ```python
 # Extend StreamState in models/state.py
-@dataclass
-class StreamState:
+class StreamState(BaseModel):
     # Existing fields...
-    custom_data: Dict[str, Any] = field(default_factory=dict)
+    custom_data: dict[str, Any] = Field(default_factory=dict)
     
-    def add_custom_data(self, key: str, value: Any):
-        self.custom_data[key] = value
+    def add_custom_data(self, key: str, value: Any) -> "StreamState":
+        return self.model_copy(update={"custom_data": {**self.custom_data, key: value}})
 ```
 
 3. **Event filtering**:

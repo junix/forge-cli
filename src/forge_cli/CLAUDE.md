@@ -82,6 +82,94 @@ display = JsonDisplay()    # JSON output
 #### `stream/` - Event Stream Handling
 - **handler.py**: Main stream processor that orchestrates everything
 
+## Data Modeling Philosophy
+
+### Pydantic Models Over Dataclasses
+
+**IMPORTANT**: This project strongly prefers **Pydantic models** over Python dataclasses for all data structures. This is a core architectural decision that provides significant benefits:
+
+#### Why Pydantic Models Are Preferred
+
+1. **Comprehensive Validation**: Automatic input validation with clear, user-friendly error messages
+2. **Type Safety**: Runtime type checking and conversion with proper error handling
+3. **Field Configuration**: Advanced field options like aliases, constraints, and custom validators
+4. **Environment Integration**: Seamless loading from environment variables and configuration files
+5. **Serialization**: Built-in JSON serialization/deserialization with proper type handling
+6. **Developer Experience**: Better IDE support, autocomplete, and documentation generation
+
+#### When to Use Each
+
+```python
+# ✅ PREFERRED: Pydantic models
+class AppConfig(BaseModel):
+    model: str = "qwen-max-latest"
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    vec_ids: list[str] = Field(default_factory=list, alias="vec_id")
+    
+    @field_validator('temperature')
+    @classmethod
+    def validate_temperature(cls, v: float) -> float:
+        if not 0.0 <= v <= 2.0:
+            raise ValueError("Temperature must be between 0.0 and 2.0")
+        return v
+
+# ❌ AVOID: Python dataclasses (legacy pattern)
+@dataclass
+class OldConfig:
+    model: str = "qwen-max-latest"
+    temperature: float = 0.7
+    vec_ids: list[str] = field(default_factory=list)
+    # No validation, no serialization, limited functionality
+```
+
+#### Use Validators Extensively
+
+Always prefer Pydantic validators over manual validation:
+
+```python
+# ✅ PREFERRED: Pydantic validators
+class ServerConfig(BaseModel):
+    url: str
+    timeout: int = Field(default=30, gt=0)
+    
+    @field_validator('url')
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        if not v.startswith(('http://', 'https://')):
+            raise ValueError("URL must start with http:// or https://")
+        return v.rstrip('/')
+    
+    @model_validator(mode='after')
+    def validate_consistency(self) -> 'ServerConfig':
+        # Cross-field validation
+        if self.timeout > 300 and 'localhost' not in self.url:
+            raise ValueError("Long timeouts should only be used with localhost")
+        return self
+
+# ❌ AVOID: Manual validation
+class ManualConfig:
+    def __init__(self, url: str, timeout: int = 30):
+        # Manual validation scattered throughout code
+        if not url.startswith(('http://', 'https://')):
+            raise ValueError("Invalid URL")
+        self.url = url.rstrip('/')
+        if timeout <= 0:
+            raise ValueError("Invalid timeout")
+        self.timeout = timeout
+```
+
+#### Migration Guidelines
+
+When encountering dataclasses in the codebase:
+
+1. **Convert to Pydantic models** following the patterns above
+2. **Add appropriate validators** for data integrity
+3. **Use Field() for advanced options** like aliases and constraints
+4. **Update imports** from `dataclasses` to `pydantic`
+5. **Update documentation** and examples to reflect the change
+
+This architectural choice ensures data integrity, improves developer experience, and provides a foundation for robust, maintainable code throughout the system.
+
 ## Implementation Details
 
 ### Stream Processing Flow
@@ -105,13 +193,12 @@ Display Strategy (renders to user)
 The `StreamState` class maintains all necessary state during streaming:
 
 ```python
-@dataclass
-class StreamState:
-    output_items: List[Dict[str, Any]]      # Current snapshot
-    tool_states: Dict[str, ToolState]       # Tool execution states
-    file_id_to_name: Dict[str, str]         # File mappings
-    citations: List[Dict[str, Any]]         # Extracted citations
-    usage: Dict[str, int]                   # Token usage
+class StreamState(BaseModel):
+    output_items: list[dict[str, Any]] = Field(default_factory=list)      # Current snapshot
+    tool_states: dict[str, ToolState] = Field(default_factory=dict)       # Tool execution states
+    file_id_to_name: dict[str, str] = Field(default_factory=dict)         # File mappings
+    citations: list[dict[str, Any]] = Field(default_factory=list)         # Extracted citations
+    usage: dict[str, int] = Field(default_factory=dict)                   # Token usage
 ```
 
 ### Citation Processing

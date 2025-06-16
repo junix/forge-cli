@@ -73,7 +73,7 @@ class RichRenderer(BaseRenderer):
         if config is None:
             self._config = RichDisplayConfig(**config_overrides)
         else:
-            # If overrides supplied, update the provided config dataclass
+            # If overrides supplied, update the provided config Pydantic model
             if config_overrides:
                 self._config = config.copy(update=config_overrides)
             else:

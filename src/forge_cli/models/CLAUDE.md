@@ -19,8 +19,8 @@ models/
 
 ### Design Principles
 
-1. **Type Safety**: All data structures use Python dataclasses with type annotations
-2. **Immutability**: Where appropriate, frozen dataclasses prevent accidental mutations
+1. **Type Safety**: All data structures use Pydantic models with comprehensive validation
+2. **Immutability**: Where appropriate, Pydantic's frozen models prevent accidental mutations
 3. **Clear Naming**: Types follow descriptive naming patterns (e.g., `FileSearchCall`, `StreamState`)
 4. **Minimal Dependencies**: Models are pure data structures with no business logic
 
@@ -132,14 +132,13 @@ When working with this module:
 3. **For internal types**: Follow existing patterns in this module:
 
    ```python
-   from dataclasses import dataclass, field
-   from typing import Optional
+   from pydantic import BaseModel, Field
+   from typing import Optional, Any
    
-   @dataclass
-   class NewStateType:
+   class NewStateType(BaseModel):
        """Description of what this tracks."""
        identifier: str
-       metadata: dict = field(default_factory=dict)
+       metadata: dict[str, Any] = Field(default_factory=dict)
        status: Optional[str] = None
    ```
 
@@ -164,7 +163,7 @@ metadata: dict
 ### Internal Dependencies
 
 - Models are self-contained with minimal cross-dependencies
-- Only standard library imports (dataclasses, typing, enum)
+- Pydantic and standard library imports (pydantic, typing, enum)
 
 ### Used By
 
@@ -219,9 +218,9 @@ conv = Conversation.from_dict(data)
 
 ## Best Practices
 
-1. **Immutability**: Use frozen dataclasses for data that shouldn't change
-2. **Defaults**: Provide sensible defaults for optional fields
-3. **Validation**: Add validators in **post_init** when needed
+1. **Immutability**: Use Pydantic's frozen models for data that shouldn't change
+2. **Defaults**: Provide sensible defaults using Field() for optional fields
+3. **Validation**: Add field validators and model validators when needed
 4. **Documentation**: Include docstrings for all classes and complex fields
 5. **Type Completeness**: Ensure all fields have type annotations
 

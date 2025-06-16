@@ -42,7 +42,7 @@ This approach:
 - Integrates well with the uv package manager
 
 ### 4. Unified Configuration System
-Configuration is handled through a centralized `AppConfig` dataclass:
+Configuration is handled through a centralized `AppConfig` Pydantic model:
 - Command-line arguments (primary)
 - Environment variables: `KNOWLEDGE_FORGE_URL`
 - Sensible defaults for all options

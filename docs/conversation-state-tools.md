@@ -27,17 +27,16 @@ Each conversation now has a unique identifier:
 The `ConversationState` class now includes these additional fields:
 
 ```python
-@dataclass
-class ConversationState:
+class ConversationState(BaseModel):
     # ... existing fields ...
 
     # Unique conversation identifier
-    conversation_id: ConversationId = field(default_factory=lambda: ConversationId(f"conv_{uuid.uuid4().hex[:8]}"))
+    conversation_id: ConversationId = Field(default_factory=lambda: ConversationId(f"conv_{uuid.uuid4().hex[:8]}"))
 
     # Conversation-specific tool settings
     web_search_enabled: bool = False
     file_search_enabled: bool = False
-    current_vector_store_ids: list[str] = field(default_factory=list)
+    current_vector_store_ids: list[str] = Field(default_factory=list)
 ```
 
 ## New Methods

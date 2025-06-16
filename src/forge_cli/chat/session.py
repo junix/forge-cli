@@ -82,6 +82,10 @@ class ChatSessionManager:
         Args:
             content: User message content to process
         """
+        # Reset display for reuse in chat mode
+        if hasattr(self.display, 'reset'):
+            self.display.reset()
+
         # Increment turn count for each user message
         self.controller.conversation.increment_turn_count()
 
