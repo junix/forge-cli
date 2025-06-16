@@ -35,4 +35,3 @@ class ResponseFunctionFileReader(TraceableToolCall):
     status: Literal["in_progress", "searching", "completed", "incomplete"] = "in_progress"
     doc_ids: list[str] = Field(default_factory=list)
     query: str = ""
-    navigation: str = Field(default="")
