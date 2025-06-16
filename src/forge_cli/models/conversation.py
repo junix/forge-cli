@@ -69,6 +69,11 @@ class ConversationState:
     # Track conversation turns
     turn_count: int = 0
 
+    # Conversation-specific tool settings that can be changed during chat
+    web_search_enabled: bool = False
+    file_search_enabled: bool = False
+    current_vector_store_ids: list[str] = field(default_factory=list)
+
     def __post_init__(self):
         """Initialize used_vector_store_ids from tools if not set."""
         if not self.used_vector_store_ids and self.tools:
@@ -78,6 +83,10 @@ class ConversationState:
                     self.used_vector_store_ids.update(tool.vector_store_ids)
                 elif is_list_documents_tool(tool):
                     self.used_vector_store_ids.update(tool.vector_store_ids)
+
+        # Initialize current_vector_store_ids from used_vector_store_ids if empty
+        if not self.current_vector_store_ids and self.used_vector_store_ids:
+            self.current_vector_store_ids = list(self.used_vector_store_ids)
 
     def add_message(self, message: ResponseInputMessageItem) -> None:
         """Add a message to the conversation."""
@@ -185,6 +194,48 @@ class ConversationState:
         """Increment the conversation turn counter."""
         self.turn_count += 1
 
+    def enable_web_search(self) -> None:
+        """Enable web search for this conversation."""
+        self.web_search_enabled = True
+
+    def disable_web_search(self) -> None:
+        """Disable web search for this conversation."""
+        self.web_search_enabled = False
+
+    def enable_file_search(self) -> None:
+        """Enable file search for this conversation."""
+        self.file_search_enabled = True
+
+    def disable_file_search(self) -> None:
+        """Disable file search for this conversation."""
+        self.file_search_enabled = False
+
+    def set_vector_store_ids(self, vector_store_ids: list[str]) -> None:
+        """Set the vector store IDs for file search in this conversation.
+
+        Args:
+            vector_store_ids: List of vector store IDs to use for file search
+        """
+        self.current_vector_store_ids = vector_store_ids.copy()
+        # Also update the used_vector_store_ids set
+        self.used_vector_store_ids.update(vector_store_ids)
+
+    def get_current_vector_store_ids(self) -> list[str]:
+        """Get the current vector store IDs for this conversation.
+
+        Returns:
+            List of current vector store IDs
+        """
+        return self.current_vector_store_ids.copy()
+
+    def is_web_search_enabled(self) -> bool:
+        """Check if web search is enabled for this conversation."""
+        return self.web_search_enabled
+
+    def is_file_search_enabled(self) -> bool:
+        """Check if file search is enabled for this conversation."""
+        return self.file_search_enabled
+
     def update_stream_state(self, state: "StreamState") -> None:
         """Update conversation state from stream state.
 
@@ -258,6 +309,10 @@ class ConversationState:
             "used_vector_store_ids": list(self.used_vector_store_ids),
             "accessed_files": list(self.accessed_files),
             "turn_count": self.turn_count,
+            # Save conversation-specific tool settings
+            "web_search_enabled": self.web_search_enabled,
+            "file_search_enabled": self.file_search_enabled,
+            "current_vector_store_ids": self.current_vector_store_ids,
         }
 
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -302,6 +357,11 @@ class ConversationState:
         # Load turn_count
         turn_count = data.get("turn_count", 0)
 
+        # Load conversation-specific tool settings
+        web_search_enabled = data.get("web_search_enabled", False)
+        file_search_enabled = data.get("file_search_enabled", False)
+        current_vector_store_ids = data.get("current_vector_store_ids", [])
+
         conversation = cls(
             session_id=data["session_id"],
             created_at=data["created_at"],
@@ -312,6 +372,9 @@ class ConversationState:
             used_vector_store_ids=used_vector_store_ids,
             accessed_files=accessed_files,
             turn_count=turn_count,
+            web_search_enabled=web_search_enabled,
+            file_search_enabled=file_search_enabled,
+            current_vector_store_ids=current_vector_store_ids,
         )
 
         # Load messages using Pydantic models
@@ -384,11 +447,12 @@ class ConversationState:
         """Create a new typed request with conversation history and current content.
 
         This method automatically adds the new user message to the conversation history
-        and creates a typed Request object ready for the API.
+        and creates a typed Request object ready for the API. It prioritizes conversation
+        state settings over global config for tool enablement.
 
         Args:
             content: The new user message content
-            config: SearchConfig containing tool and model settings
+            config: SearchConfig containing fallback tool and model settings
 
         Returns:
             A typed Request object ready for the API
@@ -399,21 +463,26 @@ class ConversationState:
         # Add the new user message to conversation history first
         self.add_user_message(content)
 
-        # Build tools list based on config
+        # Build tools list based on conversation state (prioritized) and config (fallback)
         tools = []
 
-        # File search tool
-        if "file-search" in config.enabled_tools and config.vec_ids:
+        # File search tool - use conversation state if available, otherwise fall back to config
+        file_search_enabled = self.file_search_enabled or "file-search" in config.enabled_tools
+        vector_store_ids = self.current_vector_store_ids if self.current_vector_store_ids else config.vec_ids
+
+        if file_search_enabled and vector_store_ids:
             tools.append(
                 FileSearchTool(
                     type="file_search",
-                    vector_store_ids=config.vec_ids,
+                    vector_store_ids=vector_store_ids,
                     max_num_results=config.max_results,
                 )
             )
 
-        # Web search tool
-        if "web-search" in config.enabled_tools:
+        # Web search tool - use conversation state if available, otherwise fall back to config
+        web_search_enabled = self.web_search_enabled or "web-search" in config.enabled_tools
+
+        if web_search_enabled:
             tool_params = {"type": "web_search"}
             location = config.get_web_location()
             if location:

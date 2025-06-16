@@ -622,15 +622,142 @@ class ToggleToolCommand(ChatCommand):
                 controller.display.show_status(f"✅ {self.tool_display_name} enabled")
             else:
                 controller.display.show_status(f"{self.tool_display_name} is already enabled")
+
+            # Update conversation state
+            if self.tool_name == "web-search":
+                controller.conversation.enable_web_search()
+            elif self.tool_name == "file-search":
+                controller.conversation.enable_file_search()
+
         elif self.action == "disable":
             if self.tool_name in enabled_tools:
                 enabled_tools.remove(self.tool_name)
                 controller.display.show_status(f"❌ {self.tool_display_name} disabled")
             else:
                 controller.display.show_status(f"{self.tool_display_name} is already disabled")
+
+            # Update conversation state
+            if self.tool_name == "web-search":
+                controller.conversation.disable_web_search()
+            elif self.tool_name == "file-search":
+                controller.conversation.disable_file_search()
+
         else:
             # Should not happen if constructor is used correctly
             controller.display.show_error(f"Invalid action '{self.action}' for {self.tool_name}")
+
+        return True
+
+
+class VectorStoreCommand(ChatCommand):
+    """Manages vector store IDs for file search.
+
+    Usage:
+    - /vectorstore - Show current vector store IDs
+    - /vectorstore set <id1> [id2] ... - Set vector store IDs
+    - /vectorstore add <id> - Add a vector store ID
+    - /vectorstore remove <id> - Remove a vector store ID
+    - /vectorstore clear - Clear all vector store IDs
+    """
+
+    name = "vectorstore"
+    description = "Manage vector store IDs for file search"
+    aliases = ["vs", "vec"]
+
+    async def execute(self, args: str, controller: "ChatController") -> bool:
+        """Execute vector store management command.
+
+        Args:
+            args: Command arguments
+            controller: The ChatController instance
+
+        Returns:
+            True, indicating the chat session should continue
+        """
+        if not args.strip():
+            # Show current vector store IDs
+            current_ids = controller.conversation.get_current_vector_store_ids()
+            if current_ids:
+                ids_str = ", ".join(current_ids)
+                controller.display.show_status(f"📁 Current vector store IDs: {ids_str}")
+            else:
+                controller.display.show_status("📁 No vector store IDs configured")
+
+            # Also show if file search is enabled
+            if controller.conversation.is_file_search_enabled():
+                controller.display.show_status("🔍 File search is enabled")
+            else:
+                controller.display.show_status("🔍 File search is disabled")
+            return True
+
+        parts = args.strip().split()
+        action = parts[0].lower()
+
+        if action == "set":
+            if len(parts) < 2:
+                controller.display.show_error("Usage: /vectorstore set <id1> [id2] ...")
+                return True
+
+            new_ids = parts[1:]
+            controller.conversation.set_vector_store_ids(new_ids)
+            ids_str = ", ".join(new_ids)
+            controller.display.show_status(f"✅ Set vector store IDs: {ids_str}")
+
+            # Auto-enable file search if not already enabled
+            if not controller.conversation.is_file_search_enabled():
+                controller.conversation.enable_file_search()
+                controller.display.show_status("🔍 Auto-enabled file search")
+
+        elif action == "add":
+            if len(parts) != 2:
+                controller.display.show_error("Usage: /vectorstore add <id>")
+                return True
+
+            new_id = parts[1]
+            current_ids = controller.conversation.get_current_vector_store_ids()
+            if new_id not in current_ids:
+                current_ids.append(new_id)
+                controller.conversation.set_vector_store_ids(current_ids)
+                controller.display.show_status(f"✅ Added vector store ID: {new_id}")
+
+                # Auto-enable file search if not already enabled
+                if not controller.conversation.is_file_search_enabled():
+                    controller.conversation.enable_file_search()
+                    controller.display.show_status("🔍 Auto-enabled file search")
+            else:
+                controller.display.show_status(f"Vector store ID already exists: {new_id}")
+
+        elif action == "remove":
+            if len(parts) != 2:
+                controller.display.show_error("Usage: /vectorstore remove <id>")
+                return True
+
+            remove_id = parts[1]
+            current_ids = controller.conversation.get_current_vector_store_ids()
+            if remove_id in current_ids:
+                current_ids.remove(remove_id)
+                controller.conversation.set_vector_store_ids(current_ids)
+                controller.display.show_status(f"❌ Removed vector store ID: {remove_id}")
+
+                # Auto-disable file search if no IDs left
+                if not current_ids and controller.conversation.is_file_search_enabled():
+                    controller.conversation.disable_file_search()
+                    controller.display.show_status("🔍 Auto-disabled file search (no vector store IDs)")
+            else:
+                controller.display.show_status(f"Vector store ID not found: {remove_id}")
+
+        elif action == "clear":
+            controller.conversation.set_vector_store_ids([])
+            controller.display.show_status("🗑️ Cleared all vector store IDs")
+
+            # Auto-disable file search
+            if controller.conversation.is_file_search_enabled():
+                controller.conversation.disable_file_search()
+                controller.display.show_status("🔍 Auto-disabled file search")
+
+        else:
+            controller.display.show_error(f"Unknown action: {action}")
+            controller.display.show_status("Available actions: set, add, remove, clear")
 
         return True
 
@@ -670,6 +797,7 @@ class CommandRegistry:
             ToolsCommand(),
             NewCommand(),
             InspectCommand(),
+            VectorStoreCommand(),
             # Web Search Toggle Commands
             ToggleToolCommand(
                 tool_name="web-search",
