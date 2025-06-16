@@ -54,7 +54,6 @@ async def main():
 
     # Create display
     display = DisplayFactory.create_display(config)
-
     # Create and start chat session
     session_manager = ChatSessionManager(config, display)
     await session_manager.start_session(initial_question=None, resume_conversation_id=getattr(args, "resume", None))

@@ -61,4 +61,9 @@ def pack_queries(*queries) -> str:
         return f"  {queries[0]}"
     if len(queries) == 2:
         return f"   {queries[0]}  {queries[1]}"
-    return f"   {queries[0]}  {queries[1]}  {queries[2]} • {len(queries) - 3} more"
+
+    fmt = f"   {queries[0]}  {queries[1]}  {queries[2]}"
+    remain_count = len(queries) - 3
+    if remain_count > 0:
+        fmt += f" • {remain_count} more"
+    return fmt
