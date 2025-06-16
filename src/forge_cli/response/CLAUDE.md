@@ -340,10 +340,8 @@ async for event in event_stream:
 # Process tool results
 for item in response.output:
     if isinstance(item, ResponseFileSearchToolCall):
-        # File search results
-        for result in item.results:
-            result.set_citation_id(str(next_id))
-            next_id += 1
+        # File search results are accessed through response methods
+        # results = response.get_file_search_results(item.id)
 ```
 
 ### Event Emission

@@ -94,9 +94,8 @@ When working with this module:
    
    # Work with file search results from API responses
    if isinstance(item, ResponseFileSearchToolCall):
-       results = item.results or []
-       for result in results:
-           print(f"Found: {result.get('filename', 'Unknown')}")
+       # Results are accessed through response methods
+       # results = response.get_file_search_results(item.id)
    
    # Handle annotations in responses
    if isinstance(annotation, Annotation):

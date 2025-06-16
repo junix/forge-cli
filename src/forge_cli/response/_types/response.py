@@ -397,21 +397,12 @@ class Response(BaseModel):
                 pass
 
             elif output_item.type == "web_search_call":
-                web_search_call = cast(ResponseFunctionWebSearch, output_item)
-                if web_search_call.results:
-                    for result in web_search_call.results:
-                        result.set_citation_id(citation_id)
-                        citation_id += 1
-                        citable_items.append(result)
+                # Web search results are not directly accessible from tool call
+                pass
 
             elif output_item.type == "file_reader_call":
-                file_reader_call = cast(ResponseFunctionFileReader, output_item)
-                if file_reader_call.results:
-                    for result in file_reader_call.results:
-                        # File reader results are Chunk objects
-                        result.set_citation_id(citation_id)
-                        citation_id += 1
-                        citable_items.append(result)
+                # File reader results are not directly accessible from tool call
+                pass
 
         return citable_items
 
@@ -455,15 +446,12 @@ class Response(BaseModel):
                 pass
 
             elif output_item.type == "web_search_call":
-                web_search_call = cast(ResponseFunctionWebSearch, output_item)
-                if web_search_call.results:
-                    citable_items.extend(web_search_call.results)
+                # Web search results are not directly accessible from tool call
+                pass
 
             elif output_item.type == "file_reader_call":
-                file_reader_call = cast(ResponseFunctionFileReader, output_item)
-                if file_reader_call.results:
-                    # File reader results are Chunk objects
-                    citable_items.extend(file_reader_call.results)
+                # File reader results are not directly accessible from tool call
+                pass
 
         return citable_items
 
@@ -542,28 +530,12 @@ class Response(BaseModel):
                 pass
 
             elif output_item.type == "web_search_call":
-                web_search_call = cast(ResponseFunctionWebSearch, output_item)
-                if web_search_call.results:
-                    for result in web_search_call.results:
-                        # 替换网页内容摘要
-                        result.snippet = "【网页内容因上下文长度限制已压缩】"
-                        # 标记为不可引用
-                        if result.metadata:
-                            result.metadata["segment_type"] = "compressed"
-                        else:
-                            result.metadata = {"segment_type": "compressed"}
+                # Web search results are not directly accessible from tool call
+                pass
 
             elif output_item.type == "file_reader_call":
-                file_reader_call = cast(ResponseFunctionFileReader, output_item)
-                if file_reader_call.results:
-                    for result in file_reader_call.results:
-                        # 替换Chunk内容
-                        result.content = "【文档内容因上下文长度限制已压缩】"
-                        # 标记为不可引用
-                        if result.metadata:
-                            result.metadata["segment_type"] = "compressed"
-                        else:
-                            result.metadata = {"segment_type": "compressed"}
+                # File reader results are not directly accessible from tool call
+                pass
 
         return self
 
@@ -595,27 +567,8 @@ class Response(BaseModel):
                 pass
 
             elif output_item.type == "web_search_call":
-                web_search_call = cast(ResponseFunctionWebSearch, output_item)
-                if web_search_call.results:
-                    kept_results = []
-                    # 正向处理结果列表，保留最先出现的
-                    for result in web_search_call.results:
-                        should_keep = True
-
-                        # 检查是否可引用并获取annotation进行去重
-                        if result.is_citable():
-                            # Use as_annotation() which uses document segment index for proper deduplication
-                            annotation = result.as_annotation()
-                            if annotation and annotation in seen_annotations:
-                                should_keep = False  # 重复，跳过
-                            elif annotation:
-                                seen_annotations.add(annotation)
-
-                        if should_keep:
-                            kept_results.append(result)
-
-                    # 直接更新结果，保持原有顺序
-                    web_search_call._results = kept_results
+                # Web search results are not directly accessible from tool call
+                pass
 
             elif output_item.type == "file_reader_call":
                 file_reader_call = cast(ResponseFunctionFileReader, output_item)
@@ -684,24 +637,8 @@ class Response(BaseModel):
                 pass
 
             elif output_item.type == "web_search_call":
-                web_search_call = cast(ResponseFunctionWebSearch, output_item)
-                if web_search_call.results:
-                    kept_results = []
-                    for result in web_search_call.results:
-                        should_keep = True
-
-                        # 检查结果是否可引用，如果可引用则检查是否被实际引用
-                        if result.is_citable():
-                            # Use as_annotation() which uses document segment index for proper comparison
-                            annotation = result.as_annotation()
-                            if annotation and annotation not in referenced_annotations_set:
-                                should_keep = False  # 可引用但未被引用，删除
-                                removed_web_count += 1
-                        # 不可引用的结果总是保留
-
-                        if should_keep:
-                            kept_results.append(result)
-                    web_search_call._results = kept_results
+                # Web search results are not directly accessible from tool call
+                pass
 
             elif output_item.type == "file_reader_call":
                 file_reader_call = cast(ResponseFunctionFileReader, output_item)
@@ -820,16 +757,8 @@ class Response(BaseModel):
                 pass
 
             elif output_item.type == "web_search_call":
-                # 处理网页搜索结果
-                web_search_call = cast(ResponseFunctionWebSearch, output_item)
-                if web_search_call.results:
-                    for result in web_search_call.results:
-                        # 检查是否可引用
-                        if result.is_citable():
-                            # Use as_annotation() to get document-based annotation
-                            annotation = result.as_annotation()
-                            if annotation is not None:
-                                candidate_annotations.append(annotation)
+                # Web search results are not directly accessible from tool call
+                pass
 
             elif output_item.type == "file_reader_call":
                 # 处理文件阅读结果 (Chunk对象)
@@ -937,22 +866,8 @@ class Response(BaseModel):
                         stats["kept_tool_call_ids"].append(output_item.id)
 
                 elif output_item.type == "web_search_call":
-                    tool_type = "web_search"
-                    web_search_call = cast(ResponseFunctionWebSearch, output_item)
-
-                    if web_search_call.results:
-                        stats["results_by_type"][tool_type]["before"] += len(web_search_call.results)
-
-                        for result in web_search_call.results:
-                            if result.is_citable():
-                                annotation = result.as_annotation()
-                                if annotation and annotation not in seen_annotations:
-                                    kept_results.append(result)
-                                    seen_annotations.add(annotation)
-                                else:
-                                    stats["results_by_type"][tool_type]["removed"] += 1
-                            else:
-                                kept_results.append(result)
+                    # Web search results are not directly accessible from tool call
+                    pass
 
                         if kept_results:
                             # Clear existing results and add kept results

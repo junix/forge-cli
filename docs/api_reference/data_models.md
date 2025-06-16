@@ -132,16 +132,14 @@ class ResponseFileSearchToolCallResult(BaseModel):
 
 class ResponseFunctionWebSearch(BaseModel):
     """Web search tool execution results."""
-    
+
     type: Literal["web_search_call"] = "web_search_call"
     id: str = Field(..., description="Unique tool call identifier")
     status: Literal["in_progress", "searching", "completed", "failed"] = Field(
         ..., description="Tool execution status"
     )
     queries: List[str] = Field(..., description="Search queries used")
-    results: List[ResponseFunctionWebSearchResult] = Field(
-        default_factory=list, description="Web search results"
-    )
+    # Results are accessed through separate mechanisms
 
 class ResponseFunctionWebSearchResult(BaseModel):
     """Individual web search result."""

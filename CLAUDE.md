@@ -134,9 +134,8 @@ if is_file_search_call(item):
     for query in item.queries:  # Full autocomplete!
         process_query(query)
     
-    if item.results:
-        for result in item.results:
-            print(f"Found: {result.filename}")
+    # Results are accessed through response methods
+    # results = response.get_file_search_results(item.id)
 
 # BAD: Defensive programming patterns to avoid
 if hasattr(item, "queries") and item.queries:  # No type information
@@ -213,7 +212,6 @@ These classes represent execution state and results after tools are invoked:
    - `id: str`
    - `status: "in_progress" | "searching" | "completed" | "failed"`
    - `queries: list[str]`
-   - `results: list[WebSearchResult] | None`
 
 3. **ResponseFunctionToolCall** - Function call execution results
    - `type: "function_call"`

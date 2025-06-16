@@ -89,9 +89,10 @@ def get_tool_call_results(response: Response) -> list[dict[str, Any]]:
         return results
     for item in response.output:
         if hasattr(item, "type") and ("tool_call" in item.type or item.type == "function_call"):
-            # Use safe access since not all tool calls have results attribute
-            if hasattr(item, "results") and getattr(item, "results", None):
+            # Only file reader tool calls have directly accessible results
+            if item.type == "file_reader_call" and hasattr(item, "results") and getattr(item, "results", None):
                 results.extend(item.results)
+            # Other tool call results are accessed through separate mechanisms
     return results
 
 

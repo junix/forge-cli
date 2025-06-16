@@ -208,7 +208,7 @@ def get_tool_results(tool_item: ResponseOutputItem) -> list[Any]:
     if is_file_search_call(tool_item):
         return []  # File search results are not directly accessible from tool call
     elif is_web_search_call(tool_item):
-        return tool_item.results if tool_item.results else []
+        return []  # Web search results are not directly accessible from tool call
     elif is_document_finder_call(tool_item):
         return []  # Document finder results are not directly accessible from tool call
     elif is_file_reader_call(tool_item):
