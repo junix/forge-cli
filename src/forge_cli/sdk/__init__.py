@@ -32,14 +32,9 @@ from .typed_api import (
 )
 from .utils import (
     example_response_usage,
-    get_citation_count,
-    get_response_text,
-    get_tool_call_results,
     has_tool_calls,
     has_uncompleted_tool_calls,
     print_file_results,
-    print_response_results,
-    print_vectorstore_results,
 )
 from .vectorstore import (
     async_create_vectorstore,
@@ -76,12 +71,7 @@ __all__ = [
     "async_fetch_response",  # Fetch existing responses by ID
     # Utility functions
     "print_file_results",
-    "print_vectorstore_results",
-    "print_response_results",
-    "get_response_text",
     "has_tool_calls",
-    "get_tool_call_results",
-    "get_citation_count",
     "has_uncompleted_tool_calls",
     "example_response_usage",
 ]

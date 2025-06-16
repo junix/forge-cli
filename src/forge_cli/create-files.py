@@ -117,8 +117,8 @@ async def upload_file_async(
             file_path, purpose=purpose, custom_id=custom_id, skip_exists=skip_exists
         )
 
-        # Print upload results - using a list of File objects
-        print_file_results([upload_result])
+        # Print upload results
+        print_file_results(upload_result)
 
         file_id = upload_result.id
         task_id = upload_result.task_id
