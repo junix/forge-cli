@@ -42,9 +42,8 @@ class AppConfig(BaseModel):
 
     # Display settings
     debug: bool = False
-    json_output: bool = Field(default=False, alias="json")
+    render_format: str = Field(default="rich", alias="render")
     quiet: bool = False
-    use_rich: bool = Field(default=True, alias="no_color")
     throttle_ms: int = Field(default=0, ge=0, alias="throttle")
 
     # Chat mode
@@ -93,10 +92,6 @@ class AppConfig(BaseModel):
         """Create config from command line arguments using Pydantic validation."""
         # Convert args namespace to dict and filter out None values
         args_dict = {k: v for k, v in vars(args).items() if v is not None}
-
-        # Special handling for no_color -> use_rich inversion
-        if "no_color" in args_dict:
-            args_dict["no_color"] = not args_dict["no_color"]
 
         # Create config with validation - Pydantic handles aliases automatically
         return cls.model_validate(args_dict)

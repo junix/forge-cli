@@ -120,7 +120,7 @@ def initialize_default_displays():
         "json",
         Display,
         factory=create_json_display,
-        condition=lambda config: getattr(config, "json_output", False) is True,
+        condition=lambda config: getattr(config, "render_format", "rich") == "json",
     )
 
     # Register Rich display
@@ -129,7 +129,7 @@ def initialize_default_displays():
         Display,
         factory=create_rich_display,
         condition=lambda config: (
-            getattr(config, "use_rich", False) is True and getattr(config, "quiet", False) is False
+            getattr(config, "render_format", "rich") == "rich" and getattr(config, "quiet", False) is False
         ),
     )
 

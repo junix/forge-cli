@@ -38,7 +38,7 @@ def create_config_from_args(args) -> AppConfig:
     # Update environment if server specified
     if config.server_url != os.environ.get("KNOWLEDGE_FORGE_URL"):
         os.environ["KNOWLEDGE_FORGE_URL"] = config.server_url
-        if not config.quiet and not config.json_output:
+        if not config.quiet and config.render_format != "json":
             print(f"🔗 Using server: {config.server_url}")
 
     return config

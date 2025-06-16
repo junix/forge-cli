@@ -93,20 +93,17 @@ class CLIParser:
             help="Enable debug output",
         )
         parser.add_argument(
-            "--json",
-            action="store_true",
-            help="Output as JSON",
+            "--render",
+            type=str,
+            choices=["json", "rich", "plaintext"],
+            default="rich",
+            help="Output rendering format",
         )
         parser.add_argument(
             "--quiet",
             "-Q",
             action="store_true",
             help="Quiet mode - minimal output",
-        )
-        parser.add_argument(
-            "--no-color",
-            action="store_true",
-            help="Disable colored output",
         )
         parser.add_argument(
             "--throttle",

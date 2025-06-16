@@ -29,7 +29,7 @@ class DisplayFactory:
         mode = "chat" if in_chat_mode else "default"
 
         # Choose renderer based on configuration
-        if config.json_output:
+        if config.render_format == "json":
             # JSON output with Rich live updates
             from forge_cli.display.v3.renderers.json import JsonDisplayConfig, JsonRenderer
 
@@ -44,7 +44,7 @@ class DisplayFactory:
             )
             renderer = JsonRenderer(config=json_config)
 
-        elif not config.use_rich:
+        elif config.render_format == "plaintext":
             # Plain text output
             from forge_cli.display.v3.renderers.plaintext import PlaintextDisplayConfig, PlaintextRenderer
 

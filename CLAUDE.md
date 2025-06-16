@@ -747,7 +747,7 @@ vs_result = await async_create_vectorstore("My KB", file_ids=[file_result["id"]]
 ```bash
 --debug, -d          # Show detailed information
 --chat, -i           # Interactive mode
---json               # JSON output
+--render FORMAT      # Output format: json/rich/plaintext (default: rich)
 --effort LEVEL       # low/medium/high
 --model MODEL        # AI model to use
 ```
@@ -923,7 +923,7 @@ python -c "from forge_cli.sdk.typed_api import create_typed_request; print('OK')
 | Missing API key | Set `OPENAI_API_KEY` environment variable |
 | Type errors in IDE | Ensure Python 3.10+ and proper type stub installation |
 | Chat mode not working | Install `prompt-toolkit` for enhanced features |
-| Display issues | Try `--format plaintext` or `--format json` |
+| Display issues | Try `--render plaintext` or `--render json` |
 | Performance issues | Use `--debug` to identify bottlenecks |
 
 ## Architecture Decision Records
