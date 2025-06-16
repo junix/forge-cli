@@ -843,44 +843,9 @@ class Response(BaseModel):
                     # Web search results are not directly accessible from tool call
                     pass
 
-                        if kept_results:
-                            # Clear existing results and add kept results
-                            web_search_call._results = kept_results
-                            new_output.append(web_search_call)
-                            stats["total_tool_calls_after"] += 1
-                            stats["results_by_type"][tool_type]["after"] += len(kept_results)
-                            stats["kept_tool_call_ids"].append(web_search_call.id)
-                        else:
-                            stats["removed_tool_calls"] += 1
-                            stats["removed_tool_call_ids"].append(web_search_call.id)
-
                 elif output_item.type == "file_reader_call":
-                    tool_type = "file_reader"
-                    file_reader_call = cast(ResponseFunctionFileReader, output_item)
-
-                    if file_reader_call.results:
-                        stats["results_by_type"][tool_type]["before"] += len(file_reader_call.results)
-
-                        for result in file_reader_call.results:
-                            if result.is_citable():
-                                annotation = result.as_annotation()
-                                if annotation and annotation not in seen_annotations:
-                                    kept_results.append(result)
-                                    seen_annotations.add(annotation)
-                                else:
-                                    stats["results_by_type"][tool_type]["removed"] += 1
-                            else:
-                                kept_results.append(result)
-
-                        if kept_results:
-                            file_reader_call._results = kept_results
-                            new_output.append(file_reader_call)
-                            stats["total_tool_calls_after"] += 1
-                            stats["results_by_type"][tool_type]["after"] += len(kept_results)
-                            stats["kept_tool_call_ids"].append(file_reader_call.id)
-                        else:
-                            stats["removed_tool_calls"] += 1
-                            stats["removed_tool_call_ids"].append(file_reader_call.id)
+                    # File reader results are not directly accessible from tool call
+                    pass
             else:
                 # Keep non-RAG tool calls as-is
                 new_output.append(output_item)

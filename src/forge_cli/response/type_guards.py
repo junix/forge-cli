@@ -212,7 +212,7 @@ def get_tool_results(tool_item: ResponseOutputItem) -> list[Any]:
     elif is_document_finder_call(tool_item):
         return []  # Document finder results are not directly accessible from tool call
     elif is_file_reader_call(tool_item):
-        return tool_item.results if tool_item.results else []
+        return []  # File reader results are not directly accessible from tool call
     elif is_computer_tool_call(tool_item):
         return []  # Computer tool doesn't have results in the same format
     elif is_function_call(tool_item):

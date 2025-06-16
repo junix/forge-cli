@@ -311,6 +311,7 @@ async def stream_with_progress(request: Request):
    - Direct document reading by ID
    - Progress tracking and navigation history
    - Detailed execution tracing
+   - Results are accessed through separate mechanisms
 
 ### Automation Tools
 

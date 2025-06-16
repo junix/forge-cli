@@ -20,14 +20,12 @@ class ResponseFunctionFileReader(TraceableToolCall):
         status (Literal): The current status of the file reader call ("in_progress", "searching", "completed", "incomplete")
         doc_ids (List[str]): List of document IDs to be read
         query (str): The query to answer based on the document content
-        navigation (str): Browsing history/path as a string
-        _results (Optional[List[Chunk]]): The results of the file reading operation
-        _native_tool_call (Optional[ResponseFunctionToolCall]): The native tool call
-        _navigator (Any): Private temporary navigator object (not serialized)
 
     Inherited from TraceableToolCall:
         progress (Optional[float]): Reading progress from 0.0 to 1.0
         execution_trace (Optional[str]): Execution history as newline-separated log entries
+
+    Note: Results are accessed through separate mechanisms, not directly from this object.
     """
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))

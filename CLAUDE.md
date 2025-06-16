@@ -243,6 +243,7 @@ These classes represent execution state and results after tools are invoked:
    - `query: str`
    - `progress: float | None` (inherited from TraceableToolCall)
    - `execution_trace: str | None` (inherited from TraceableToolCall)
+   - Results are accessed through separate mechanisms
 
 7. **ResponseCodeInterpreterToolCall** - Code execution results
    - `type: "code_interpreter_call"`

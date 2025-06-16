@@ -4,22 +4,13 @@ from pydantic import BaseModel
 
 
 class FileReaderTool(BaseModel):
-    """Response function for file reader tool calls.
+    """File reader tool definition.
 
-    This class represents a file reader tool call in the LLM response.
-    It contains the query to be answered based on document content and
-    document IDs to read.
+    This class represents a file reader tool configuration that can be
+    used in requests to enable file reading capabilities.
 
     Attributes:
-        type (str): The type of the function, always "file_reader_call"
-        status (Literal): The current status of the file reader call ("in_progress", "searching", "completed", "incomplete")
-        doc_ids (List[str]): List of document IDs to be read
-        query (str): The query to answer based on the document content
-        progress (float): Reading progress from 0.0 to 1.0
-        navigation (str): Browsing history/path as a string
-        _results (Optional[List[Chunk]]): The results of the file reading operation
-        _native_tool_call (Optional[ResponseFunctionToolCall]): The native tool call
-        _navigator (Any): Private temporary navigator object (not serialized)
+        type (str): The type of the tool, always "file_reader"
     """
 
     type: Literal["file_reader"] = "file_reader"
