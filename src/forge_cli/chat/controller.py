@@ -140,27 +140,16 @@ class ChatController:
             )
 
             # Use prompt_toolkit with auto-completion
-            try:
-                loop = asyncio.get_event_loop()
-                future = loop.run_in_executor(None, lambda: session.prompt(FormattedText([("class:prompt", " ")])))
-                user_input: str = await future
-                return user_input.strip()
-            except Exception:
-                # Fall through to non-interactive input
-                pass
-
-        # Fallback for non-interactive input (pipes, scripts, etc.)
-        try:
             loop = asyncio.get_event_loop()
-            future = loop.run_in_executor(None, input)
+            future = loop.run_in_executor(None, lambda: session.prompt(FormattedText([("class:prompt", " ")])))
             user_input: str = await future
             return user_input.strip()
-        except EOFError:
-            # End of input stream
-            return None
-        except Exception:
-            # Any other input error
-            return None
+
+        # Fallback for non-interactive input (pipes, scripts, etc.)
+        loop = asyncio.get_event_loop()
+        future = loop.run_in_executor(None, input)
+        user_input: str = await future
+        return user_input.strip()
 
     async def process_input(self, user_input: str) -> bool:
         """Processes the user's input, determining if it's a command or a message.
