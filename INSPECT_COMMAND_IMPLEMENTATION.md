@@ -35,7 +35,7 @@ This document describes the implementation of the new `/inspect` command for the
 ### 2. Conversation Metrics
 - **Display Format**: "Turn: X"
 - **Source**: `ConversationState.turn_count`
-- **Tracking**: Incremented on each user message in `ChatController.send_message()`
+- **Tracking**: Incremented on each user message in the main chat loop
 
 ### 3. Vector Store Information
 - **Display Format**: "• [ID] - [Name]" (bulleted list)
@@ -75,7 +75,7 @@ All aliases provide the same functionality.
 
 2. **Turn Counting**:
    ```
-   User Message → ChatController.send_message() → increment_turn_count() → 
+   User Message → main.py handle_user_message() → increment_turn_count() →
    ConversationState.turn_count
    ```
 

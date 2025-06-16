@@ -91,24 +91,18 @@ async def start_chat_mode(
 
     # Resume existing conversation if requested
     if resume_conversation_id:
-        try:
-            from forge_cli.models.conversation import ConversationState
+        from forge_cli.models.conversation import ConversationState
 
-            controller.conversation = ConversationState.load_by_id(resume_conversation_id)
-            display.show_status(
-                f"📂 Resumed conversation {resume_conversation_id} with {controller.conversation.get_message_count()} messages"
-            )
+        controller.conversation = ConversationState.load_by_id(resume_conversation_id)
+        display.show_status(
+            f"📂 Resumed conversation {resume_conversation_id} with {controller.conversation.get_message_count()} messages"
+        )
 
-        except FileNotFoundError:
-            display.show_error(f"Conversation {resume_conversation_id} not found")
-            return
-        except Exception as e:
-            display.show_error(f"Failed to resume conversation: {e}")
-            return
+    async def handle_user_message(content: str) -> None:
+        """Handle user message using typed API with proper chat support."""
+        # Increment turn count for each user message
+        controller.conversation.increment_turn_count()
 
-    # Patch the controller to use typed API
-    async def typed_send_message(content: str) -> None:
-        """Send message using typed API with proper chat support."""
         # Create a fresh display for this message
         message_display = create_display(config)
 
@@ -129,15 +123,12 @@ async def start_chat_mode(
         if response:
             controller.conversation.update_from_response(response)
 
-    # Replace method
-    controller.send_message = typed_send_message
-
     # Show welcome
     controller.show_welcome()
 
     # If initial question provided, process it first
     if initial_question:
-        await controller.send_message(initial_question)
+        await handle_user_message(initial_question)
 
     # Start chat loop
     controller.running = True
@@ -149,11 +140,21 @@ async def start_chat_mode(
         if user_input is None:  # EOF or interrupt
             break
 
-        # Process the input
-        continue_chat = await controller.process_input(user_input)
+        # Parse for commands first
+        command_name, args = controller.commands.parse_command(user_input)
 
-        if not continue_chat:
-            break
+        if command_name is not None:
+            # Handle command
+            continue_chat = await controller.handle_command(command_name, args)
+            if not continue_chat:
+                break
+        else:
+            # Check for empty messages
+            if not user_input or user_input.isspace():
+                continue
+
+            # Handle user message
+            await handle_user_message(user_input)
 
 
 async def main():
@@ -359,11 +360,7 @@ async def main():
         # Resume existing conversation
         await start_chat_mode(config, None, args.resume)
     else:
-        # Start new chat mode (always chat mode now)
-        initial_question = (
-            config.question if config.question != "What information can you find in the documents?" else None
-        )
-        await start_chat_mode(config, initial_question)
+        await start_chat_mode(config, None)
 
 
 def run_main_async():

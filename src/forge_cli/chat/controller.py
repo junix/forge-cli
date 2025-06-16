@@ -1,12 +1,10 @@
 """Chat controller for managing interactive conversations."""
 
-import asyncio
 from typing import Final
 
 from ..config import SearchConfig
 from ..display.v3.base import Display
 from ..models.conversation import ConversationState
-from ..stream.handler_typed import TypedStreamHandler
 from .commands import CommandRegistry
 from .inputs import InputHandler
 
@@ -17,11 +15,10 @@ DEFAULT_EFFORT: Final[str] = "low"
 
 
 class ChatController:
-    """Manages the interactive chat session, including user input, commands, and API communication.
+    """Manages the interactive chat session, including user input and commands.
 
-    This class orchestrates the entire chat experience, handling everything
-    from reading user input and parsing commands to sending requests to the
-    language model and displaying responses.
+    This class orchestrates chat input handling and command processing.
+    Message processing and API communication is handled in main.py.
 
     Attributes:
         config (SearchConfig): The configuration settings for the chat session.
@@ -96,9 +93,8 @@ class ChatController:
         """Processes the user's input, determining if it's a command or a message.
 
         If the input is recognized as a command (e.g., starts with `/`),
-        it's handled by `handle_command`. Otherwise, it's treated as a
-        message to be sent to the language model via `send_message`.
-        Empty messages are not sent.
+        it's handled by `handle_command`. Otherwise, empty messages are ignored
+        and non-empty messages return True to continue the chat session.
 
         Args:
             user_input: The raw input string from the user.
@@ -116,11 +112,9 @@ class ChatController:
         else:
             # Check for empty messages
             if not user_input or user_input.isspace():
-                # self.display.show_error("Empty messages cannot be sent. Please type something.")
                 return True
 
-            # Send as message
-            await self.send_message(user_input)
+            # Non-empty message - continue chat session
             return True
 
     async def handle_command(self, command_name: str, args: str) -> bool:
@@ -146,46 +140,3 @@ class ChatController:
 
         # Execute command
         return await command.execute(args, self)
-
-    async def send_message(self, content: str) -> None:
-        """Sends a message to the language model and handles the response.
-
-        The user's message is added to the conversation history.
-        A request is prepared using `prepare_request`, and then sent to the
-        model via `astream_typed_response`. The response stream is handled by
-        `TypedStreamHandler`, and the assistant's reply is added back to the
-        conversation.
-
-        Args:
-            content: The text content of the user's message.
-        """
-        # Increment turn count for each user message
-        self.conversation.increment_turn_count()
-
-        # Show user message if display supports it
-        # For v3 displays, we don't need to show user message - it's already visible in the terminal
-
-        # Set display to chat mode - use the Display's mode property
-        self.display.mode = "chat"
-
-        # Create typed request with conversation history (automatically adds user message)
-        typed_request = self.conversation.new_request(content, self.config)
-
-        handler = TypedStreamHandler(self.display, debug=self.config.debug)
-
-        # Import typed SDK
-        from ..sdk import astream_typed_response
-
-        # Stream the response
-        if self.config.debug:
-            print(f"DEBUG: Typed Request: {typed_request.model_dump()}")
-
-        event_stream = astream_typed_response(typed_request, debug=self.config.debug)
-        response = await handler.handle_stream(event_stream)
-
-        # Update conversation state from response (includes adding assistant message)
-        if response:
-            self.conversation.update_from_response(response)
-
-        # Reset display mode to default after chat message
-        self.display.mode = "default"
