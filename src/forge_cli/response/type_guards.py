@@ -206,11 +206,11 @@ def get_tool_results(tool_item: ResponseOutputItem) -> list[Any]:
         A list of results, or an empty list if no results are applicable or available.
     """
     if is_file_search_call(tool_item):
-        return tool_item.results if tool_item.results else []
+        return []  # File search results are not directly accessible from tool call
     elif is_web_search_call(tool_item):
         return tool_item.results if tool_item.results else []
     elif is_document_finder_call(tool_item):
-        return tool_item.results if tool_item.results else []
+        return []  # Document finder results are not directly accessible from tool call
     elif is_file_reader_call(tool_item):
         return tool_item.results if tool_item.results else []
     elif is_computer_tool_call(tool_item):
