@@ -3,7 +3,7 @@
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from ..response._types.annotations import Annotation
@@ -86,6 +86,9 @@ class StreamState:
     response_id: str | None = None
     model: str | None = None
 
+    # Vector store IDs used in this session
+    vector_store_ids: set[str] = field(default_factory=set)
+
     def update_from_snapshot(self, snapshot: Response) -> None:
         """Update state from typed Response snapshot."""
         if isinstance(snapshot, Response):
@@ -152,6 +155,31 @@ class StreamState:
 
         self.citations = citations
 
+    def initialize_vector_store_ids(self, vector_store_ids: list[str]) -> None:
+        """Initialize vector store IDs from user configuration.
+
+        Args:
+            vector_store_ids: List of vector store IDs from user configuration
+        """
+        if vector_store_ids:
+            self.vector_store_ids.update(vector_store_ids)
+
+    def add_vector_store_ids(self, vector_store_ids: list[str]) -> None:
+        """Add vector store IDs to the tracked set.
+
+        Args:
+            vector_store_ids: List of vector store IDs to add
+        """
+        self.vector_store_ids.update(vector_store_ids)
+
+    def get_vector_store_ids(self) -> list[str]:
+        """Get the list of vector store IDs used in this session.
+
+        Returns:
+            Sorted list of unique vector store IDs
+        """
+        return sorted(list(self.vector_store_ids))
+
 
 class TypedStreamHandler:
     """Stream handler that works with typed Response streams only."""
@@ -163,7 +191,7 @@ class TypedStreamHandler:
         # Note: Registry system removed - processing now handled directly by v3 renderers
 
     async def handle_stream(
-        self, stream: AsyncIterator[tuple[str, Response | None]], initial_request: str
+        self, stream: AsyncIterator[tuple[str, Response | None]], initial_request: str, vector_store_ids: list[str] | None = None
     ) -> StreamState:
         """
         Handle streaming events from typed API.
@@ -171,11 +199,16 @@ class TypedStreamHandler:
         Args:
             stream: Iterator yielding (event_type, Response) tuples
             initial_request: The initial query/request text
+            vector_store_ids: Optional list of vector store IDs from user configuration
 
         Returns:
             Final StreamState after processing all events
         """
         state = StreamState()
+
+        # Initialize vector store IDs from user configuration if provided
+        if vector_store_ids:
+            state.initialize_vector_store_ids(vector_store_ids)
 
         # Track timing
         start_time = time.time()

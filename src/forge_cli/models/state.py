@@ -2,14 +2,18 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ..response._types.annotations import Annotation
+    from ..response._types.response_output_item import ResponseOutputItem
+else:
+    Annotation = "Annotation"
+    ResponseOutputItem = "ResponseOutputItem"
 
 # Import proper types from response system
-from ..response._types.response import Response
-from ..response._types.response_output_item import ResponseOutputItem
+if not TYPE_CHECKING:
+    from ..response._types.response_output_item import ResponseOutputItem
 from ..response._types.response_usage import ResponseUsage
 from ..response.type_guards import (
     get_tool_results,
@@ -91,22 +95,45 @@ class StreamState:
     response_id: str | None = None
     model: str | None = None
 
-    def update_from_snapshot(self, snapshot: Response) -> None:
-        """Update state from typed Response snapshot."""
-        if isinstance(snapshot, Response):
-            # Typed Response only - direct access to properties
-            self.output_items = list(snapshot.output)
+    # Vector store IDs used in this session
+    vector_store_ids: set[str] = field(default_factory=set)
+
+    def update_from_snapshot(self, snapshot: dict[str, Any]) -> None:
+        """Update state from response snapshot.
+
+        Expects snapshot to contain typed Response objects or compatible data.
+        """
+        if "output" in snapshot:
+            output_data = snapshot["output"]
+            if output_data:
+                # Expect typed objects; if dicts are provided, attempt conversion
+                if isinstance(output_data, list):
+                    self.output_items = []
+                    for item in output_data:
+                        if hasattr(item, "type"):
+                            # Already a typed object
+                            self.output_items.append(item)
+                        elif isinstance(item, dict) and "type" in item:
+                            # Try to convert dict to typed object
+                            typed_item = self._convert_single_output_item(item)
+                            if typed_item:
+                                self.output_items.append(typed_item)
+                else:
+                    self.output_items = output_data
             self._extract_file_mappings()
             self._extract_reasoning()
             self._extract_citations()
+            self._extract_vector_store_ids()
 
             # Update usage statistics
-            if snapshot.usage:
-                self.usage = snapshot.usage
+            if "usage" in snapshot and snapshot["usage"]:
+                self.usage = snapshot["usage"]
 
             # Update response metadata
-            self.response_id = snapshot.id
-            self.model = snapshot.model
+            if "id" in snapshot:
+                self.response_id = snapshot["id"]
+            if "model" in snapshot:
+                self.model = snapshot["model"]
 
     def _extract_file_mappings(self) -> None:
         """Extract file ID to name mappings from output items using type guards."""
@@ -158,6 +185,40 @@ class StreamState:
 
         self.citations = citations
 
+    def _extract_vector_store_ids(self) -> None:
+        """Extract vector store IDs from tool calls in output items.
+
+        Note: This method is kept for compatibility but vector store IDs should be
+        initialized from user configuration, not extracted from tool calls.
+        """
+        # Vector store IDs should come from user configuration, not tool calls
+        pass
+
+    def initialize_vector_store_ids(self, vector_store_ids: list[str]) -> None:
+        """Initialize vector store IDs from user configuration.
+
+        Args:
+            vector_store_ids: List of vector store IDs from user configuration
+        """
+        if vector_store_ids:
+            self.vector_store_ids.update(vector_store_ids)
+
+    def add_vector_store_ids(self, vector_store_ids: list[str]) -> None:
+        """Add vector store IDs to the tracked set.
+
+        Args:
+            vector_store_ids: List of vector store IDs to add
+        """
+        self.vector_store_ids.update(vector_store_ids)
+
+    def get_vector_store_ids(self) -> list[str]:
+        """Get the list of vector store IDs used in this session.
+
+        Returns:
+            Sorted list of unique vector store IDs
+        """
+        return sorted(list(self.vector_store_ids))
+
     def get_tool_state(self, tool_type: str) -> ToolState:
         """Get or create tool state for a specific tool type."""
         # Normalize tool type
@@ -179,3 +240,17 @@ class StreamState:
                 completed.append(tool_state.to_display_info())
 
         return completed
+
+    def _convert_single_output_item(self, item: dict[str, Any]) -> "ResponseOutputItem" | None:
+        """Convert dict to typed output item if possible.
+        
+        Args:
+            item: Dictionary containing output item data
+            
+        Returns:
+            Typed ResponseOutputItem if conversion successful, None otherwise
+        """
+        # This is a placeholder for dict-to-typed conversion
+        # In practice, this would use the proper typing system
+        # For now, return None to skip dict items
+        return None

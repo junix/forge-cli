@@ -157,7 +157,7 @@ async def process_search(config: SearchConfig, question: str) -> dict[str, str |
     try:
         # Stream and process with typed API
         event_stream = astream_typed_response(request, debug=config.debug)
-        state = await handler.handle_stream(event_stream, question)
+        state = await handler.handle_stream(event_stream, question, config.vec_ids)
 
         # Display vector store info if not in JSON mode
         if state and not config.json_output and config.vec_ids:
@@ -170,6 +170,7 @@ async def process_search(config: SearchConfig, question: str) -> dict[str, str |
             "usage": state.usage,
             "event_count": state.event_count,
             "citations": state.citations,
+            "vector_store_ids": state.get_vector_store_ids(),
         }
 
     except Exception as e:
@@ -219,7 +220,7 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
         try:
             # Stream the response
             event_stream = astream_typed_response(request, debug=config.debug)
-            state = await handler.handle_stream(event_stream, content)
+            state = await handler.handle_stream(event_stream, content, config.vec_ids)
 
             # Extract assistant response from state using type guards
             if state and state.output_items:
