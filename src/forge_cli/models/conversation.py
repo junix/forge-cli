@@ -29,7 +29,8 @@ type ToolType = Literal[
 ]
 
 # Domain-specific types
-SessionId = NewType("SessionId", str)
+ConversationId = NewType("ConversationId", str)
+SessionId = NewType("SessionId", str)  # Keep for backward compatibility
 MessageId = NewType("MessageId", str)
 
 # Constants
@@ -56,7 +57,10 @@ class ConversationState:
 
     # Use proper typed messages instead of custom Message class
     messages: list[ResponseInputMessageItem] = field(default_factory=list)
-    session_id: SessionId = field(default_factory=lambda: SessionId(f"session_{uuid.uuid4().hex[:12]}"))
+    conversation_id: ConversationId = field(default_factory=lambda: ConversationId(f"conv_{uuid.uuid4().hex[:8]}"))
+    session_id: SessionId = field(
+        default_factory=lambda: SessionId(f"session_{uuid.uuid4().hex[:12]}")
+    )  # Keep for backward compatibility
     created_at: float = field(default_factory=time.time)
     model: str = DEFAULT_MODEL
     tools: list[Tool] = field(default_factory=list)
@@ -236,6 +240,97 @@ class ConversationState:
         """Check if file search is enabled for this conversation."""
         return self.file_search_enabled
 
+    @classmethod
+    def get_conversations_dir(cls) -> Path:
+        """Get the directory where conversations are stored."""
+        from pathlib import Path
+
+        # Use user's home directory/.forge-cli/conversations
+        home_dir = Path.home()
+        conversations_dir = home_dir / ".forge-cli" / "conversations"
+        conversations_dir.mkdir(parents=True, exist_ok=True)
+        return conversations_dir
+
+    def get_default_save_path(self) -> Path:
+        """Get the default save path for this conversation based on its ID."""
+        return self.get_conversations_dir() / f"{self.conversation_id}.json"
+
+    def save_by_id(self) -> Path:
+        """Save conversation using its ID as filename.
+
+        Returns:
+            Path where the conversation was saved
+        """
+        path = self.get_default_save_path()
+        self.save(path)
+        return path
+
+    @classmethod
+    def load_by_id(cls, conversation_id: str) -> "ConversationState":
+        """Load conversation by its ID.
+
+        Args:
+            conversation_id: The conversation ID to load
+
+        Returns:
+            Loaded ConversationState
+
+        Raises:
+            FileNotFoundError: If conversation file doesn't exist
+        """
+        conversations_dir = cls.get_conversations_dir()
+        path = conversations_dir / f"{conversation_id}.json"
+
+        if not path.exists():
+            raise FileNotFoundError(f"Conversation {conversation_id} not found")
+
+        return cls.load(path)
+
+    @classmethod
+    def list_conversations(cls) -> list[dict[str, str]]:
+        """List all saved conversations.
+
+        Returns:
+            List of conversation info dicts with keys: id, created_at, message_count, model
+        """
+        conversations_dir = cls.get_conversations_dir()
+        conversations = []
+
+        for json_file in conversations_dir.glob("*.json"):
+            try:
+                # Quick load to get basic info
+                with open(json_file, encoding="utf-8") as f:
+                    data = json.load(f)
+
+                # Extract basic info
+                conv_id = data.get("conversation_id", json_file.stem)
+                created_at = data.get("created_at", 0)
+                message_count = len(data.get("messages", []))
+                model = data.get("model", "unknown")
+
+                # Format created_at as readable string
+                import datetime
+
+                created_str = datetime.datetime.fromtimestamp(created_at).strftime("%Y-%m-%d %H:%M:%S")
+
+                conversations.append(
+                    {
+                        "id": conv_id,
+                        "created_at": created_str,
+                        "message_count": str(message_count),
+                        "model": model,
+                        "file": str(json_file),
+                    }
+                )
+
+            except Exception:
+                # Skip corrupted files
+                continue
+
+        # Sort by creation time (newest first)
+        conversations.sort(key=lambda x: x["created_at"], reverse=True)
+        return conversations
+
     def update_stream_state(self, state: "StreamState") -> None:
         """Update conversation state from stream state.
 
@@ -299,7 +394,8 @@ class ConversationState:
     def save(self, path: Path) -> None:
         """Save conversation to a JSON file."""
         data = {
-            "session_id": self.session_id,
+            "conversation_id": self.conversation_id,
+            "session_id": self.session_id,  # Keep for backward compatibility
             "created_at": self.created_at,
             "model": self.model,
             "tools": [tool.model_dump() for tool in self.tools],
@@ -362,7 +458,18 @@ class ConversationState:
         file_search_enabled = data.get("file_search_enabled", False)
         current_vector_store_ids = data.get("current_vector_store_ids", [])
 
+        # Handle conversation_id (new field) with backward compatibility
+        conversation_id = data.get("conversation_id")
+        if not conversation_id:
+            # Generate conversation_id from session_id for backward compatibility
+            session_id = data["session_id"]
+            if session_id.startswith("session_"):
+                conversation_id = ConversationId(f"conv_{session_id[8:]}")
+            else:
+                conversation_id = ConversationId(f"conv_{session_id}")
+
         conversation = cls(
+            conversation_id=conversation_id,
             session_id=data["session_id"],
             created_at=data["created_at"],
             model=data["model"],

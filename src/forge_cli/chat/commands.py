@@ -152,8 +152,8 @@ class SaveCommand(ChatCommand):
         """Executes the save command.
 
         Args:
-            args: The filename to save the conversation to. If empty, a
-                default filename is generated.
+            args: The filename to save the conversation to. If empty, saves
+                using the conversation ID as filename.
             controller: The `ChatController` instance.
 
         Returns:
@@ -161,24 +161,22 @@ class SaveCommand(ChatCommand):
         """
         from pathlib import Path
 
-        # Determine filename
-        if args.strip():
-            filename = args.strip()
-        else:
-            # Default filename with timestamp
-            import time
-
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            filename = f"chat_{controller.conversation.session_id}_{timestamp}.json"
-
-        # Ensure .json extension
-        if not filename.endswith(".json"):
-            filename += ".json"
-
         try:
-            path = Path(filename)
-            controller.conversation.save(path)
-            controller.display.show_status(f"💾 Conversation saved to: {path}")
+            if args.strip():
+                # Custom filename provided
+                filename = args.strip()
+                # Ensure .json extension
+                if not filename.endswith(".json"):
+                    filename += ".json"
+                path = Path(filename)
+                controller.conversation.save(path)
+                controller.display.show_status(f"💾 Conversation saved to: {path}")
+            else:
+                # Use conversation ID as filename (default behavior)
+                path = controller.conversation.save_by_id()
+                controller.display.show_status(f"💾 Conversation saved as: {controller.conversation.conversation_id}")
+                controller.display.show_status(f"📁 Location: {path}")
+
         except Exception as e:
             controller.display.show_error(f"Failed to save conversation: {e}")
 
@@ -200,7 +198,7 @@ class LoadCommand(ChatCommand):
         """Executes the load command.
 
         Args:
-            args: The filename to load the conversation from.
+            args: The conversation ID or filename to load.
             controller: The `ChatController` instance.
 
         Returns:
@@ -209,40 +207,137 @@ class LoadCommand(ChatCommand):
         from pathlib import Path
 
         if not args.strip():
-            controller.display.show_error("Please specify a file to load: /load <filename>")
+            controller.display.show_error("Please specify a conversation ID or filename: /load <id_or_filename>")
             return True
 
         try:
-            path = Path(args.strip())
-            if not path.exists():
-                # Try adding .json extension
-                path = Path(args.strip() + ".json")
+            arg = args.strip()
 
-            if not path.exists():
-                controller.display.show_error(f"File not found: {args.strip()}")
-                return True
+            # First try to load by conversation ID
+            try:
+                from forge_cli.models.conversation import ConversationState
 
-            controller.conversation = controller.conversation.load(path)
-            controller.display.show_status(
-                f"📂 Loaded conversation with {controller.conversation.get_message_count()} messages"
-            )
+                controller.conversation = ConversationState.load_by_id(arg)
+                controller.display.show_status(
+                    f"📂 Loaded conversation {arg} with {controller.conversation.get_message_count()} messages"
+                )
+            except FileNotFoundError:
+                # If ID not found, try as filename
+                path = Path(arg)
+                if not path.exists():
+                    # Try adding .json extension
+                    path = Path(arg + ".json")
+
+                if not path.exists():
+                    controller.display.show_error(f"Conversation ID or file not found: {arg}")
+                    return True
+
+                controller.conversation = controller.conversation.load(path)
+                controller.display.show_status(
+                    f"📂 Loaded conversation from {path} with {controller.conversation.get_message_count()} messages"
+                )
 
             # Show conversation history
             if controller.conversation.messages:
-                controller.display.show_status("\n--- Conversation History ---")
-                for msg in controller.conversation.messages[-5:]:  # Show last 5 messages
-                    if msg.role == "user":
-                        controller.display.show_status(f"You: {msg.content[:100]}...")
-                    else:
-                        controller.display.show_status(f"Assistant: {msg.content[:100]}...")
+                controller.display.show_status("\n--- Recent History ---")
+                recent_messages = controller.conversation.get_last_n_messages(3)
+                for msg in recent_messages:
+                    role_display = "You" if msg.role == "user" else "Assistant"
+                    # Extract text content
+                    content_parts = []
+                    for content_item in msg.content:
+                        from forge_cli.response.type_guards import is_input_text
 
-                if controller.conversation.get_message_count() > 5:
+                        if is_input_text(content_item):
+                            content_parts.append(content_item.text)
+                    content_str = " ".join(content_parts)
+                    # Truncate long messages
+                    if len(content_str) > 100:
+                        content_str = content_str[:97] + "..."
+                    controller.display.show_status(f"{role_display}: {content_str}")
+
+                if controller.conversation.get_message_count() > 3:
                     controller.display.show_status(
-                        f"... and {controller.conversation.get_message_count() - 5} more messages"
+                        f"... and {controller.conversation.get_message_count() - 3} more messages"
                     )
+                controller.display.show_status("--- End History ---")
 
         except Exception as e:
             controller.display.show_error(f"Failed to load conversation: {e}")
+
+        return True
+
+
+class ListConversationsCommand(ChatCommand):
+    """Lists all saved conversations.
+
+    Shows conversation IDs, creation dates, message counts, and models.
+    """
+
+    name = "conversations"
+    description = "List all saved conversations"
+    aliases = ["convs", "list"]
+
+    async def execute(self, args: str, controller: "ChatController") -> bool:
+        """Executes the list conversations command.
+
+        Args:
+            args: Command arguments (not used by this command).
+            controller: The `ChatController` instance.
+
+        Returns:
+            True, indicating the chat session should continue.
+        """
+        try:
+            from forge_cli.models.conversation import ConversationState
+
+            conversations = ConversationState.list_conversations()
+
+            if not conversations:
+                controller.display.show_status("📭 No saved conversations found")
+                return True
+
+            # Try to use rich table if available
+            try:
+                from rich.table import Table
+
+                table = Table(title="💬 Saved Conversations", show_header=True)
+                table.add_column("ID", style="cyan", width=12)
+                table.add_column("Created", style="green", width=19)
+                table.add_column("Messages", style="yellow", width=8, justify="right")
+                table.add_column("Model", style="blue", width=15)
+
+                for conv in conversations:
+                    table.add_row(conv["id"], conv["created_at"], conv["message_count"], conv["model"])
+
+                # Use the display's renderer console if available
+                if hasattr(controller.display, "_renderer") and hasattr(controller.display._renderer, "_console"):
+                    controller.display._renderer._console.print(table)
+                else:
+                    # Fallback to plain text
+                    controller.display.show_status("💬 Saved Conversations:")
+                    controller.display.show_status(f"{'ID':<12} {'Created':<19} {'Msgs':<8} {'Model':<15}")
+                    controller.display.show_status("-" * 60)
+                    for conv in conversations:
+                        controller.display.show_status(
+                            f"{conv['id']:<12} {conv['created_at']:<19} {conv['message_count']:<8} {conv['model']:<15}"
+                        )
+
+            except ImportError:
+                # Fallback if rich is not available
+                controller.display.show_status("💬 Saved Conversations:")
+                controller.display.show_status(f"{'ID':<12} {'Created':<19} {'Msgs':<8} {'Model':<15}")
+                controller.display.show_status("-" * 60)
+                for conv in conversations:
+                    controller.display.show_status(
+                        f"{conv['id']:<12} {conv['created_at']:<19} {conv['message_count']:<8} {conv['model']:<15}"
+                    )
+
+            controller.display.show_status(f"\n📊 Total: {len(conversations)} conversations")
+            controller.display.show_status("💡 Use '/load <id>' to resume a conversation")
+
+        except Exception as e:
+            controller.display.show_error(f"Failed to list conversations: {e}")
 
         return True
 
@@ -792,6 +887,7 @@ class CommandRegistry:
             HelpCommand(),
             SaveCommand(),
             LoadCommand(),
+            ListConversationsCommand(),
             HistoryCommand(),
             ModelCommand(),
             ToolsCommand(),

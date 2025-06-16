@@ -112,7 +112,9 @@ async def process_search(config: SearchConfig, question: str) -> dict[str, str |
     }
 
 
-async def start_chat_mode(config: SearchConfig, initial_question: str | None = None) -> None:
+async def start_chat_mode(
+    config: SearchConfig, initial_question: str | None = None, resume_conversation_id: str | None = None
+) -> None:
     """Start interactive chat mode with typed API."""
     # Note: Registry initialization removed - processing handled by v3 renderers
 
@@ -121,6 +123,23 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
 
     # Create chat controller
     controller = ChatController(config, display)
+
+    # Resume existing conversation if requested
+    if resume_conversation_id:
+        try:
+            from forge_cli.models.conversation import ConversationState
+
+            controller.conversation = ConversationState.load_by_id(resume_conversation_id)
+            display.show_status(
+                f"📂 Resumed conversation {resume_conversation_id} with {controller.conversation.get_message_count()} messages"
+            )
+
+        except FileNotFoundError:
+            display.show_error(f"Conversation {resume_conversation_id} not found")
+            return
+        except Exception as e:
+            display.show_error(f"Failed to resume conversation: {e}")
+            return
 
     # Patch the controller to use typed API
     async def typed_send_message(content: str) -> None:
@@ -305,6 +324,14 @@ async def main():
         help="Start interactive chat mode",
     )
 
+    # Resume conversation argument
+    parser.add_argument(
+        "--resume",
+        "-r",
+        type=str,
+        help="Resume an existing conversation by ID",
+    )
+
     # Legacy API argument (for backward compatibility)
     parser.add_argument(
         "--legacy-api",
@@ -387,8 +414,11 @@ async def main():
         if not config.quiet and not config.json_output:
             print(f"🔗 Using server: {config.server_url}")
 
-    # Check if chat mode is requested
-    if config.chat_mode:
+    # Check if resume mode is requested
+    if hasattr(args, "resume") and args.resume:
+        # Resume existing conversation
+        await start_chat_mode(config, None, args.resume)
+    elif config.chat_mode:
         # If a question was provided with -q, send it as the first message
         initial_question = args.question if args.question != "What information can you find in the documents?" else None
         await start_chat_mode(config, initial_question)
