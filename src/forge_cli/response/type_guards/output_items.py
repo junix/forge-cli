@@ -1,6 +1,6 @@
 """Type guards for ResponseOutputItem types."""
 
-from typing import Any, TypeGuard
+from typing import TypeGuard
 
 from .._types.response_code_interpreter_tool_call import ResponseCodeInterpreterToolCall
 from .._types.response_computer_tool_call import ResponseComputerToolCall

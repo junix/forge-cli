@@ -2,7 +2,6 @@
 
 from typing import Any, TypeGuard
 
-from .._types.response_input_text import ResponseInputText
 from .._types.response_output_refusal import ResponseOutputRefusal
 from .._types.response_output_text import ResponseOutputText
 

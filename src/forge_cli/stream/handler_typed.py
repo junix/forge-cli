@@ -181,7 +181,7 @@ class StreamState:
         Returns:
             Sorted list of unique vector store IDs
         """
-        return sorted(list(self.vector_store_ids))
+        return sorted(self.vector_store_ids)
 
 
 class TypedStreamHandler:
@@ -194,7 +194,10 @@ class TypedStreamHandler:
         # Note: Registry system removed - processing now handled directly by v3 renderers
 
     async def handle_stream(
-        self, stream: AsyncIterator[tuple[str, Response | None]], initial_request: str, vector_store_ids: list[str] | None = None
+        self,
+        stream: AsyncIterator[tuple[str, Response | None]],
+        initial_request: str,
+        vector_store_ids: list[str] | None = None,
     ) -> StreamState:
         """
         Handle streaming events from typed API.

@@ -3,7 +3,6 @@
 from typing import Any
 
 from .._types.response_output_item import ResponseOutputItem
-from .input_content import is_input_text
 from .output_items import (
     is_code_interpreter_call,
     is_computer_tool_call,

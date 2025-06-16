@@ -5,37 +5,26 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final, Literal, NewType, Protocol, TypeAlias, Union, overload
+from typing import TYPE_CHECKING, Any, Final, Literal, NewType, Protocol, TypeAlias, overload
 
 # Import proper types from response system
 from ..response._types.response_input_message_item import ResponseInputMessageItem
 from ..response._types.response_usage import InputTokensDetails, OutputTokensDetails, ResponseUsage
 from ..response._types.tool import Tool
 from ..response.type_guards import (
-    is_input_text,
-    is_file_search_tool,
-    is_web_search_tool,
-    is_function_tool,
-    is_computer_tool,
     is_document_finder_tool,
-    is_file_reader_tool,
+    is_file_search_tool,
+    is_input_text,
 )
 
 if TYPE_CHECKING:
-    from ..response._types.response_input_text import ResponseInputText
-    from ..response._types import (
-        ComputerTool,
-        DocumentFinderTool,
-        FileSearchTool,
-        FunctionTool,
-        WebSearchTool,
-    )
-    from ..response._types.file_reader_tool import FileReaderTool
     from ..stream.handler_typed import StreamState
 
 # Type aliases for clarity
 MessageRole: TypeAlias = Literal["user", "system", "developer"]
-ToolType: TypeAlias = Literal["file_search", "web_search", "function", "computer_use_preview", "document_finder", "file_reader"]
+ToolType: TypeAlias = Literal[
+    "file_search", "web_search", "function", "computer_use_preview", "document_finder", "file_reader"
+]
 
 # Domain-specific types
 SessionId = NewType("SessionId", str)
@@ -49,11 +38,11 @@ MIN_MESSAGES_TO_KEEP: Final[int] = 2
 
 class ConversationPersistence(Protocol):
     """Protocol for conversation persistence strategies."""
-    
+
     def save(self, state: "ConversationState", path: Path) -> None:
         """Save conversation state to storage."""
         ...
-    
+
     def load(self, path: Path) -> "ConversationState":
         """Load conversation state from storage."""
         ...
@@ -69,9 +58,9 @@ class ConversationState:
     created_at: float = field(default_factory=time.time)
     model: str = DEFAULT_MODEL
     tools: list[Tool] = field(default_factory=list)
-    metadata: dict[str, Union[str, int, float, bool]] = field(default_factory=dict)
+    metadata: dict[str, str | int | float | bool] = field(default_factory=dict)
     # Use proper ResponseUsage instead of manual tracking
-    usage: Union[ResponseUsage, None] = None
+    usage: ResponseUsage | None = None
     used_vector_store_ids: set[str] = field(default_factory=set)
     # Track files accessed during the session
     accessed_files: set[str] = field(default_factory=set)
@@ -104,7 +93,7 @@ class ConversationState:
         self.add_message(message)
         return message
 
-    def add_assistant_message(self, content: str, assistant_id: Union[str, None] = None) -> ResponseInputMessageItem:
+    def add_assistant_message(self, content: str, assistant_id: str | None = None) -> ResponseInputMessageItem:
         """Add an assistant message using proper typed API."""
         # Note: Assistant messages need proper handling since they don't fit the input message format
         # This might need adjustment based on how assistant messages are actually handled
@@ -150,12 +139,12 @@ class ConversationState:
         return len(self.messages)
 
     @overload
-    def get_last_n_messages(self, n: Literal[1]) -> Union[ResponseInputMessageItem, None]: ...
-    
+    def get_last_n_messages(self, n: Literal[1]) -> ResponseInputMessageItem | None: ...
+
     @overload
     def get_last_n_messages(self, n: int) -> list[ResponseInputMessageItem]: ...
-    
-    def get_last_n_messages(self, n: int) -> Union[ResponseInputMessageItem, None, list[ResponseInputMessageItem]]:
+
+    def get_last_n_messages(self, n: int) -> ResponseInputMessageItem | None | list[ResponseInputMessageItem]:
         """Get the last n messages."""
         if n == 1:
             return self.messages[-1] if self.messages else None
@@ -168,7 +157,7 @@ class ConversationState:
         else:
             self.usage += usage  # Uses built-in __add__ method
 
-    def get_token_usage(self) -> Union[ResponseUsage, None]:
+    def get_token_usage(self) -> ResponseUsage | None:
         """Get current token usage."""
         return self.usage
 
@@ -208,7 +197,7 @@ class ConversationState:
             state: StreamState object from stream processing
         """
         # Import here to avoid circular imports
-        from ..response._types.response_usage import ResponseUsage, InputTokensDetails, OutputTokensDetails
+        from ..response._types.response_usage import InputTokensDetails, OutputTokensDetails, ResponseUsage
 
         # Handle usage information
         if state.usage:
@@ -378,7 +367,7 @@ class ConversationState:
         return text_content
 
     @classmethod
-    def _load_tools(cls, tools_data: list[Union[dict[str, Any], Tool]]) -> list[Tool]:
+    def _load_tools(cls, tools_data: list[dict[str, Any] | Tool]) -> list[Tool]:
         """Load tools from data, handling both dict and Tool formats."""
         from ..response._types import (
             ComputerTool,
