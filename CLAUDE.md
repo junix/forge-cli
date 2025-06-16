@@ -116,12 +116,14 @@ The `Any` type provides no validation, no IDE support, and no runtime type check
 The project uses **TypeGuard functions** (Python 3.10+) to enable proper type narrowing and eliminate defensive programming patterns. TypeGuards are located in `response/type_guards.py` and provide type-safe access to Response API objects.
 
 **Benefits of TypeGuards:**
+
 - **Type Safety**: Proper type narrowing ensures compile-time and runtime safety
 - **IDE Support**: Full autocomplete and type hints within conditional blocks
 - **Code Clarity**: Intent is clear - checking type, not defensive programming
 - **Performance**: Simple string comparison, no runtime overhead
 
 **Example Usage:**
+
 ```python
 # GOOD: Using TypeGuard functions
 from forge_cli.response.type_guards import is_file_search_call, is_message_item
@@ -147,6 +149,7 @@ file_search = cast(ResponseFileSearchToolCall, item)  # Unsafe assertion
 ```
 
 **Available TypeGuards:**
+
 - Output item guards: `is_message_item()`, `is_reasoning_item()`, `is_file_search_call()`, etc.
 - Annotation guards: `is_file_citation()`, `is_url_citation()`, `is_file_path()`
 - Content guards: `is_output_text()`, `is_output_refusal()`
@@ -154,6 +157,128 @@ file_search = cast(ResponseFileSearchToolCall, item)  # Unsafe assertion
 - Helper functions: `get_tool_queries()`, `get_tool_results()`, `get_tool_content()`
 
 See [ADR-010](docs/adr/CLAUDE-010-response-type-guards.md) for detailed design rationale and migration guide.
+
+### Tool Call and Tool Call Result Classes
+
+The system implements a two-tier architecture separating **Tool Definitions** (input configuration) from **Tool Call Results** (execution state and results). See [ADR-011](docs/adr/CLAUDE-011-tool-call-architecture.md) for comprehensive design details.
+
+#### Tool Definition Classes (Input Configuration)
+
+These classes specify what tools are available and how to configure them:
+
+1. **FileSearchTool** - Vector store document search configuration
+   - `type: "file_search"`
+   - `vector_store_ids: list[str]`
+   - `max_num_results: int | None`
+   - `ranking_options: RankingOptions | None`
+
+2. **WebSearchTool** - Web search configuration with location context
+   - `type: "web_search_preview" | "web_search_preview_2025_03_11" | "web_search"`
+   - `search_context_size: "low" | "medium" | "high" | None`
+   - `user_location: UserLocation | None`
+
+3. **FunctionTool** - Custom function execution configuration
+   - `type: "function"`
+   - `name: str`
+   - `parameters: dict[str, object] | None`
+   - `description: str | None`
+
+4. **ComputerTool** - Computer interface automation configuration
+   - `type: "computer_use_preview"`
+   - `display_width: int`
+   - `display_height: int`
+   - `environment: "windows" | "mac" | "linux" | "ubuntu" | "browser"`
+
+5. **DocumentFinderTool** - Advanced document search configuration
+   - `type: "document_finder"`
+   - `vector_store_ids: list[str]`
+   - `max_num_results: int | None`
+   - `filters: dict[str, str | float | bool | int] | None`
+
+6. **FileReaderTool** - Direct document reading configuration
+   - `type: "file_reader"`
+
+#### Tool Call Result Classes (Execution State & Results)
+
+These classes represent execution state and results after tools are invoked:
+
+1. **ResponseFileSearchToolCall** - File search execution results
+   - `type: "file_search_call"`
+   - `id: str`
+   - `status: "in_progress" | "searching" | "completed" | "incomplete" | "failed"`
+   - `queries: list[str]`
+
+2. **ResponseFunctionWebSearch** - Web search execution results
+   - `type: "web_search_call"`
+   - `id: str`
+   - `status: "in_progress" | "searching" | "completed" | "failed"`
+   - `queries: list[str]`
+   - `results: list[WebSearchResult] | None`
+
+3. **ResponseFunctionToolCall** - Function call execution results
+   - `type: "function_call"`
+   - `id: str`
+   - `call_id: str`
+   - `name: str`
+   - `arguments: str`
+   - `status: "in_progress" | "completed" | "incomplete" | None`
+
+4. **ResponseComputerToolCall** - Computer tool execution results
+   - `type: "computer_call"`
+   - `id: str`
+   - `action: Action`
+   - `call_id: str`
+   - `status: "in_progress" | "completed" | "incomplete"`
+
+5. **ResponseDocumentFinderToolCall** - Document finder execution results
+   - `type: "document_finder_call"`
+   - `id: str`
+   - `queries: list[str]`
+   - `count: int`
+   - `status: "in_progress" | "searching" | "completed" | "incomplete"`
+
+6. **ResponseFunctionFileReader** - File reader execution results (extends TraceableToolCall)
+   - `type: "file_reader_call"`
+   - `id: str`
+   - `status: "in_progress" | "searching" | "completed" | "incomplete"`
+   - `doc_ids: list[str]`
+   - `query: str`
+   - `progress: float | None` (inherited from TraceableToolCall)
+   - `execution_trace: str | None` (inherited from TraceableToolCall)
+
+7. **ResponseCodeInterpreterToolCall** - Code execution results
+   - `type: "code_interpreter_call"`
+   - `id: str`
+   - `code: str`
+   - `results: list[Result]`
+   - `status: "in_progress" | "interpreting" | "completed"`
+
+#### Supporting Classes
+
+- **TraceableToolCall** - Base class for progress tracking and execution logging
+- **Chunk** - File search result data structure
+- **AnnotationFileCitation** - File citation references
+- **AnnotationURLCitation** - Web content citations
+- **AnnotationFilePath** - File path references
+
+#### Unified Type Aliases
+
+```python
+# Tool definitions union
+Tool: TypeAlias = Annotated[
+    FileSearchTool | FunctionTool | WebSearchTool | ComputerTool |
+    DocumentFinderTool | FileReaderTool,
+    PropertyInfo(discriminator="type"),
+]
+
+# Tool call results union
+ResponseOutputItem: TypeAlias = Annotated[
+    ResponseOutputMessage | ResponseFileSearchToolCall | ResponseFunctionToolCall |
+    ResponseFunctionWebSearch | ResponseDocumentFinderToolCall |
+    ResponseFunctionFileReader | ResponseComputerToolCall | ResponseReasoningItem,
+    PropertyInfo(discriminator="type"),
+]
+```
 
 ### Advanced Type System Design
 
@@ -176,6 +301,7 @@ class Processor:
 ```
 
 **Benefits:**
+
 - Prevents circular import errors
 - Reduces module loading time
 - Keeps type information for static analysis
@@ -414,6 +540,7 @@ These advanced typing techniques work together to create a robust, maintainable 
 - **Prefer explicit validation** over implicit assumptions about data correctness
 
 **Examples of what NOT to do:**
+
 ```python
 # BAD: Defensive programming that hides errors
 try:
@@ -430,6 +557,7 @@ def process_file(file_data):
 ```
 
 **Examples of preferred approach:**
+
 ```python
 # GOOD: Let validation errors bubble up
 config = SearchConfig(**user_data)  # Will raise ValidationError if invalid
@@ -448,6 +576,7 @@ Fast failure reveals problems early in development and prevents silent corruptio
 **IMPORTANT: Follow these import patterns based on directory level:**
 
 ### Top-Level Directory (`src/forge_cli/`)
+
 Files at the top level use **absolute imports**:
 
 ```python
@@ -461,6 +590,7 @@ from forge_cli.processors.registry import initialize_default_registry
 ```
 
 ### Subdirectories (`models/`, `processors/`, `display/`, etc.)
+
 Files in subdirectories use **relative imports**:
 
 ```python
@@ -478,6 +608,7 @@ from ...models.state import StreamState
 ```
 
 ### Scripts Directory (`scripts/`)
+
 Scripts use **absolute imports** since they are standalone utilities:
 
 ```python
@@ -489,10 +620,12 @@ from forge_cli.config import SearchConfig
 ## Installation & Setup
 
 ### Prerequisites
+
 - Python 3.8+
 - `uv` package manager (recommended) or `pip`
 
 ### Installation
+
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -506,6 +639,7 @@ pip install -e .
 ```
 
 ### Environment Configuration
+
 ```bash
 export KNOWLEDGE_FORGE_URL=http://localhost:9999  # Default server URL
 export OPENAI_API_KEY=your-api-key                # Optional, for some features
@@ -659,13 +793,17 @@ The project follows modern software engineering principles:
 ### Key Components
 
 #### Stream Processing
+
 Events from the Knowledge Forge API are processed through a modular pipeline:
+
 ```
 API Event Stream → StreamHandler → Event Router → Processor Registry → Display Strategy
 ```
 
 #### Processor System
+
 Each output type has a dedicated processor:
+
 - `ReasoningProcessor`: Handles thinking/analysis blocks
 - `FileSearchProcessor`: Processes file search tool calls
 - `WebSearchProcessor`: Handles web search operations
@@ -673,7 +811,9 @@ Each output type has a dedicated processor:
 - `MessageProcessor`: Manages final responses with citations
 
 #### Display Strategies
+
 Multiple output formats are supported:
+
 - `RichDisplay`: Rich terminal UI with live updates
 - `PlainDisplay`: Simple text output
 - `JsonDisplay`: Machine-readable JSON format
@@ -705,6 +845,7 @@ python -m forge_cli.scripts.hello-code-analyzer --path ./my_project -q "Check fo
 ### Advanced Features
 
 #### Interactive Chat Mode
+
 The CLI supports full conversational mode with context preservation:
 
 ```bash
@@ -724,6 +865,7 @@ forge-cli --chat -t file-search --vec-id vs_123
 ```
 
 #### File Search with Citations
+
 Advanced file search with sophisticated citation tracking:
 
 ```bash
@@ -738,12 +880,14 @@ forge-cli --debug -q "search query"
 ```
 
 **Features:**
+
 - Real-time citation display as [1], [2], etc.
 - Markdown table format: Citation | Document | Page | File ID
 - Live updating display with progress indicators
 - Support for multiple vector stores
 
 #### Web Search Integration
+
 Location-aware web search capabilities:
 
 ```bash
@@ -755,6 +899,7 @@ forge-cli -t web-search --country US --city "San Francisco" -q "local weather"
 ```
 
 #### Multi-Tool Support
+
 Combine multiple tools in a single query:
 
 ```bash
@@ -831,6 +976,7 @@ Core dependencies (automatically managed by `uv` or `pip`):
 - `prompt-toolkit>=3.0.0` - Interactive command line features
 
 Optional dependencies for enhanced functionality:
+
 - `requests>=2.25.0` - Fallback HTTP client
 - Development tools: `pytest`, `black`, `flake8`, `mypy`
 
