@@ -31,6 +31,7 @@ if TYPE_CHECKING:
         WebSearchTool,
     )
     from ..response._types.file_reader_tool import FileReaderTool
+    from ..stream.handler_typed import StreamState
 
 # Type aliases for clarity
 MessageRole: TypeAlias = Literal["user", "system", "developer"]
@@ -192,6 +193,54 @@ class ConversationState:
     def increment_turn_count(self) -> None:
         """Increment the conversation turn counter."""
         self.turn_count += 1
+
+    def update_stream_state(self, state: "StreamState") -> None:
+        """Update conversation state from stream state.
+
+        This method transfers relevant information from a StreamState object
+        to the ConversationState, including:
+        - Token usage statistics
+        - Accessed files
+        - Vector store IDs
+        - Model information
+
+        Args:
+            state: StreamState object from stream processing
+        """
+        # Import here to avoid circular imports
+        from ..response._types.response_usage import ResponseUsage, InputTokensDetails, OutputTokensDetails
+
+        # Handle usage information
+        if state.usage:
+            if isinstance(state.usage, dict):
+                # Handle dict-based usage from handler_typed.StreamState
+                usage = ResponseUsage(
+                    input_tokens=state.usage.get("input_tokens", 0),
+                    output_tokens=state.usage.get("output_tokens", 0),
+                    total_tokens=state.usage.get("total_tokens", 0),
+                    input_tokens_details=InputTokensDetails(cached_tokens=0),
+                    output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
+                )
+                self.add_token_usage(usage)
+            else:
+                # Handle ResponseUsage object from models.state.StreamState
+                self.add_token_usage(state.usage)
+
+        # Handle accessed files
+        accessed_files = state.get_accessed_files()
+        if accessed_files:
+            self.add_accessed_files(accessed_files)
+
+        # Handle vector store IDs
+        vector_store_ids = state.get_vector_store_ids()
+        if vector_store_ids:
+            self.used_vector_store_ids.update(vector_store_ids)
+
+        # Handle model information
+        if state.model:
+            # Only update if we don't have a model set or if it's different
+            if not self.model or self.model != state.model:
+                self.model = state.model
 
     def save(self, path: Path) -> None:
         """Save conversation to a JSON file."""

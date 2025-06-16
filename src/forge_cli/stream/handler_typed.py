@@ -12,7 +12,6 @@ from ..display.v3.base import Display
 
 # Note: Registry system removed - all processing now done in v3 renderers
 from ..response._types import Response
-from ..response._types.response_output_item import ResponseOutputItem
 
 # Additional imports for proper typing
 from ..response.type_guards import (
@@ -61,8 +60,8 @@ class StreamState:
     """Manages complete state during streaming, compatible with both APIs."""
 
     # Current output items from latest snapshot
-    output_items: list[ResponseOutputItem] = field(default_factory=list)
-
+    # Current output items from latest snapshot
+    output_items: list[Any] = field(default_factory=list)
     # Tool states by tool type
     tool_states: dict[str, ToolState] = field(default_factory=dict)
 
