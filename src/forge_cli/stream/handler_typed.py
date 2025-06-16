@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from ..display.v3.base import Display
+
 # Note: Registry system removed - all processing now done in v3 renderers
 from ..response._types import Response
 
@@ -154,6 +155,7 @@ class TypedStreamHandler:
                     try:
                         # Use model_dump() to get the full dictionary representation
                         import json
+
                         full_dump = event_data.model_dump()
                         # Pretty print the entire response with indentation
                         print(json.dumps(full_dump, indent=2, ensure_ascii=False))
