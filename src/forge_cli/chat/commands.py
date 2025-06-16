@@ -237,31 +237,6 @@ class LoadCommand(ChatCommand):
                     f"📂 Loaded conversation from {path} with {controller.conversation.get_message_count()} messages"
                 )
 
-            # Show conversation history
-            if controller.conversation.messages:
-                controller.display.show_status("\n--- Recent History ---")
-                recent_messages = controller.conversation.get_last_n_messages(3)
-                for msg in recent_messages:
-                    role_display = "You" if msg.role == "user" else "Assistant"
-                    # Extract text content
-                    content_parts = []
-                    for content_item in msg.content:
-                        from forge_cli.response.type_guards import is_input_text
-
-                        if is_input_text(content_item):
-                            content_parts.append(content_item.text)
-                    content_str = " ".join(content_parts)
-                    # Truncate long messages
-                    if len(content_str) > 100:
-                        content_str = content_str[:97] + "..."
-                    controller.display.show_status(f"{role_display}: {content_str}")
-
-                if controller.conversation.get_message_count() > 3:
-                    controller.display.show_status(
-                        f"... and {controller.conversation.get_message_count() - 3} more messages"
-                    )
-                controller.display.show_status("--- End History ---")
-
         except Exception as e:
             controller.display.show_error(f"Failed to load conversation: {e}")
 

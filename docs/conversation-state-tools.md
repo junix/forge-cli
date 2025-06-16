@@ -215,9 +215,6 @@ forge-cli --chat
 # Resume the conversation
 forge-cli --resume conv_abc12345
 # Output: 📂 Resumed conversation conv_abc12345 with 4 messages
-#         --- Recent History ---
-#         You: Configure file search...
-#         Assistant: I'll help you set up file search...
 ```
 
 ### Programmatic Usage
