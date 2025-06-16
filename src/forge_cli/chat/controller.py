@@ -1,7 +1,7 @@
 """Chat controller for managing interactive conversations."""
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, TypeAlias, cast
 
 from ..config import SearchConfig
 from ..display.v3.base import Display
@@ -10,6 +10,7 @@ from ..response._types.tool import Tool
 from ..response.type_guards import (
     get_content_text,
     is_dict_with_type,
+    is_message_item,
     is_output_text,
 )
 from ..stream.handler_typed import TypedStreamHandler
@@ -86,7 +87,7 @@ class ChatController:
                 location_info = config.get_web_location()
                 if location_info:
                     # This structure can be adapted by both prepare_tools and prepare_typed_tools
-                    tool_config["location_info"] = location_info
+                    tool_config["location_info"] = location_info  # type: ignore[assignment]
                 return tool_config
         return None
 
@@ -130,7 +131,7 @@ class ChatController:
         from ..response._types import FileSearchTool, WebSearchTool
         from ..response._types.web_search_tool import UserLocation
 
-        tools = []
+        tools: list[Tool] = []
 
         # File search tool
         if file_search_config := self._prepare_tool_config("file-search", self.config):
@@ -291,7 +292,7 @@ class ChatController:
                     # Use prompt_toolkit with auto-completion
                     loop = asyncio.get_event_loop()
                     future = loop.run_in_executor(None, lambda: session.prompt(FormattedText([("class:prompt", " ")])))
-                    user_input = await future
+                    user_input: str = await future
                     return user_input.strip()
                 except ImportError:
                     pass
@@ -442,34 +443,42 @@ class ChatController:
                 print(f"DEBUG: Typed Request: {typed_request.model_dump()}")
 
             event_stream = astream_typed_response(typed_request, debug=self.config.debug)
-            response = await handler.handle_stream(event_stream, content)
+            stream_state = await handler.handle_stream(event_stream, content)
 
-            if response:
-                # Extract and add the assistant's response
-                if "output" in response:
-                    # The API returns the assistant's response in the output array
-                    # We need to add all message items from the output
+            if stream_state and hasattr(stream_state, "final_response") and stream_state.final_response:
+                response = stream_state.final_response
+                # Extract and add the assistant's response using type guards
+                if hasattr(response, "output") and response.output:
                     assistant_added = False
-                    for item in response.get("output", []):
-                        if item.get("type") == "message" and item.get("role") == "assistant":
-                            # Extract the text content
-                            assistant_text = self.extract_text_from_message(item)
-                            if assistant_text:
-                                self.conversation.add_assistant_message(assistant_text)
-                                assistant_added = True
-                                if self.config.debug:
-                                    print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
-                                break  # Only add the first assistant message
+                    for item in response.output:
+                        # Use type guard for proper message identification
+                        if is_message_item(item):
+                            # Type guard ensures item is ResponseOutputMessage
+                            if item.content:
+                                # Extract text from content
+                                assistant_text = ""
+                                for content_part in item.content:
+                                    text = self._extract_text_from_content_item(content_part)
+                                    if text:
+                                        assistant_text += text
+
+                                if assistant_text:
+                                    self.conversation.add_assistant_message(assistant_text)
+                                    assistant_added = True
+                                    if self.config.debug:
+                                        print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
+                                    break  # Only add the first assistant message
 
                     if self.config.debug and not assistant_added:
                         print("DEBUG: No assistant message found in response output")
-                        print(
-                            f"DEBUG: Response output items: {[item.get('type') for item in response.get('output', [])]}"
-                        )
+                        if hasattr(response, "output"):
+                            print(
+                                f"DEBUG: Response output items: {[getattr(item, 'type', 'unknown') for item in response.output]}"
+                            )
 
                 # Update conversation metadata
-                if "model" in response:
-                    self.conversation.model = response["model"]
+                if hasattr(response, "model") and response.model:
+                    self.conversation.model = response.model
 
         except Exception as e:
             self.display.show_error(f"Failed to get response: {str(e)}")
@@ -492,8 +501,10 @@ class ChatController:
         Returns:
             A dictionary representing the API request.
         """
-        # Update tools in case they changed
-        self.conversation.tools = self.prepare_tools()  # Uses dict-based tools for now
+        # Update tools in case they changed - temporarily cast for compatibility
+        # TODO: Update ConversationState to handle both dict and typed tools
+        dict_tools = self.prepare_tools()  # Uses dict-based tools for now
+        self.conversation.tools = cast(list[Tool], dict_tools)
 
         # The SDK expects "input_messages"
         request: RequestDict = {
@@ -580,20 +591,20 @@ class ChatController:
             The extracted text content from the assistant's message, or None
             if not found.
         """
-        from ..response._types import ResponseOutputMessage
 
         if hasattr(response, "output") and response.output:
             for item in response.output:
-                if hasattr(item, "type") and item.type == "message":
-                    if isinstance(item, ResponseOutputMessage):
-                        if hasattr(item, "content") and item.content:
-                            for content_part in item.content:
-                                text = self._extract_text_from_content_item(content_part)
-                                if text:
-                                    return text
-                    elif isinstance(item, dict):
-                        # If it's a dict-like message, use the refactored extract_text_from_message
-                        text = self.extract_text_from_message(item)
-                        if text:
-                            return text
+                # Use type guard for proper message identification
+                if is_message_item(item):
+                    # Type guard ensures item is ResponseOutputMessage
+                    if item.content:
+                        for content_part in item.content:
+                            text = self._extract_text_from_content_item(content_part)
+                            if text:
+                                return text
+                elif isinstance(item, dict) and is_dict_with_type(item, "message"):
+                    # If it's a dict-like message, use the refactored extract_text_from_message
+                    text = self.extract_text_from_message(item)
+                    if text:
+                        return text
         return None

@@ -2,23 +2,24 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..response._types.annotations import Annotation
 
 # Import proper types from response system
+from ..response._types.response import Response
 from ..response._types.response_output_item import ResponseOutputItem
 from ..response._types.response_usage import ResponseUsage
 from ..response.type_guards import (
-    is_message_item,
-    is_reasoning_item,
-    is_file_search_call,
-    is_document_finder_call,
+    get_tool_results,
     is_file_citation,
-    is_url_citation,
     is_file_path,
+    is_file_search_call,
+    is_message_item,
     is_output_text,
+    is_reasoning_item,
+    is_url_citation,
 )
 
 
@@ -90,154 +91,69 @@ class StreamState:
     response_id: str | None = None
     model: str | None = None
 
-    def update_from_snapshot(self, snapshot: dict[str, Any]) -> None:
-        """Update state from response snapshot.
-        
-        Expects snapshot to contain typed Response objects or compatible data.
-        """
-        if "output" in snapshot:
-            output_data = snapshot["output"]
-            if output_data:
-                # Expect typed objects; if dicts are provided, attempt conversion
-                if isinstance(output_data, list):
-                    self.output_items = []
-                    for item in output_data:
-                        if hasattr(item, "type"):
-                            # Already a typed object
-                            self.output_items.append(item)
-                        elif isinstance(item, dict) and "type" in item:
-                            # Try to convert dict to typed object
-                            typed_item = self._convert_single_output_item(item)
-                            if typed_item:
-                                self.output_items.append(typed_item)
-                else:
-                    self.output_items = output_data
-                    
+    def update_from_snapshot(self, snapshot: Response) -> None:
+        """Update state from typed Response snapshot."""
+        if isinstance(snapshot, Response):
+            # Typed Response only - direct access to properties
+            self.output_items = list(snapshot.output)
             self._extract_file_mappings()
             self._extract_reasoning()
             self._extract_citations()
 
-        if "usage" in snapshot:
-            usage_data = snapshot["usage"]
-            if isinstance(usage_data, ResponseUsage):
-                self.usage = usage_data
-            elif isinstance(usage_data, dict):
-                # Convert dict to ResponseUsage
-                from ..response._types.response_usage import InputTokensDetails, OutputTokensDetails
+            # Update usage statistics
+            if snapshot.usage:
+                self.usage = snapshot.usage
 
-                self.usage = ResponseUsage(
-                    input_tokens=usage_data.get("input_tokens", 0),
-                    output_tokens=usage_data.get("output_tokens", 0),
-                    total_tokens=usage_data.get("total_tokens", 0),
-                    input_tokens_details=InputTokensDetails(
-                        cached_tokens=usage_data.get("input_tokens_details", {}).get("cached_tokens", 0)
-                    ) if usage_data.get("input_tokens_details") else None,
-                    output_tokens_details=OutputTokensDetails(
-                        reasoning_tokens=usage_data.get("output_tokens_details", {}).get("reasoning_tokens", 0)
-                    ) if usage_data.get("output_tokens_details") else None,
-                )
-
-        if "id" in snapshot:
-            self.response_id = snapshot["id"]
-
-        if "model" in snapshot:
-            self.model = snapshot["model"]
-
-    def _convert_single_output_item(self, item_data: dict[str, Any]) -> ResponseOutputItem | None:
-        """Convert a single dict-based output item to typed ResponseOutputItem object.
-        
-        Returns None if conversion fails or type is unknown.
-        """
-        item_type = item_data.get("type")
-        if not item_type:
-            return None
-            
-        try:
-            # Import and validate based on type
-            if item_type == "message":
-                from ..response._types.response_output_message import ResponseOutputMessage
-                return ResponseOutputMessage.model_validate(item_data)
-                
-            elif item_type == "reasoning":
-                from ..response._types.response_reasoning_item import ResponseReasoningItem
-                return ResponseReasoningItem.model_validate(item_data)
-                
-            elif item_type == "file_search_call":
-                from ..response._types.response_file_search_tool_call import ResponseFileSearchToolCall
-                return ResponseFileSearchToolCall.model_validate(item_data)
-                
-            elif item_type == "document_finder_call":
-                from ..response._types.response_document_finder_tool_call import ResponseDocumentFinderToolCall
-                return ResponseDocumentFinderToolCall.model_validate(item_data)
-                
-            elif item_type == "function_call":
-                from ..response._types.response_function_tool_call import ResponseFunctionToolCall
-                return ResponseFunctionToolCall.model_validate(item_data)
-                
-            elif item_type == "web_search_call":
-                from ..response._types.response_function_web_search import ResponseFunctionWebSearch
-                return ResponseFunctionWebSearch.model_validate(item_data)
-                
-            elif item_type == "file_reader_call":
-                from ..response._types.response_function_file_reader import ResponseFunctionFileReader
-                return ResponseFunctionFileReader.model_validate(item_data)
-                
-            elif item_type == "computer_tool_call":
-                from ..response._types.response_computer_tool_call import ResponseComputerToolCall
-                return ResponseComputerToolCall.model_validate(item_data)
-                
-            elif item_type == "code_interpreter_call":
-                from ..response._types.response_code_interpreter_tool_call import ResponseCodeInterpreterToolCall
-                return ResponseCodeInterpreterToolCall.model_validate(item_data)
-                
-            else:
-                # Unknown type
-                return None
-                
-        except Exception:
-            # Validation failed
-            return None
+            # Update response metadata
+            self.response_id = snapshot.id
+            self.model = snapshot.model
 
     def _extract_file_mappings(self) -> None:
-        """Extract file ID to name mappings from output items."""
+        """Extract file ID to name mappings from output items using type guards."""
         for item in self.output_items:
-            # Extract from file search results
             if is_file_search_call(item):
-                # File search results are not directly accessible from tool call
-                pass
-
-            # Extract from document finder results
-            elif is_document_finder_call(item):
-                # Document finder results are not directly accessible from tool call
-                pass
+                # After type guard, we know item is ResponseFileSearchToolCall
+                results = get_tool_results(item)
+                for result in results:
+                    # File search results should have file_id and filename
+                    # Use getattr with defaults for safer access
+                    file_id = getattr(result, "file_id", None)
+                    filename = getattr(result, "filename", None)
+                    if file_id and filename:
+                        self.file_id_to_name[file_id] = filename
 
     def _extract_reasoning(self) -> None:
-        """Extract reasoning text from output items."""
+        """Extract reasoning text from output items using type guards."""
         reasoning_texts = []
 
         for item in self.output_items:
             if is_reasoning_item(item):
+                # After type guard, we can safely access summary
                 if item.summary:
-                    for summary in item.summary:
-                        # Check for both "summary_text" and "text" types (API variation)
-                        if hasattr(summary, "type") and summary.type in ["summary_text", "text"]:
-                            if summary.text:
-                                reasoning_texts.append(summary.text)
+                    for summary_item in item.summary:
+                        # Summary items are typed, so we can access text directly
+                        if hasattr(summary_item, "text") and summary_item.text:
+                            reasoning_texts.append(summary_item.text)
 
         self.current_reasoning = "\n\n".join(reasoning_texts)
 
     def _extract_citations(self) -> None:
-        """Extract citations from message content annotations."""
+        """Extract citations from message content annotations using type guards."""
         citations = []
 
         for item in self.output_items:
             if is_message_item(item):
+                # After type guard, we can safely access content
                 if item.content:
                     for content in item.content:
                         if is_output_text(content) and content.annotations:
                             for annotation in content.annotations:
                                 # Type guards ensure these are properly typed
-                                if is_file_citation(annotation) or is_url_citation(annotation) or is_file_path(annotation):
+                                if (
+                                    is_file_citation(annotation)
+                                    or is_url_citation(annotation)
+                                    or is_file_path(annotation)
+                                ):
                                     citations.append(annotation)
 
         self.citations = citations
