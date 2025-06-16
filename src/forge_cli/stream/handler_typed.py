@@ -63,8 +63,8 @@ class StreamState:
     # File ID to filename mapping
     file_id_to_name: dict[str, str] = field(default_factory=dict)
 
-    # Extracted citations
-    citations: list[dict[str, Any]] = field(default_factory=list)
+    # Extracted citations using type-based API
+    citations: list[Any] = field(default_factory=list)  # Should be list[Annotation] but imports need fixing
 
     # Current reasoning text
     current_reasoning: str = ""
@@ -87,6 +87,7 @@ class StreamState:
             self.output_items = list(snapshot.output)
             self._extract_file_mappings_typed(snapshot)
             self._extract_reasoning_typed(snapshot)
+            self._extract_citations_typed(snapshot)
 
             if snapshot.usage:
                 self.usage = {
@@ -122,6 +123,29 @@ class StreamState:
                     # Summary items are typed, so we can access text directly
                     texts.append(summary_item.text)
                 self.current_reasoning = " ".join(texts)
+
+    def _extract_citations_typed(self, response: Response) -> None:
+        """Extract citations from typed Response using type guards."""
+        citations = []
+
+        for item in response.output:
+            # Check if item is a message using type guard (need to add this import)
+            if hasattr(item, "type") and item.type == "message":
+                if hasattr(item, "content") and item.content:
+                    for content in item.content:
+                        # Check if content is output_text using type guard (need to add this import)
+                        if hasattr(content, "type") and content.type == "output_text":
+                            if hasattr(content, "annotations") and content.annotations:
+                                for annotation in content.annotations:
+                                    # Use type guards to check citation types (need to add these imports)
+                                    if hasattr(annotation, "type") and annotation.type in [
+                                        "file_citation",
+                                        "url_citation",
+                                        "file_path",
+                                    ]:
+                                        citations.append(annotation)
+
+        self.citations = citations
 
 
 class TypedStreamHandler:
