@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import os
 import sys
+from typing import TYPE_CHECKING
 
 # Use absolute imports from top-level directory
 from forge_cli.chat.controller import ChatController
@@ -17,6 +18,9 @@ from forge_cli.dataset import TestDataset
 from forge_cli.response._types import FileSearchTool, InputMessage, Request, WebSearchTool
 from forge_cli.sdk import astream_typed_response, async_get_vectorstore
 from forge_cli.stream.handler_typed import TypedStreamHandler
+
+if TYPE_CHECKING:
+    from forge_cli.display.v3.base import Display
 
 
 def create_display(config: SearchConfig) -> "Display":
@@ -187,21 +191,17 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
     # Create chat controller
     controller = ChatController(config, display)
 
-    # Store the original prepare_request method
-    original_prepare_request = controller.prepare_request
-
     # Patch the controller to use typed API
     async def typed_send_message(content: str) -> None:
         """Send message using typed API with proper chat support."""
         # Add user message to conversation
-        user_message = controller.conversation.add_user_message(content)
+        controller.conversation.add_user_message(content)
 
         # Create a fresh display for this message
         message_display = create_display(config)
 
-        # Mark display as in chat mode
-        if hasattr(message_display, "console"):
-            message_display._in_chat_mode = True
+        # Set display to chat mode - use the Display's mode property
+        message_display.mode = "chat"
 
         # Get conversation history
         messages = controller.conversation.to_api_format()
@@ -210,8 +210,8 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
         request = prepare_request(config, content, messages)
 
         # Start the display for this message
-        if hasattr(message_display, "handle_event"):
-            message_display.handle_event("stream_start", {"query": content})
+        # The v3 Display class always has show_request_info method
+        message_display.show_request_info({"query": content})
 
         # Create typed handler and stream
         handler = TypedStreamHandler(message_display, debug=config.debug)
@@ -221,22 +221,21 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
             event_stream = astream_typed_response(request, debug=config.debug)
             state = await handler.handle_stream(event_stream, content)
 
-            # Extract assistant response from state using the Response object's output_text property
+            # Extract assistant response from state using type guards
             if state and state.output_items:
-                # Look for ResponseOutputMessage items
+                # Import type guards for proper type checking
+                from .response.type_guards import is_message_item
+
+                # Look for ResponseOutputMessage items using type guards
                 for item in state.output_items:
-                    # Check if this is a message type item from the typed response
-                    if (
-                        hasattr(item, "type")
-                        and item.type == "message"
-                        and hasattr(item, "role")
-                        and item.role == "assistant"
-                    ):
-                        # This is a ResponseOutputMessage - extract text from content
+                    # Use type guard for proper message identification
+                    if is_message_item(item) and item.role == "assistant":
+                        # Type guard ensures item is ResponseOutputMessage - extract text from content
                         assistant_text = ""
-                        if hasattr(item, "content") and item.content:
+                        if item.content:
                             for content_item in item.content:
-                                if hasattr(content_item, "type") and content_item.type == "output_text":
+                                # Use type guard for content type checking
+                                if getattr(content_item, "type", None) == "output_text":
                                     assistant_text += content_item.text
 
                         if assistant_text:
@@ -260,8 +259,10 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
                         f"DEBUG: State output_items types: {[getattr(item, 'type', type(item).__name__) for item in state.output_items]}"
                     )
                     for i, item in enumerate(state.output_items):
-                        if hasattr(item, "type"):
-                            print(f"DEBUG: Item {i}: type={item.type}, role={getattr(item, 'role', 'N/A')}")
+                        # Use getattr for safe access to type and role attributes
+                        item_type = getattr(item, "type", "unknown")
+                        item_role = getattr(item, "role", "N/A")
+                        print(f"DEBUG: Item {i}: type={item_type}, role={item_role}")
 
         except Exception as e:
             message_display.show_error(f"Error processing message: {str(e)}")
@@ -545,7 +546,7 @@ async def main():
 
     # Handle dataset if provided
     dataset = None
-    if hasattr(args, "dataset") and args.dataset:
+    if getattr(args, "dataset", None):
         try:
             dataset = TestDataset.from_json(args.dataset)
             if not args.quiet:

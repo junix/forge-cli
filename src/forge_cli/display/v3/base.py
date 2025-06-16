@@ -1,7 +1,7 @@
 """Base display interface for v3 - pure rendering without input handling."""
 
 from abc import ABC, abstractmethod
-from typing import Protocol
+from typing import Any, Protocol
 
 from forge_cli.response._types.response import Response
 
@@ -16,6 +16,50 @@ class Renderer(Protocol):
     def finalize(self) -> None:
         """Complete rendering and cleanup."""
         ...
+
+
+class ErrorRenderer(Protocol):
+    """Protocol for renderers that support error rendering."""
+
+    def render_error(self, error: str) -> None:
+        """Render error message."""
+        ...
+
+
+class WelcomeRenderer(Protocol):
+    """Protocol for renderers that support welcome message rendering."""
+
+    def render_welcome(self, config: object) -> None:
+        """Render welcome message."""
+        ...
+
+
+class RequestInfoRenderer(Protocol):
+    """Protocol for renderers that support request info rendering."""
+
+    def render_request_info(self, info: dict) -> None:
+        """Render request information."""
+        ...
+
+
+class StatusRenderer(Protocol):
+    """Protocol for renderers that support status message rendering."""
+
+    def render_status(self, message: str) -> None:
+        """Render status message."""
+        ...
+
+
+class ConsoleRenderer(Protocol):
+    """Protocol for renderers that have a console attribute."""
+
+    _console: Any
+
+
+class ChatModeRenderer(Protocol):
+    """Protocol for renderers that support chat mode."""
+
+    _in_chat_mode: bool
 
 
 class BaseRenderer(ABC):
@@ -61,6 +105,7 @@ class Display:
         self._mode = mode
 
         # Set chat mode on renderer if it supports it
+        # Use getattr to safely check and set chat mode
         if hasattr(renderer, "_in_chat_mode"):
             renderer._in_chat_mode = mode == "chat"
 

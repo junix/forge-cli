@@ -1,7 +1,7 @@
 """Chat controller for managing interactive conversations."""
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Final, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, Final, cast
 
 from ..config import SearchConfig
 from ..display.v3.base import Display
@@ -170,24 +170,8 @@ class ChatController:
         and enabled tools. It attempts to use the display's `show_welcome`
         method if available, otherwise falls back to a default formatted message.
         """
-        # Use duck typing check for show_welcome method
-        try:
-            self.display.show_welcome(self.config)  # type: ignore
-        except AttributeError:
-            # Fallback welcome message
-            lines = [
-                "╭─ Knowledge Forge Chat ─────────────────────────────────────╮",
-                f"│ Model: {self.config.model:<20} Session: {self.conversation.session_id} │",
-            ]
-
-            if self.config.enabled_tools:
-                tools_str = ", ".join(self.config.enabled_tools)
-                lines.append(f"│ Tools: {tools_str:<49} │")
-
-            lines.append("╰─────────────────────────────────────────────────────────────╯")
-            lines.append("\nWelcome to Knowledge Forge Chat! Type /help for commands.")
-
-            self.display.show_status("\n".join(lines))
+        # Use the Display's show_welcome method - it should always be available
+        self.display.show_welcome(self.config)
 
     async def get_user_input(self) -> str | None:
         """Gets input from the user.
@@ -383,22 +367,21 @@ class ChatController:
             content: The text content of the user's message.
         """
         # Add user message to conversation
-        user_message = self.conversation.add_user_message(content)
+        self.conversation.add_user_message(content)
 
         # Show user message if display supports it
         # For v3 displays, we don't need to show user message - it's already visible in the terminal
 
-        # Mark display as in chat mode
-        if hasattr(self.display, "console"):
-            self.display._in_chat_mode = True
+        # Set display to chat mode - use the Display's mode property
+        self.display.mode = "chat"
 
         # Prepare request with conversation history
         request = self.prepare_request()
 
         # Start the display for this message (creates Live display if needed)
-        if hasattr(self.display, "show_request_info"):
-            # Don't show full request info in chat mode, just ensure display is ready
-            self.display.handle_event("stream_start", {"query": content})
+        # Use the Display's show_request_info method directly - it handles capability checking internally
+        # The v3 Display class always has show_request_info method
+        self.display.show_request_info({"query": content})
 
         if self.config.debug:
             print(f"\nDEBUG: Conversation has {self.conversation.get_message_count()} messages")
@@ -408,9 +391,6 @@ class ChatController:
 
         # Create stream handler
         handler = TypedStreamHandler(self.display, debug=self.config.debug)
-
-        # Store the final formatted content
-        final_content = None
 
         try:
             # Import typed SDK
@@ -445,10 +425,12 @@ class ChatController:
             event_stream = astream_typed_response(typed_request, debug=self.config.debug)
             stream_state = await handler.handle_stream(event_stream, content)
 
-            if stream_state and hasattr(stream_state, "final_response") and stream_state.final_response:
+            # StreamState is a typed dataclass with a final_response attribute
+            if stream_state and stream_state.final_response:
                 response = stream_state.final_response
                 # Extract and add the assistant's response using type guards
-                if hasattr(response, "output") and response.output:
+                # Response is a typed Pydantic model with guaranteed output attribute
+                if response.output:
                     assistant_added = False
                     for item in response.output:
                         # Use type guard for proper message identification
@@ -471,13 +453,14 @@ class ChatController:
 
                     if self.config.debug and not assistant_added:
                         print("DEBUG: No assistant message found in response output")
-                        if hasattr(response, "output"):
-                            print(
-                                f"DEBUG: Response output items: {[getattr(item, 'type', 'unknown') for item in response.output]}"
-                            )
+                        # Response.output is guaranteed to exist as a list
+                        print(
+                            f"DEBUG: Response output items: {[getattr(item, 'type', 'unknown') for item in response.output]}"
+                        )
 
                 # Update conversation metadata
-                if hasattr(response, "model") and response.model:
+                # Response.model is a guaranteed attribute (ResponsesModel type)
+                if response.model:
                     self.conversation.model = response.model
 
         except Exception as e:
@@ -487,9 +470,8 @@ class ChatController:
 
                 traceback.print_exc()
         finally:
-            # Unmark chat mode
-            if hasattr(self.display, "_in_chat_mode"):
-                delattr(self.display, "_in_chat_mode")
+            # Reset display mode to default after chat message
+            self.display.mode = "default"
 
     def prepare_request(self) -> RequestDict:
         """Prepares the request dictionary for the API call.
@@ -592,7 +574,8 @@ class ChatController:
             if not found.
         """
 
-        if hasattr(response, "output") and response.output:
+        # Response is a typed Pydantic model with guaranteed output attribute
+        if response.output:
             for item in response.output:
                 # Use type guard for proper message identification
                 if is_message_item(item):

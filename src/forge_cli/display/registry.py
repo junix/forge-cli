@@ -84,7 +84,7 @@ def initialize_default_displays():
     # Import v3 components
     from .v3.base import Display
     from .v3.renderers.json import JsonRenderer
-    from .v3.renderers.plain import PlainRenderer
+    from .v3.renderers.plaintext import PlaintextRenderer
     from .v3.renderers.rich import RichRenderer
 
     # Helper function to create v3 displays
@@ -92,7 +92,7 @@ def initialize_default_displays():
         config = kwargs.get("config", {})
         chat_active = getattr(config, "chat_mode", False) or getattr(config, "chat", False)
         renderer = JsonRenderer(
-            include_events=config.debug if hasattr(config, "debug") else False,
+            include_events=getattr(config, "debug", False),
             pretty=True,
             in_chat_mode=chat_active,
         )
@@ -102,16 +102,17 @@ def initialize_default_displays():
     def create_rich_display(**kwargs):
         config = kwargs.get("config", {})
         try:
-            renderer = RichRenderer(show_reasoning=config.show_reasoning if hasattr(config, "show_reasoning") else True)
+            renderer = RichRenderer(show_reasoning=getattr(config, "show_reasoning", True))
             mode = "chat" if getattr(config, "chat_mode", False) or getattr(config, "chat", False) else "default"
             return Display(renderer, mode=mode)
         except ImportError:
             # Fallback to plain if rich not available
-            renderer = PlainRenderer()
+            renderer = PlaintextRenderer()
             return Display(renderer)
 
-    def create_plain_display(**kwargs):
-        renderer = PlainRenderer()
+    def create_plain_display(**_kwargs):
+        # Plain display doesn't need configuration
+        renderer = PlaintextRenderer()
         return Display(renderer)
 
     # Register JSON display
@@ -137,5 +138,5 @@ def initialize_default_displays():
         "plain",
         Display,
         factory=create_plain_display,
-        condition=lambda config: True,  # Will be used as fallback
+        condition=lambda _config: True,  # Will be used as fallback
     )
