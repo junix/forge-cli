@@ -15,7 +15,6 @@ from forge_cli.dataset import TestDataset
 
 # Registry no longer needed - using v3 directly
 # Note: Registry system removed - all processing now handled by v3 renderers
-from forge_cli.response._types import FileSearchTool, InputMessage, Request, WebSearchTool
 from forge_cli.sdk import astream_typed_response
 from forge_cli.stream.handler_typed import TypedStreamHandler
 
@@ -80,57 +79,6 @@ def create_display(config: SearchConfig) -> "Display":
     return Display(renderer, mode=mode)
 
 
-def prepare_request(config: SearchConfig, question: str, conversation_history: list[dict] = None) -> Request:
-    """Prepare typed request for the API."""
-    # Build tools list
-    tools = []
-
-    # File search tool
-    if "file-search" in config.enabled_tools and config.vec_ids:
-        tools.append(
-            FileSearchTool(
-                type="file_search",
-                vector_store_ids=config.vec_ids,
-                max_num_results=config.max_results,
-            )
-        )
-
-    # Web search tool
-    if "web-search" in config.enabled_tools:
-        tool_params = {"type": "web_search"}
-        location = config.get_web_location()
-        if location:
-            if "country" in location:
-                tool_params["country"] = location["country"]
-            if "city" in location:
-                tool_params["city"] = location["city"]
-        tools.append(WebSearchTool(**tool_params))
-
-    # Build input messages
-    input_messages = []
-
-    # If we have conversation history, include it
-    if conversation_history:
-        # Convert conversation history to InputMessage objects
-        for msg in conversation_history:
-            if isinstance(msg, dict) and "role" in msg and "content" in msg:
-                input_messages.append(InputMessage(role=msg["role"], content=msg["content"]))
-        # Don't add the current question again - it's already in the conversation history
-    else:
-        # Single message
-        input_messages = [InputMessage(role="user", content=question)]
-
-    # Create typed request
-    return Request(
-        input=input_messages,
-        model=config.model,
-        tools=tools,
-        temperature=config.temperature or 0.7,
-        max_output_tokens=config.max_output_tokens or 2000,
-        effort=config.effort or "low",
-    )
-
-
 async def process_search(config: SearchConfig, question: str) -> dict[str, str | int | float | bool | list] | None:
     """Process search with the typed API."""
     # Note: Registry initialization removed - processing handled by v3 renderers
@@ -141,8 +89,13 @@ async def process_search(config: SearchConfig, question: str) -> dict[str, str |
     # Create typed stream handler
     handler = TypedStreamHandler(display, debug=config.debug)
 
-    # Prepare typed request
-    request = prepare_request(config, question)
+    # Create a temporary conversation state for single-turn search
+    from forge_cli.models.conversation import ConversationState
+
+    conversation = ConversationState(model=config.model)
+
+    # Prepare typed request using conversation state
+    request = conversation.new_request(question, config)
 
     # Stream and process with typed API
     event_stream = astream_typed_response(request, debug=config.debug)
@@ -172,20 +125,14 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
     # Patch the controller to use typed API
     async def typed_send_message(content: str) -> None:
         """Send message using typed API with proper chat support."""
-        # Add user message to conversation
-        controller.conversation.add_user_message(content)
-
         # Create a fresh display for this message
         message_display = create_display(config)
 
         # Set display to chat mode - use the Display's mode property
         message_display.mode = "chat"
 
-        # Get conversation history
-        messages = controller.conversation.to_api_format()
-
-        # Create typed request with full conversation history
-        request = prepare_request(config, content, messages)
+        # Create typed request with full conversation history (automatically adds user message)
+        request = controller.conversation.new_request(content, config)
 
         # Create typed handler and stream
         handler = TypedStreamHandler(message_display, debug=config.debug)

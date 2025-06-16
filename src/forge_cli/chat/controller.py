@@ -1,12 +1,11 @@
 """Chat controller for managing interactive conversations."""
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Final, cast
+from typing import TYPE_CHECKING, Any, Final
 
 from ..config import SearchConfig
 from ..display.v3.base import Display
 from ..models.conversation import ConversationState
-from ..response._types.tool import Tool
 from ..response.type_guards import (
     get_content_text,
     is_dict_with_type,
@@ -21,9 +20,6 @@ if TYPE_CHECKING:
         Response,
     )
 
-# Type aliases
-type ToolConfig = dict[str, Any]
-type RequestDict = dict[str, Any]
 
 # Constants
 DEFAULT_TEMPERATURE: Final[float] = 0.7
@@ -57,104 +53,13 @@ class ChatController:
         """
         self.config = config
         self.display = display
-        self.conversation = ConversationState(model=config.model, tools=self.prepare_typed_tools())
+        self.conversation = ConversationState(model=config.model)
         self.commands = CommandRegistry()
         self.running = False  # Actual loop is in main.py for v3
 
         # Initialize input history for up/down arrow navigation
         self.input_history = None  # Will be initialized when prompt_toolkit is available
         self.history_file = None  # Will store the history file path
-
-    def _prepare_tool_config(self, tool_type: str, config: SearchConfig) -> ToolConfig | None:
-        """Prepares the configuration for a single tool based on its type and global config.
-
-        This is a helper method used by `prepare_tools` and `prepare_typed_tools`.
-
-        Args:
-            tool_type: The type of the tool (e.g., "file-search", "web-search").
-            config: The main `SearchConfig` object.
-
-        Returns:
-            A dictionary containing the tool-specific configuration if the tool
-            is enabled and its prerequisites are met, otherwise None.
-        """
-        if tool_type == "file-search":
-            if "file-search" in config.enabled_tools and config.vec_ids:
-                return {
-                    "type": "file_search",
-                    "vector_store_ids": config.vec_ids,
-                    "max_num_results": config.max_results,
-                }
-        elif tool_type == "web-search":
-            if "web-search" in config.enabled_tools:
-                tool_config = {"type": "web_search"}
-                location_info = config.get_web_location()
-                if location_info:
-                    # This structure can be adapted by both prepare_tools and prepare_typed_tools
-                    tool_config["location_info"] = location_info  # type: ignore[assignment]
-                return tool_config
-        return None
-
-    def prepare_tools(self) -> list[ToolConfig]:
-        """Prepares a list of tool configurations in dictionary format.
-
-        This method generates tool configurations compatible with older or
-        non-typed SDK versions. It uses `_prepare_tool_config` to get
-        individual tool settings.
-
-        Returns:
-            A list of dictionaries, where each dictionary represents the
-            configuration for an enabled tool.
-        """
-        tools = []
-
-        # File search tool
-        if file_search_config := self._prepare_tool_config("file-search", self.config):
-            tools.append(file_search_config)
-
-        # Web search tool
-        if web_search_config := self._prepare_tool_config("web-search", self.config):
-            # Adapt location_info for dict-based tool
-            if location := web_search_config.pop("location_info", None):
-                web_search_config["user_location"] = {"type": "approximate", **location}
-            tools.append(web_search_config)
-
-        return tools
-
-    def prepare_typed_tools(self) -> list[Tool]:
-        """Prepares a list of typed tool objects (e.g., `FileSearchTool`, `WebSearchTool`).
-
-        This method generates tool configurations as typed objects, suitable for
-        use with the typed SDK. It utilizes `_prepare_tool_config` and then
-        constructs the specific tool model instances.
-
-        Returns:
-            A list of `Tool` instances (e.g., `FileSearchTool`, `WebSearchTool`)
-            for enabled tools.
-        """
-        from ..response._types import FileSearchTool, WebSearchTool
-        from ..response._types.web_search_tool import UserLocation
-
-        tools: list[Tool] = []
-
-        # File search tool
-        if file_search_config := self._prepare_tool_config("file-search", self.config):
-            tools.append(FileSearchTool(**file_search_config))
-
-        # Web search tool
-        if web_search_config := self._prepare_tool_config("web-search", self.config):
-            # Adapt location_info for WebSearchTool
-            tool_params: dict[str, Any] = {"type": web_search_config["type"]}
-            if location_info := web_search_config.get("location_info"):
-                user_location = UserLocation(
-                    type="approximate",
-                    country=location_info.get("country"),
-                    city=location_info.get("city"),
-                )
-                tool_params["user_location"] = user_location
-            tools.append(WebSearchTool(**tool_params))
-
-        return tools
 
     async def start_chat_loop(self) -> None:
         """Starts the interactive chat loop.
@@ -380,9 +285,6 @@ class ChatController:
         Args:
             content: The text content of the user's message.
         """
-        # Add user message to conversation
-        self.conversation.add_user_message(content)
-
         # Increment turn count for each user message
         self.conversation.increment_turn_count()
 
@@ -392,8 +294,8 @@ class ChatController:
         # Set display to chat mode - use the Display's mode property
         self.display.mode = "chat"
 
-        # Prepare request with conversation history
-        request = self.prepare_request()
+        # Create typed request with conversation history (automatically adds user message)
+        typed_request = self.conversation.new_request(content, self.config)
 
         # Start the display for this message (creates Live display if needed)
         # Use the Display's show_request_info method directly - it handles capability checking internally
@@ -410,29 +312,7 @@ class ChatController:
         handler = TypedStreamHandler(self.display, debug=self.config.debug)
 
         # Import typed SDK
-        from ..response._types import InputMessage, Request
         from ..sdk import astream_typed_response
-
-        # Convert dict request to typed Request
-        input_messages = []
-        if isinstance(request.get("input_messages"), list):
-            for msg in request["input_messages"]:
-                if isinstance(msg, dict) and "role" in msg and "content" in msg:
-                    input_messages.append(InputMessage(role=msg["role"], content=msg["content"]))
-        elif isinstance(request.get("input_messages"), str):
-            input_messages = [InputMessage(role="user", content=request["input_messages"])]
-
-        # Use typed tools
-        typed_tools = self.prepare_typed_tools()
-
-        typed_request = Request(
-            input=input_messages,
-            model=request.get("model", "qwen-max"),
-            tools=typed_tools,
-            temperature=request.get("temperature", 0.7),
-            max_output_tokens=request.get("max_output_tokens", 2000),
-            effort=request.get("effort", "low"),
-        )
 
         # Stream the response
         if self.config.debug:
@@ -485,38 +365,6 @@ class ChatController:
 
         # Reset display mode to default after chat message
         self.display.mode = "default"
-
-    def prepare_request(self) -> RequestDict:
-        """Prepares the request dictionary for the API call.
-
-        This method compiles the conversation history and current configuration
-        settings (model, tools, etc.) into the format expected by the
-        SDK's `astream_typed_response` function.
-
-        Returns:
-            A dictionary representing the API request.
-        """
-        # Update tools in case they changed - temporarily cast for compatibility
-        # TODO: Update ConversationState to handle both dict and typed tools
-        dict_tools = self.prepare_tools()  # Uses dict-based tools for now
-        self.conversation.tools = cast(list[Tool], dict_tools)
-
-        # The SDK expects "input_messages"
-        request: RequestDict = {
-            "input_messages": self.conversation.to_api_format(),  # Converts messages
-            "model": self.config.model,
-            "effort": self.config.effort,
-            "store": True,  # Assuming we always want to store in chat context
-            "debug": self.config.debug,
-            # Temperature and max_output_tokens are handled by prepare_typed_tools
-            # when constructing the Typed Request object in send_message.
-        }
-
-        # Add tools if any (these are dict-based tools for the request dict)
-        if self.conversation.tools:
-            request["tools"] = self.conversation.tools
-
-        return request
 
     def _extract_text_from_content_item(self, content_item: Any) -> str | None:
         """Extracts text from a single content item.

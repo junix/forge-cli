@@ -18,6 +18,8 @@ from ..response.type_guards import (
 )
 
 if TYPE_CHECKING:
+    from ..config import SearchConfig
+    from ..response._types import Request, Response
     from ..stream.handler_typed import StreamState
 
 # Type aliases for clarity
@@ -177,7 +179,7 @@ class ConversationState:
 
     def get_accessed_files(self) -> list[str]:
         """Get sorted list of accessed files."""
-        return sorted(list(self.accessed_files))
+        return sorted(self.accessed_files)
 
     def increment_turn_count(self) -> None:
         """Increment the conversation turn counter."""
@@ -381,6 +383,9 @@ class ConversationState:
     def new_request(self, content: str, config: "SearchConfig") -> "Request":
         """Create a new typed request with conversation history and current content.
 
+        This method automatically adds the new user message to the conversation history
+        and creates a typed Request object ready for the API.
+
         Args:
             content: The new user message content
             config: SearchConfig containing tool and model settings
@@ -389,7 +394,10 @@ class ConversationState:
             A typed Request object ready for the API
         """
         from ..response._types import FileSearchTool, InputMessage, Request, WebSearchTool
-        from ..response._types.user_location import UserLocation
+        from ..response._types.web_search_tool import UserLocation
+
+        # Add the new user message to conversation history first
+        self.add_user_message(content)
 
         # Build tools list based on config
         tools = []
@@ -417,10 +425,10 @@ class ConversationState:
                 tool_params["user_location"] = user_location
             tools.append(WebSearchTool(**tool_params))
 
-        # Build input messages - include conversation history plus new message
+        # Build input messages from current conversation history (including the new message)
         input_messages = []
 
-        # Convert existing conversation history to InputMessage objects
+        # Convert conversation history to InputMessage objects
         for msg in self.messages:
             # Extract text content from ResponseInputText objects
             content_parts = []
@@ -430,9 +438,6 @@ class ConversationState:
 
             content_str = " ".join(content_parts)
             input_messages.append(InputMessage(role=msg.role, content=content_str))
-
-        # Add the new user message
-        input_messages.append(InputMessage(role="user", content=content))
 
         # Create typed request
         return Request(
