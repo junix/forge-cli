@@ -24,6 +24,7 @@ from forge_cli.response.type_guards import (
 
 from ..base import BaseRenderer
 from ..style import ICONS, STATUS_ICONS, pack_queries
+from ...citation_styling import long2circled
 
 
 class RichDisplayConfig(BaseModel):
@@ -151,7 +152,9 @@ class RichRenderer(BaseRenderer):
             if is_message_item(item):
                 for content in item.content:
                     if content.type == "output_text":
-                        md_parts.append(content.text)
+                        # Convert long-style citation markers to circled digits
+                        converted_text = long2circled(content.text)
+                        md_parts.append(converted_text)
                         # inline citation numbers if present
                         if content.annotations:
                             # inline citation numbers handled; detailed reference list appended later

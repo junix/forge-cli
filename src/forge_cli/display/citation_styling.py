@@ -1,4 +1,6 @@
 from typing import Literal
+import re
+from typing import Dict
 
 CIRCLED_DIGITS = {
     0: "⓿",
@@ -478,3 +480,28 @@ def style_citations(
             styled_text = styled_text.replace(f"[citation:{page_id}]", symbol)
 
         return styled_text
+
+
+
+
+LONG_PATTERN = re.compile(r"⟦⟦(\d+)⟧⟧")
+
+def long2circled(text: str) -> str:
+    """
+    Convert “long-style” citation markers (⟦⟦n⟧⟧) to their circled-digit
+    equivalents (❶ ❷ ❸ …).
+
+    Args:
+        text: The full text that may contain ⟦⟦n⟧⟧ markers.
+
+    Returns:
+        A copy of *text* where every ⟦⟦n⟧⟧ has been replaced with
+        the corresponding character from ``CIRCLED_DIGITS``.  
+        If *n* is not present in the lookup table, the original marker
+        is left unchanged.
+    """
+    def _replace(match: re.Match[str]) -> str:
+        n = int(match.group(1))
+        return CIRCLED_DIGITS.get(n, match.group(0))
+
+    return LONG_PATTERN.sub(_replace, text)

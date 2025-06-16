@@ -3,7 +3,7 @@
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from ..response._types.annotations import Annotation
@@ -60,7 +60,7 @@ class StreamState:
     """Manages complete state during streaming, compatible with both APIs."""
 
     # Current output items from latest snapshot
-    output_items: list[Any] = field(default_factory=list)
+    output_items: list[ResponseOutputItem] = field(default_factory=list)
 
     # Tool states by tool type
     tool_states: dict[str, ToolState] = field(default_factory=dict)
