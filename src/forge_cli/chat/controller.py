@@ -8,6 +8,7 @@ from ..display.v3.base import Display
 from ..models.conversation import ConversationState
 from ..stream.handler_typed import TypedStreamHandler
 from .commands import CommandRegistry
+from .inputs import InputHandler
 
 # Constants
 DEFAULT_TEMPERATURE: Final[float] = 0.7
@@ -44,13 +45,10 @@ class ChatController:
         self.conversation = ConversationState(model=config.model)
         self.commands = CommandRegistry()
         self.running = False  # Actual loop is in main.py for v3
+        self.input_handler = InputHandler(self.commands)
 
         # Initialize conversation state from config
         self._initialize_conversation_from_config()
-
-        # Initialize input history for up/down arrow navigation
-        self.input_history = None  # Will be initialized when prompt_toolkit is available
-        self.history_file = None  # Will store the history file path
 
     def _initialize_conversation_from_config(self) -> None:
         """Initialize conversation state from SearchConfig."""
@@ -87,69 +85,12 @@ class ChatController:
         self.display.show_welcome(self.config)
 
     async def get_user_input(self) -> str | None:
-        """Gets input from the user.
-
-        This method attempts to use `prompt_toolkit` for a richer input
-        experience with command auto-completion if `prompt_toolkit` is installed
-        and the session is interactive. For non-interactive sessions (pipes,
-        scripts), it reads from stdin line by line.
+        """Gets input from the user via the input handler.
 
         Returns:
             The user's input as a string, or None if input fails (e.g., EOF).
-            The returned string is stripped of leading/trailing whitespace.
         """
-        # Try to use prompt_toolkit for better input experience
-        import sys
-
-        if sys.stdin.isatty():
-            from prompt_toolkit import PromptSession
-            from prompt_toolkit.formatted_text import FormattedText
-            from prompt_toolkit.history import FileHistory
-            from prompt_toolkit.styles import Style
-
-            # Import command completer
-            from .command_completer import CommandCompleter
-
-            # Create custom completer
-            completer = CommandCompleter(self.commands.commands, self.commands.aliases)
-
-            # Initialize input history if not already done
-            if self.input_history is None:
-                # Create history file path in user's home directory
-                import os
-
-                self.history_file = os.path.expanduser("~/.forge_cli_history")
-                self.input_history = FileHistory(self.history_file)
-
-            # Create style
-            style = Style.from_dict(
-                {
-                    "prompt": "bold cyan",
-                    "": "#ffffff",  # Default text color
-                }
-            )
-
-            # Create prompt session with custom completer and history
-            session = PromptSession(
-                completer=completer,
-                complete_while_typing=True,
-                style=style,
-                complete_style="MULTI_COLUMN",  # Show completions in columns
-                mouse_support=True,  # Enable mouse support
-                history=self.input_history,  # Enable up/down arrow history navigation
-            )
-
-            # Use prompt_toolkit with auto-completion
-            loop = asyncio.get_event_loop()
-            future = loop.run_in_executor(None, lambda: session.prompt(FormattedText([("class:prompt", " ")])))
-            user_input: str = await future
-            return user_input.strip()
-
-        # Fallback for non-interactive input (pipes, scripts, etc.)
-        loop = asyncio.get_event_loop()
-        future = loop.run_in_executor(None, input)
-        user_input: str = await future
-        return user_input.strip()
+        return await self.input_handler.get_user_input()
 
     async def process_input(self, user_input: str) -> bool:
         """Processes the user's input, determining if it's a command or a message.
