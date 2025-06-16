@@ -61,6 +61,10 @@ class ChatController:
         self.commands = CommandRegistry()
         self.running = False  # Actual loop is in main.py for v3
 
+        # Initialize input history for up/down arrow navigation
+        self.input_history = None  # Will be initialized when prompt_toolkit is available
+        self.history_file = None  # Will store the history file path
+
     def _prepare_tool_config(self, tool_type: str, config: SearchConfig) -> ToolConfig | None:
         """Prepares the configuration for a single tool based on its type and global config.
 
@@ -194,6 +198,7 @@ class ChatController:
                     from prompt_toolkit import PromptSession
                     from prompt_toolkit.completion import Completer, Completion
                     from prompt_toolkit.formatted_text import FormattedText
+                    from prompt_toolkit.history import FileHistory
                     from prompt_toolkit.styles import Style
 
                     # Custom completer class for commands
@@ -256,6 +261,14 @@ class ChatController:
                     # Create custom completer
                     completer = CommandCompleter(self.commands.commands, self.commands.aliases)
 
+                    # Initialize input history if not already done
+                    if self.input_history is None:
+                        # Create history file path in user's home directory
+                        import os
+
+                        self.history_file = os.path.expanduser("~/.forge_cli_history")
+                        self.input_history = FileHistory(self.history_file)
+
                     # Create style
                     style = Style.from_dict(
                         {
@@ -264,13 +277,14 @@ class ChatController:
                         }
                     )
 
-                    # Create prompt session with custom completer
+                    # Create prompt session with custom completer and history
                     session = PromptSession(
                         completer=completer,
                         complete_while_typing=True,
                         style=style,
                         complete_style="MULTI_COLUMN",  # Show completions in columns
                         mouse_support=True,  # Enable mouse support
+                        history=self.input_history,  # Enable up/down arrow history navigation
                     )
 
                     # Use prompt_toolkit with auto-completion
