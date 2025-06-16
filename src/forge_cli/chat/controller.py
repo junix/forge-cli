@@ -39,26 +39,10 @@ class ChatController:
         """
         self.config = config
         self.display = display
-        self.conversation = ConversationState(model=config.model)
+        self.conversation = ConversationState.from_config(config)
         self.commands = CommandRegistry()
         self.running = False  # Actual loop is in main.py for v3
         self.input_handler = InputHandler(self.commands)
-
-        # Initialize conversation state from config
-        self._initialize_conversation_from_config()
-
-    def _initialize_conversation_from_config(self) -> None:
-        """Initialize conversation state from AppConfig."""
-        # Set tool enablement based on config
-        if "web-search" in self.config.enabled_tools:
-            self.conversation.enable_web_search()
-
-        if "file-search" in self.config.enabled_tools:
-            self.conversation.enable_file_search()
-
-        # Set vector store IDs from config
-        if self.config.vec_ids:
-            self.conversation.set_vector_store_ids(self.config.vec_ids)
 
     async def start_chat_loop(self) -> None:
         """Starts the interactive chat loop.

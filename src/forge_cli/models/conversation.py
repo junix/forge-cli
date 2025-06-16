@@ -292,6 +292,29 @@ class ConversationState(BaseModel):
         return path
 
     @classmethod
+    def from_config(cls, config: "AppConfig") -> "ConversationState":
+        """Create a new ConversationState initialized from AppConfig.
+
+        Args:
+            config: AppConfig containing initialization settings
+
+        Returns:
+            New ConversationState with config-based initialization
+        """
+        return cls(
+            model=config.model,
+            web_search_enabled="web-search" in config.enabled_tools,
+            file_search_enabled="file-search" in config.enabled_tools,
+            current_vector_store_ids=config.vec_ids.copy() if config.vec_ids else [],
+            metadata={
+                "effort": config.effort,
+                "temperature": config.temperature,
+                "max_output_tokens": config.max_output_tokens,
+                "server_url": config.server_url,
+            },
+        )
+
+    @classmethod
     def load_by_id(cls, conversation_id: str) -> "ConversationState":
         """Load conversation by its ID.
 

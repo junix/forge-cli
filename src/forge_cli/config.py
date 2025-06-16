@@ -33,7 +33,7 @@ class AppConfig(BaseModel):
     vec_ids: list[str] = Field(default_factory=lambda: DEFAULT_VEC_IDS.copy(), alias="vec_id")
 
     # Tool settings
-    enabled_tools: list[ToolType] = Field(default_factory=list, alias="tool")
+    enabled_tools: list[ToolType] = Field(default_factory=lambda: ["file-search"], alias="tool")
 
     # Server settings
     server_url: str = Field(
