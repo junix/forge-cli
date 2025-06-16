@@ -3,13 +3,14 @@
 import json
 import time
 import uuid
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, Literal, NewType, Protocol, overload
 
+from pydantic import BaseModel, Field, field_validator
+
 # Import proper types from response system
 from ..response._types.response_input_message_item import ResponseInputMessageItem
-from ..response._types.response_usage import InputTokensDetails, OutputTokensDetails, ResponseUsage
+from ..response._types.response_usage import ResponseUsage
 from ..response._types.tool import Tool
 from ..response.type_guards import (
     is_file_search_tool,
@@ -50,34 +51,60 @@ class ConversationPersistence(Protocol):
         ...
 
 
-@dataclass
-class ConversationState:
+class ConversationState(BaseModel):
     """Manages the state of a multi-turn conversation using typed API."""
 
     # Use proper typed messages instead of custom Message class
-    messages: list[ResponseInputMessageItem] = field(default_factory=list)
-    conversation_id: ConversationId = field(default_factory=lambda: ConversationId(f"conv_{uuid.uuid4().hex[:8]}"))
-    session_id: SessionId = field(
+    messages: list[ResponseInputMessageItem] = Field(default_factory=list)
+    conversation_id: ConversationId = Field(default_factory=lambda: ConversationId(f"conv_{uuid.uuid4().hex[:8]}"))
+    session_id: SessionId = Field(
         default_factory=lambda: SessionId(f"session_{uuid.uuid4().hex[:12]}")
     )  # Keep for backward compatibility
-    created_at: float = field(default_factory=time.time)
-    model: str = DEFAULT_MODEL
-    tools: list[Tool] = field(default_factory=list)
-    metadata: dict[str, str | int | float | bool] = field(default_factory=dict)
+    created_at: float = Field(default_factory=time.time)
+    model: str = Field(default=DEFAULT_MODEL)
+    tools: list[Tool] = Field(default_factory=list)
+    metadata: dict[str, str | int | float | bool] = Field(default_factory=dict)
     # Use proper ResponseUsage instead of manual tracking
-    usage: ResponseUsage | None = None
-    used_vector_store_ids: set[str] = field(default_factory=set)
+    usage: ResponseUsage | None = Field(default=None)
+    used_vector_store_ids: set[str] = Field(default_factory=set)
     # Track files accessed during the session
-    accessed_files: set[str] = field(default_factory=set)
+    accessed_files: set[str] = Field(default_factory=set)
     # Track conversation turns
-    turn_count: int = 0
+    turn_count: int = Field(default=0, ge=0)
 
     # Conversation-specific tool settings that can be changed during chat
-    web_search_enabled: bool = False
-    file_search_enabled: bool = False
-    current_vector_store_ids: list[str] = field(default_factory=list)
+    web_search_enabled: bool = Field(default=False)
+    file_search_enabled: bool = Field(default=False)
+    current_vector_store_ids: list[str] = Field(default_factory=list)
 
-    def __post_init__(self):
+    # Pydantic configuration
+    model_config = {"arbitrary_types_allowed": True}
+
+    @field_validator("conversation_id", mode="before")
+    @classmethod
+    def validate_conversation_id(cls, v: Any) -> ConversationId:
+        """Ensure conversation_id is properly typed."""
+        if isinstance(v, str):
+            return ConversationId(v)
+        return v
+
+    @field_validator("session_id", mode="before")
+    @classmethod
+    def validate_session_id(cls, v: Any) -> SessionId:
+        """Ensure session_id is properly typed."""
+        if isinstance(v, str):
+            return SessionId(v)
+        return v
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, v: str) -> str:
+        """Validate model name is not empty."""
+        if not v or not v.strip():
+            return DEFAULT_MODEL
+        return v.strip()
+
+    def model_post_init(self, __context: Any) -> None:
         """Initialize used_vector_store_ids from tools if not set."""
         if not self.used_vector_store_ids and self.tools:
             # Extract vector store IDs from file search and list documents tools
@@ -401,117 +428,71 @@ class ConversationState:
         return list(vector_store_ids)
 
     def save(self, path: Path) -> None:
-        """Save conversation to a JSON file."""
-        data = {
-            "conversation_id": self.conversation_id,
-            "session_id": self.session_id,  # Keep for backward compatibility
-            "created_at": self.created_at,
-            "model": self.model,
-            "tools": [tool.model_dump() for tool in self.tools],
-            "metadata": self.metadata,
-            "usage": self.usage.model_dump() if self.usage else None,
-            "messages": [msg.model_dump() for msg in self.messages],
-            "used_vector_store_ids": list(self.used_vector_store_ids),
-            "accessed_files": list(self.accessed_files),
-            "turn_count": self.turn_count,
-            # Save conversation-specific tool settings
-            "web_search_enabled": self.web_search_enabled,
-            "file_search_enabled": self.file_search_enabled,
-            "current_vector_store_ids": self.current_vector_store_ids,
-        }
-
+        """Save conversation to a JSON file using Pydantic serialization."""
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
+            # Use Pydantic's model_dump for automatic serialization
+            data = self.model_dump(mode="json")
             json.dump(data, f, indent=2, ensure_ascii=False)
 
     @classmethod
     def load(cls, path: Path) -> "ConversationState":
-        """Load conversation from a JSON file."""
+        """Load conversation from a JSON file using Pydantic validation."""
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
 
-        # Handle usage data
-        usage = None
-        usage_data = data.get("usage")
-        if usage_data:
-            usage = ResponseUsage.model_validate(usage_data)
+        # Handle backward compatibility for old formats
+        data = cls._migrate_legacy_data(data)
 
+        try:
+            # Use Pydantic's model_validate for automatic validation and type conversion
+            return cls.model_validate(data)
+        except Exception as e:
+            # If validation fails, provide helpful error message
+            raise ValueError(f"Failed to load conversation from {path}: {e}") from e
+
+    @classmethod
+    def _migrate_legacy_data(cls, data: dict[str, Any]) -> dict[str, Any]:
+        """Migrate legacy data formats to current schema."""
         # Handle backward compatibility with old token fields
-        elif any(key in data for key in ["total_input_tokens", "total_output_tokens", "total_tokens"]):
+        if "usage" not in data and any(
+            key in data for key in ["total_input_tokens", "total_output_tokens", "total_tokens"]
+        ):
             # Convert old format to new ResponseUsage
-            usage = ResponseUsage(
-                input_tokens=data.get("total_input_tokens", 0),
-                output_tokens=data.get("total_output_tokens", 0),
-                total_tokens=data.get("total_tokens", 0),
-                input_tokens_details=InputTokensDetails(cached_tokens=0),
-                output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
-            )
-
-        # Handle tools data - convert dicts to typed Tool objects
-        tools = []
-        tools_data = data.get("tools", [])
-        if tools_data:
-            tools = cls._load_tools(tools_data)
-
-        # Load used_vector_store_ids
-        used_vector_store_ids = set(data.get("used_vector_store_ids", []))
-
-        # Load accessed_files
-        accessed_files = set(data.get("accessed_files", []))
-
-        # Load turn_count
-        turn_count = data.get("turn_count", 0)
-
-        # Load conversation-specific tool settings
-        web_search_enabled = data.get("web_search_enabled", False)
-        file_search_enabled = data.get("file_search_enabled", False)
-        current_vector_store_ids = data.get("current_vector_store_ids", [])
+            data["usage"] = {
+                "input_tokens": data.get("total_input_tokens", 0),
+                "output_tokens": data.get("total_output_tokens", 0),
+                "total_tokens": data.get("total_tokens", 0),
+                "input_tokens_details": {"cached_tokens": 0},
+                "output_tokens_details": {"reasoning_tokens": 0},
+            }
 
         # Handle conversation_id (new field) with backward compatibility
-        conversation_id = data.get("conversation_id")
-        if not conversation_id:
-            # Generate conversation_id from session_id for backward compatibility
+        if "conversation_id" not in data and "session_id" in data:
             session_id = data["session_id"]
             if session_id.startswith("session_"):
-                conversation_id = ConversationId(f"conv_{session_id[8:]}")
+                data["conversation_id"] = f"conv_{session_id[8:]}"
             else:
-                conversation_id = ConversationId(f"conv_{session_id}")
+                data["conversation_id"] = f"conv_{session_id}"
 
-        conversation = cls(
-            conversation_id=conversation_id,
-            session_id=data["session_id"],
-            created_at=data["created_at"],
-            model=data["model"],
-            tools=tools,
-            metadata=data.get("metadata", {}),
-            usage=usage,
-            used_vector_store_ids=used_vector_store_ids,
-            accessed_files=accessed_files,
-            turn_count=turn_count,
-            web_search_enabled=web_search_enabled,
-            file_search_enabled=file_search_enabled,
-            current_vector_store_ids=current_vector_store_ids,
-        )
+        # Handle old message formats
+        if "messages" in data:
+            migrated_messages = []
+            for msg_data in data["messages"]:
+                if "role" in msg_data and "content" in msg_data and isinstance(msg_data["content"], str):
+                    # Old format - convert to new format
+                    migrated_msg = {
+                        "id": msg_data.get("id", f"{msg_data['role']}_{uuid.uuid4().hex[:8]}"),
+                        "role": msg_data["role"] if msg_data["role"] in ["user", "system", "developer"] else "user",
+                        "content": [{"type": "input_text", "text": msg_data["content"]}],
+                    }
+                    migrated_messages.append(migrated_msg)
+                else:
+                    # New format - keep as is
+                    migrated_messages.append(msg_data)
+            data["messages"] = migrated_messages
 
-        # Load messages using Pydantic models
-        for msg_data in data.get("messages", []):
-            # Handle both old and new message formats
-            if "role" in msg_data and "content" in msg_data and isinstance(msg_data["content"], str):
-                # Old format - convert to new format
-                from ..response._types.response_input_text import ResponseInputText
-
-                message = ResponseInputMessageItem(
-                    id=msg_data.get("id", f"{msg_data['role']}_{uuid.uuid4().hex[:8]}"),
-                    role=msg_data["role"] if msg_data["role"] in ["user", "system", "developer"] else "user",
-                    content=[ResponseInputText(type="input_text", text=msg_data["content"])],
-                )
-            else:
-                # New format - use Pydantic validation
-                message = ResponseInputMessageItem.model_validate(msg_data)
-
-            conversation.add_message(message)
-
-        return conversation
+        return data
 
     def truncate_to_token_limit(self, max_tokens: int = 100000) -> None:
         """
@@ -633,40 +614,3 @@ class ConversationState:
             max_output_tokens=config.max_output_tokens or 2000,
             effort=config.effort or "low",
         )
-
-    @classmethod
-    def _load_tools(cls, tools_data: list[dict[str, Any] | Tool]) -> list[Tool]:
-        """Load tools from data, handling both dict and Tool formats."""
-        from ..response._types import (
-            ComputerTool,
-            FileSearchTool,
-            FunctionTool,
-            ListDocumentsTool,
-            WebSearchTool,
-        )
-        from ..response._types.file_reader_tool import FileReaderTool
-
-        # Tool factory mapping
-        tool_factories: dict[str, type[Tool]] = {
-            "file_search": FileSearchTool,
-            "web_search": WebSearchTool,
-            "web_search_preview": WebSearchTool,
-            "web_search_preview_2025_03_11": WebSearchTool,
-            "function": FunctionTool,
-            "computer_use_preview": ComputerTool,
-            "list_documents": ListDocumentsTool,
-            "file_reader": FileReaderTool,
-        }
-
-        tools = []
-        for tool_data in tools_data:
-            if isinstance(tool_data, Tool):
-                # Already a Tool object
-                tools.append(tool_data)
-            elif isinstance(tool_data, dict):
-                tool_type = tool_data.get("type")
-                if tool_type and tool_type in tool_factories:
-                    tool_class = tool_factories[tool_type]
-                    tools.append(tool_class.model_validate(tool_data))
-                # Skip unknown tool types
-        return tools

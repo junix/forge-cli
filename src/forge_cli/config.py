@@ -1,114 +1,139 @@
 """Configuration and constants for the refactored file search module."""
 
 import os
-from dataclasses import dataclass, field
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Default vectorstore IDs to use if none are provided
 DEFAULT_VEC_IDS = [
     "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 ]
 
+# Valid effort levels
+EffortLevel = Literal["low", "medium", "high"]
 
-@dataclass
-class AppConfig:
+# Valid tool types
+ToolType = Literal[
+    "file-search", "web-search", "code-analyzer", "function", "computer", "list-documents", "file-reader"
+]
+
+
+class AppConfig(BaseModel):
     """Central configuration for the forge-cli application."""
 
     # Model settings
     model: str = "qwen-max-latest"
-    effort: str = "low"
-    temperature: float = 0.7
-    max_output_tokens: int = 1000
+    effort: EffortLevel = "low"
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    max_output_tokens: int = Field(default=1000, gt=0)
 
     # Search settings
-    max_results: int = 10
-    vec_ids: list[str] = field(default_factory=lambda: DEFAULT_VEC_IDS.copy())
+    max_results: int = Field(default=10, gt=0)
+    vec_ids: list[str] = Field(default_factory=lambda: DEFAULT_VEC_IDS.copy(), alias="vec_id")
 
     # Tool settings
-    enabled_tools: list[str] = field(default_factory=list)
+    enabled_tools: list[ToolType] = Field(default_factory=list, alias="tool")
 
     # Server settings
-    server_url: str = field(default_factory=lambda: os.environ.get("KNOWLEDGE_FORGE_URL", "http://localhost:9999"))
+    server_url: str = Field(
+        default_factory=lambda: os.environ.get("KNOWLEDGE_FORGE_URL", "http://localhost:9999"), alias="server"
+    )
 
     # Display settings
     debug: bool = False
-    json_output: bool = False
+    json_output: bool = Field(default=False, alias="json")
     quiet: bool = False
-    use_rich: bool = True
-    throttle_ms: int = 0
+    use_rich: bool = Field(default=True, alias="no_color")
+    throttle_ms: int = Field(default=0, ge=0, alias="throttle")
 
     # Chat mode
-    chat_mode: bool = False
+    chat_mode: bool = Field(default=False, alias="chat")
     show_reasoning: bool = True  # Whether to show reasoning/thinking in output
 
     # Question/query
     question: str = "What information can you find in the documents?"
 
     # Web search location
-    web_country: str | None = None
-    web_city: str | None = None
+    web_country: str | None = Field(default=None, alias="country")
+    web_city: str | None = Field(default=None, alias="city")
 
     # Display settings (migrated to v3)
     display_api_debug: bool = False  # Debug logging for display API
 
+    @field_validator("vec_ids")
+    @classmethod
+    def validate_vec_ids(cls, v: list[str]) -> list[str]:
+        """Validate vector store IDs format."""
+        for vec_id in v:
+            if not vec_id or not isinstance(vec_id, str):
+                raise ValueError(f"Invalid vector store ID: {vec_id}")
+        return v
+
+    @field_validator("server_url")
+    @classmethod
+    def validate_server_url(cls, v: str) -> str:
+        """Validate server URL format."""
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("Server URL must start with http:// or https://")
+        return v.rstrip("/")
+
+    @model_validator(mode="after")
+    def validate_config_consistency(self) -> "AppConfig":
+        """Validate configuration consistency."""
+        # If file search tools are enabled, ensure vec_ids are provided
+        if any(tool in ["file-search", "list-documents"] for tool in self.enabled_tools):
+            if not self.vec_ids:
+                raise ValueError("Vector store IDs required when file search tools are enabled")
+
+        return self
+
     @classmethod
     def from_args(cls, args) -> "AppConfig":
-        """Create config from command line arguments using type-safe attribute access."""
-        config = cls()
+        """Create config from command line arguments using Pydantic validation."""
+        # Convert args namespace to dict and filter out None values
+        args_dict = {k: v for k, v in vars(args).items() if v is not None}
 
-        # Model settings - use direct attribute access since args is typed
-        config.model = getattr(args, "model", config.model)
-        config.effort = getattr(args, "effort", config.effort)
+        # Special handling for no_color -> use_rich inversion
+        if "no_color" in args_dict:
+            args_dict["no_color"] = not args_dict["no_color"]
 
-        # Question/query
-        config.question = getattr(args, "question", config.question)
+        # Create config with validation - Pydantic handles aliases automatically
+        return cls.model_validate(args_dict)
 
-        # Search settings
-        config.max_results = getattr(args, "max_results", config.max_results)
-        if getattr(args, "vec_id", None):
-            config.vec_ids = args.vec_id
-
-        # Tool settings
-        if getattr(args, "tool", None):
-            config.enabled_tools = args.tool
-
-        # Server settings
-        config.server_url = getattr(args, "server", config.server_url)
-
-        # Display settings
-        config.debug = getattr(args, "debug", config.debug)
-        config.json_output = getattr(args, "json", config.json_output)
-        config.quiet = getattr(args, "quiet", config.quiet)
-        config.use_rich = not getattr(args, "no_color", False)
-        config.throttle_ms = getattr(args, "throttle", config.throttle_ms)
-        config.chat_mode = getattr(args, "chat", config.chat_mode)
-
-        # Web search location
-        config.web_country = getattr(args, "country", config.web_country)
-        config.web_city = getattr(args, "city", config.web_city)
-
-        return config
-
-    def apply_dataset_config(self, dataset, args) -> None:
+    def apply_dataset_config(self, dataset, args) -> "AppConfig":
         """Apply dataset configuration with proper tool enablement logic.
 
         Args:
             dataset: TestDataset instance or None
             args: Parsed command line arguments
+
+        Returns:
+            New AppConfig instance with dataset configuration applied
         """
+        updates = {}
+
         # Use vectorstore ID from dataset if no command line vec_ids provided
         if dataset and dataset.vectorstore_id and not getattr(args, "vec_id", None):
-            self.vec_ids = [dataset.vectorstore_id]
+            updates["vec_ids"] = [dataset.vectorstore_id]
             # Enable file-search tool when using dataset
             if "file-search" not in self.enabled_tools:
-                self.enabled_tools.append("file-search")
+                updates["enabled_tools"] = self.enabled_tools + ["file-search"]
 
         # Use default vector IDs if none provided
-        if not self.vec_ids:
-            self.vec_ids = AppConfig().vec_ids
+        if not self.vec_ids and "vec_ids" not in updates:
+            updates["vec_ids"] = DEFAULT_VEC_IDS.copy()
 
         # Default to file-search if vec_ids provided but no tools specified
-        if not self.enabled_tools and self.vec_ids:
-            self.enabled_tools = ["file-search"]
+        vec_ids_to_check = updates.get("vec_ids", self.vec_ids)
+        tools_to_check = updates.get("enabled_tools", self.enabled_tools)
+        if not tools_to_check and vec_ids_to_check:
+            updates["enabled_tools"] = ["file-search"]
+
+        # Return new instance with updates if any, otherwise return self
+        if updates:
+            return self.model_copy(update=updates)
+        return self
 
     def get_web_location(self) -> dict | None:
         """Get web location configuration if set."""
