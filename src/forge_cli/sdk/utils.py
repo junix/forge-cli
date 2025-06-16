@@ -89,7 +89,8 @@ def get_tool_call_results(response: Response) -> list[dict[str, Any]]:
         return results
     for item in response.output:
         if hasattr(item, "type") and ("tool_call" in item.type or item.type == "function_call"):
-            if hasattr(item, "results") and item.results:  # 'results' is the attribute in the Pydantic model
+            # Use safe access since not all tool calls have results attribute
+            if hasattr(item, "results") and getattr(item, "results", None):
                 results.extend(item.results)
     return results
 
