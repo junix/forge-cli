@@ -52,54 +52,63 @@ class SearchConfig:
 
     @classmethod
     def from_args(cls, args) -> "SearchConfig":
-        """Create config from command line arguments."""
+        """Create config from command line arguments using type-safe attribute access."""
         config = cls()
 
-        # Model settings
-        if hasattr(args, "model"):
-            config.model = args.model
-        if hasattr(args, "effort"):
-            config.effort = args.effort
+        # Model settings - use direct attribute access since args is typed
+        config.model = getattr(args, "model", config.model)
+        config.effort = getattr(args, "effort", config.effort)
 
         # Question/query
-        if hasattr(args, "question"):
-            config.question = args.question
+        config.question = getattr(args, "question", config.question)
 
         # Search settings
-        if hasattr(args, "max_results"):
-            config.max_results = args.max_results
-        if hasattr(args, "vec_id") and args.vec_id:
+        config.max_results = getattr(args, "max_results", config.max_results)
+        if getattr(args, "vec_id", None):
             config.vec_ids = args.vec_id
 
         # Tool settings
-        if hasattr(args, "tool") and args.tool:
+        if getattr(args, "tool", None):
             config.enabled_tools = args.tool
 
         # Server settings
-        if hasattr(args, "server"):
-            config.server_url = args.server
+        config.server_url = getattr(args, "server", config.server_url)
 
         # Display settings
-        if hasattr(args, "debug"):
-            config.debug = args.debug
-        if hasattr(args, "json"):
-            config.json_output = args.json
-        if hasattr(args, "quiet"):
-            config.quiet = args.quiet
-        if hasattr(args, "no_color"):
-            config.use_rich = not args.no_color
-        if hasattr(args, "throttle"):
-            config.throttle_ms = args.throttle
-        if hasattr(args, "chat"):
-            config.chat_mode = args.chat
+        config.debug = getattr(args, "debug", config.debug)
+        config.json_output = getattr(args, "json", config.json_output)
+        config.quiet = getattr(args, "quiet", config.quiet)
+        config.use_rich = not getattr(args, "no_color", False)
+        config.throttle_ms = getattr(args, "throttle", config.throttle_ms)
+        config.chat_mode = getattr(args, "chat", config.chat_mode)
 
         # Web search location
-        if hasattr(args, "country"):
-            config.web_country = args.country
-        if hasattr(args, "city"):
-            config.web_city = args.city
+        config.web_country = getattr(args, "country", config.web_country)
+        config.web_city = getattr(args, "city", config.web_city)
 
         return config
+
+    def apply_dataset_config(self, dataset, args) -> None:
+        """Apply dataset configuration with proper tool enablement logic.
+
+        Args:
+            dataset: TestDataset instance or None
+            args: Parsed command line arguments
+        """
+        # Use vectorstore ID from dataset if no command line vec_ids provided
+        if dataset and dataset.vectorstore_id and not getattr(args, "vec_id", None):
+            self.vec_ids = [dataset.vectorstore_id]
+            # Enable file-search tool when using dataset
+            if "file-search" not in self.enabled_tools:
+                self.enabled_tools.append("file-search")
+
+        # Use default vector IDs if none provided
+        if not self.vec_ids:
+            self.vec_ids = SearchConfig().vec_ids
+
+        # Default to file-search if vec_ids provided but no tools specified
+        if not self.enabled_tools and self.vec_ids:
+            self.enabled_tools = ["file-search"]
 
     def get_web_location(self) -> dict | None:
         """Get web location configuration if set."""

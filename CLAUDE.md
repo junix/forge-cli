@@ -4,20 +4,36 @@
 
 This project provides modern, modular command-line tools and SDK for interacting with the Knowledge Forge API. Built with Python 3.8+ and structured as a proper Python package, it offers comprehensive functionality for file uploads, vector store management, AI-powered question answering, code analysis, and streaming responses.
 
-## 🆕 Migration to Typed API (In Progress)
+## ✅ Migration to Typed-Only Architecture (Complete)
 
-The project is currently migrating from dict-based to typed Response API for better type safety and developer experience. See [MIGRATION_STATUS.md](MIGRATION_STATUS.md) for current progress. Both APIs are supported during the transition:
+The project has completed its migration to a fully typed architecture with comprehensive type safety. See [MIGRATION_COMPLETE.md](MIGRATION_COMPLETE.md) for details. The system now uses:
 
 ```python
-# Old dict-based API (still works)
-async for event_type, event_data in astream_response(...):
-    text = event_data.get("text", "")
+# Typed API (primary interface)
+from forge_cli.sdk.typed_api import astream_typed_response, create_typed_request
+from forge_cli.response.type_guards.output_items import is_file_search_call
 
-# New typed API (recommended)
-request = create_typed_request(...)
+request = create_typed_request(
+    input_messages="Your query",
+    tools=[{"type": "file_search", "vector_store_ids": ["vs_123"]}]
+)
+
 async for event_type, response in astream_typed_response(request):
-    text = response.output_text  # Type-safe with IDE support
+    # Type-safe access with full IDE support
+    if hasattr(response, 'output'):
+        for item in response.output:
+            if is_file_search_call(item):
+                print(f"Searching: {item.queries}")
 ```
+
+## 🏗️ V3 Response-Snapshot Display Architecture
+
+The display system uses a V3 architecture based on response snapshots rather than event streaming, providing better consistency and easier testing. Key features:
+
+- **Snapshot-based rendering**: Displays render complete response states
+- **Pluggable renderers**: Easy to add new output formats
+- **Type-safe styling**: Citation and content styling with type checking
+- **Unified interface**: All renderers implement the same base interface
 
 ## Project Structure
 
@@ -572,7 +588,21 @@ Fast failure reveals problems early in development and prevents silent corruptio
 
 ## Import Conventions
 
-**IMPORTANT: Follow these import patterns based on directory level:**
+**IMPORTANT: Follow these import patterns based on directory level and API design:**
+
+### Response Types and Type Guards
+
+Always import response types from the centralized location:
+
+```python
+# Response types
+from forge_cli.response._types.response import ResponseFileSearchToolCall, ResponseOutputMessage
+from forge_cli.response._types.annotations import AnnotationFileCitation
+
+# Type guards for safe type narrowing
+from forge_cli.response.type_guards.output_items import is_file_search_call
+from forge_cli.response.type_guards.annotations import is_file_citation
+```
 
 ### Top-Level Directory (`src/forge_cli/`)
 
@@ -588,7 +618,7 @@ from forge_cli.stream.handler import StreamHandler
 from forge_cli.processors.registry import initialize_default_registry
 ```
 
-### Subdirectories (`models/`, `processors/`, `display/`, etc.)
+### Subdirectories (`models/`, `response/`, `display/`, `sdk/`, etc.)
 
 Files in subdirectories use **relative imports**:
 
@@ -704,19 +734,19 @@ vs_result = await async_create_vectorstore("My KB", file_ids=[file_result["id"]]
 The project follows modern software engineering principles:
 
 1. **Single Responsibility**: Each module has one clear purpose
-2. **Strategy Pattern**: Multiple display and processing strategies
-3. **Registry Pattern**: Dynamic processor selection
-4. **Stream Processing**: Event-driven architecture for real-time responses
-5. **Type Safety**: Comprehensive type annotations throughout
+2. **Type Safety First**: Comprehensive type annotations and TypeGuards throughout
+3. **Layered Architecture**: Clear separation between SDK, response handling, and display
+4. **Pluggable Components**: Swappable renderers and configurable displays
+5. **Response-Centric Design**: Architecture mirrors the API's response structure
 
 ### Key Components
 
-#### Stream Processing
+#### Response Processing
 
-Events from the Knowledge Forge API are processed through a modular pipeline:
+Responses from the Knowledge Forge API are processed through a typed pipeline:
 
 ```
-API Event Stream → StreamHandler → Event Router → Processor Registry → Display Strategy
+API Response Stream → TypedStreamHandler → Response Snapshots → Renderer Selection → Display Output
 ```
 
 #### Processor System
@@ -746,14 +776,47 @@ python -m forge_cli.scripts.hello-file-search -q "What's in these docs?"
 python -m forge_cli.scripts.simple-flow -f document.pdf -q "Summarize this"
 ```
 
-### Chat Mode
+### Interactive Chat Mode
+
+The CLI supports a comprehensive chat mode with persistent conversations:
 
 ```bash
-# Interactive chat with tools
-forge-cli --chat -t file-search --vec-id vs_123
+# Start interactive chat
+forge-cli --chat
 
-# Chat commands: /help, /save, /load, /tools, /model, /clear
+# Chat with initial configuration
+forge-cli --chat -t file-search --vec-id vs_123 -q "Hello"
+
+# Available chat commands:
+# /help, /save, /load, /tools, /model, /clear, /info, /config
+# /enable-web, /disable-web, /enable-files, /disable-files
 ```
+
+#### Chat Features
+
+- **Persistent Conversations**: Save/load chat sessions to JSON files
+- **Command System**: 13+ built-in commands with auto-completion
+- **Dynamic Tool Management**: Enable/disable tools during conversation
+- **Model Switching**: Change AI models mid-conversation
+- **Session Management**: Clear history, view statistics, export conversations
+- **Error Recovery**: Graceful handling of API errors and reconnection
+
+#### Chat Commands
+
+| Command | Description | Example |
+|---------|-------------|--------|
+| `/help` | Show available commands | `/help` |
+| `/save` | Save conversation | `/save my-session.json` |
+| `/load` | Load conversation | `/load my-session.json` |
+| `/tools` | Show active tools | `/tools` |
+| `/model` | Change AI model | `/model gpt-4` |
+| `/clear` | Clear conversation | `/clear` |
+| `/info` | Show session info | `/info` |
+| `/config` | Show configuration | `/config` |
+| `/enable-web` | Enable web search | `/enable-web` |
+| `/disable-web` | Disable web search | `/disable-web` |
+| `/enable-files` | Enable file search | `/enable-files` |
+| `/disable-files` | Disable file search | `/disable-files` |
 
 ## Development
 
@@ -764,7 +827,8 @@ forge-cli --chat -t file-search --vec-id vs_123
 forge-cli --debug -q "test query"
 
 # Test scripts
-python -m forge_cli.scripts.hello-async
+python scripts/debug.py --test-api
+python scripts/create-vectorstore.py
 ```
 
 ### Extending
@@ -811,21 +875,36 @@ forge-cli --debug -q "test query"
 forge-cli --version
 
 # Verify SDK
-python -c "from forge_cli.sdk import async_create_response; print('OK')"
+python -c "from forge_cli.sdk.typed_api import create_typed_request; print('OK')"
 ```
 
-**Common issues**: Import errors → `uv sync`, Connection refused → Check server URL, Missing API key → Set `OPENAI_API_KEY`
+### Common Issues & Solutions
+
+| Issue | Solution |
+|-------|----------|
+| Import errors | Run `uv sync` to install dependencies |
+| Connection refused | Check `KNOWLEDGE_FORGE_URL` environment variable |
+| Missing API key | Set `OPENAI_API_KEY` environment variable |
+| Type errors in IDE | Ensure Python 3.10+ and proper type stub installation |
+| Chat mode not working | Install `prompt-toolkit` for enhanced features |
+| Display issues | Try `--format plaintext` or `--format json` |
+| Performance issues | Use `--debug` to identify bottlenecks |
 
 ## Architecture Decision Records
 
 The project includes comprehensive ADRs documenting design decisions:
 
-- **[CLAUDE-001](docs/adr/CLAUDE-001-commandline-design.md)**: Command-line interface design principles
-- **[CLAUDE-002](docs/adr/CLAUDE-002-reasoning-event-handling.md)**: Reasoning event handling in streaming
-- **[CLAUDE-003](docs/adr/CLAUDE-003-file-search-annotation-display.md)**: File search citation display architecture
-- **[CLAUDE-004](docs/adr/CLAUDE-004-snapshot-based-streaming-design.md)**: Snapshot-based streaming approach
-- **[CLAUDE-009](docs/adr/CLAUDE-009-code-analyzer-tool.md)**: Code Analyzer tool design and integration (DRAFT)
-- **[CLAUDE-010](docs/adr/CLAUDE-010-response-type-guards.md)**: TypeGuard functions for Response types
+- **[ADR-001](docs/adr/ADR-001-commandline-design.md)**: Command-line interface design principles
+- **[ADR-002](docs/adr/ADR-002-reasoning-event-handling.md)**: Reasoning event handling in streaming
+- **[ADR-003](docs/adr/ADR-003-file-search-annotation-display.md)**: File search citation display architecture
+- **[ADR-004](docs/adr/ADR-004-snapshot-based-streaming-design.md)**: Snapshot-based streaming approach
+- **[ADR-005](docs/adr/ADR-005-interactive-chat-mode.md)**: Interactive chat mode implementation
+- **[ADR-006](docs/adr/ADR-006-v2-event-based-display-architecture.md)**: V2 event-based display architecture
+- **[ADR-007](docs/adr/ADR-007-typed-only-architecture-migration.md)**: Migration to typed-only architecture
+- **[ADR-008](docs/adr/ADR-008-v3-response-snapshot-display-architecture.md)**: V3 response-snapshot display architecture
+- **[ADR-009](docs/adr/ADR-009-code-analyzer-tool.md)**: Code Analyzer tool design and integration
+- **[ADR-010](docs/adr/ADR-010-response-type-guards.md)**: TypeGuard functions for Response types
+- **[ADR-011](docs/adr/ADR-011-tool-call-architecture.md)**: Tool call architecture design
 
 ## Contributing
 

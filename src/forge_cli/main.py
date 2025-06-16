@@ -1,353 +1,39 @@
-"""Main entry point - updated to use typed API by default with proper chat support."""
+"""Main entry point - refactored for better organization and type safety."""
 
-import argparse
 import asyncio
 import os
 import sys
-from typing import TYPE_CHECKING
 
-# Use absolute imports from top-level directory
-from forge_cli.chat.controller import ChatController
+from forge_cli.chat.session import ChatSessionManager
+from forge_cli.cli.parser import CLIParser
 from forge_cli.config import SearchConfig
-
-# Import the TestDataset loader
 from forge_cli.dataset import TestDataset
-
-# Registry no longer needed - using v3 directly
-# Note: Registry system removed - all processing now handled by v3 renderers
-from forge_cli.sdk import astream_typed_response
-from forge_cli.stream.handler_typed import TypedStreamHandler
-
-if TYPE_CHECKING:
-    from forge_cli.display.v3.base import Display
+from forge_cli.display.factory import DisplayFactory
 
 
-def create_display(config: SearchConfig) -> "Display":
-    """Create appropriate display based on configuration using v3 architecture."""
-    # Import v3 components
-    from forge_cli.display.v3.base import Display
+def create_config_from_args(args) -> SearchConfig:
+    """Create and configure SearchConfig from parsed arguments.
 
-    # Determine if we're in chat mode
-    in_chat_mode = getattr(config, "chat_mode", False) or getattr(config, "chat", False)
-    mode = "chat" if in_chat_mode else "default"
+    Args:
+        args: Parsed command line arguments
 
-    # Choose renderer based on configuration
-    if getattr(config, "json_output", False):
-        # JSON output with Rich live updates
-        from forge_cli.display.v3.renderers.json import JsonDisplayConfig, JsonRenderer
+    Returns:
+        Configured SearchConfig instance
+    """
+    # Create base configuration
+    config = SearchConfig.from_args(args)
 
-        json_config = JsonDisplayConfig(
-            pretty_print=True,
-            include_metadata=getattr(config, "debug", False),
-            include_usage=not getattr(config, "quiet", False),
-            show_panel=not getattr(config, "quiet", False),  # No panel in quiet mode
-            panel_title="🔍 Knowledge Forge JSON Response" if in_chat_mode else "📋 JSON Response",
-            syntax_theme="monokai",
-            line_numbers=not in_chat_mode
-            and not getattr(config, "quiet", False),  # No line numbers in chat or quiet mode
-        )
-        renderer = JsonRenderer(config=json_config)
-
-    elif not getattr(config, "use_rich", True):
-        # Plain text output
-        from forge_cli.display.v3.renderers.plaintext import PlaintextDisplayConfig, PlaintextRenderer
-
-        plain_config = PlaintextDisplayConfig(
-            show_reasoning=getattr(config, "show_reasoning", True),
-            show_citations=True,
-            show_usage=not getattr(config, "quiet", False),
-            show_metadata=getattr(config, "debug", False),
-        )
-        renderer = PlaintextRenderer(config=plain_config)
-
-    else:
-        # Rich terminal UI (default)
-        from forge_cli.display.v3.renderers.rich import RichDisplayConfig, RichRenderer
-
-        display_config = RichDisplayConfig(
-            show_reasoning=getattr(config, "show_reasoning", True),
-            show_citations=True,
-            show_tool_details=True,
-            show_usage=not getattr(config, "quiet", False),
-            show_metadata=getattr(config, "debug", False),
-        )
-        renderer = RichRenderer(config=display_config, in_chat_mode=in_chat_mode)
-
-    # Create v3 display
-    return Display(renderer, mode=mode)
-
-
-async def start_chat_mode(
-    config: SearchConfig, initial_question: str | None = None, resume_conversation_id: str | None = None
-) -> None:
-    """Start interactive chat mode with typed API."""
-    # Note: Registry initialization removed - processing handled by v3 renderers
-
-    # Create display
-    display = create_display(config)
-
-    # Create chat controller
-    controller = ChatController(config, display)
-
-    # Resume existing conversation if requested
-    if resume_conversation_id:
-        from forge_cli.models.conversation import ConversationState
-
-        controller.conversation = ConversationState.load_by_id(resume_conversation_id)
-        display.show_status(
-            f"📂 Resumed conversation {resume_conversation_id} with {controller.conversation.get_message_count()} messages"
-        )
-
-    async def handle_user_message(content: str) -> None:
-        """Handle user message using typed API with proper chat support."""
-        # Increment turn count for each user message
-        controller.conversation.increment_turn_count()
-
-        # Create a fresh display for this message
-        message_display = create_display(config)
-
-        # Set display to chat mode - use the Display's mode property
-        message_display.mode = "chat"
-
-        # Create typed request with full conversation history (automatically adds user message)
-        request = controller.conversation.new_request(content, config)
-
-        # Create typed handler and stream
-        handler = TypedStreamHandler(message_display, debug=config.debug)
-
-        # Stream the response
-        event_stream = astream_typed_response(request, debug=config.debug)
-        response = await handler.handle_stream(event_stream)
-
-        # Update conversation state from response (includes adding assistant message)
-        if response:
-            controller.conversation.update_from_response(response)
-
-    # Show welcome
-    controller.show_welcome()
-
-    # If initial question provided, process it first
-    if initial_question:
-        await handle_user_message(initial_question)
-
-    # Start chat loop
-    controller.running = True
-
-    while controller.running:
-        # Get user input
-        user_input = await controller.get_user_input()
-
-        if user_input is None:  # EOF or interrupt
-            break
-
-        # Parse for commands first
-        command_name, args = controller.commands.parse_command(user_input)
-
-        if command_name is not None:
-            # Handle command
-            continue_chat = await controller.handle_command(command_name, args)
-            if not continue_chat:
-                break
-        else:
-            # Check for empty messages
-            if not user_input or user_input.isspace():
-                continue
-
-            # Handle user message
-            await handle_user_message(user_input)
-
-
-async def main():
-    """Main function to handle command line arguments and run the request."""
-    # Check if no arguments provided
-    show_help = len(sys.argv) == 1
-
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(
-        description="Refactored multi-tool search using Knowledge Forge SDK (typed API)",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-
-    # Query argument
-    parser.add_argument(
-        "--question",
-        "-q",
-        type=str,
-        default="What information can you find in the documents?",
-        help="Question to ask",
-    )
-
-    # Vector store arguments
-    parser.add_argument(
-        "--vec-id",
-        action="append",
-        default=None,
-        help="Vector store ID(s) to search in (can specify multiple)",
-    )
-    # Dataset argument
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        help="Path to dataset JSON file with vectorstore ID and file configurations",
-    )
-
-    # Model arguments
-    parser.add_argument(
-        "--model",
-        "-m",
-        type=str,
-        default="qwen-max-latest",
-        help="Model to use for the response",
-    )
-    parser.add_argument(
-        "--effort",
-        "-e",
-        type=str,
-        choices=["low", "medium", "high", "dev"],
-        default="low",
-        help="Effort level for the response",
-    )
-
-    # Search arguments
-    parser.add_argument(
-        "--max-results",
-        type=int,
-        default=10,
-        help="Maximum number of search results per vector store",
-    )
-
-    # Tool arguments
-    parser.add_argument(
-        "--tool",
-        "-t",
-        action="append",
-        choices=["file-search", "web-search"],
-        help="Enable specific tools (can specify multiple)",
-    )
-
-    # Web search location
-    parser.add_argument(
-        "--country",
-        type=str,
-        help="Country for web search location context",
-    )
-    parser.add_argument(
-        "--city",
-        type=str,
-        help="City for web search location context",
-    )
-
-    # Display arguments
-    parser.add_argument(
-        "--debug",
-        "-d",
-        action="store_true",
-        help="Enable debug output",
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON",
-    )
-    parser.add_argument(
-        "--quiet",
-        "-Q",
-        action="store_true",
-        help="Quiet mode - minimal output",
-    )
-    parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help="Disable colored output",
-    )
-    parser.add_argument(
-        "--throttle",
-        type=int,
-        default=0,
-        help="Throttle output (milliseconds between tokens)",
-    )
-
-    # Server argument
-    parser.add_argument(
-        "--server",
-        default=os.environ.get("KNOWLEDGE_FORGE_URL", "http://localhost:9999"),
-        help="Server URL",
-    )
-
-    # Resume conversation argument
-    parser.add_argument(
-        "--resume",
-        "-r",
-        type=str,
-        help="Resume an existing conversation by ID",
-    )
-
-    # Other arguments
-    parser.add_argument(
-        "--version",
-        "-v",
-        action="store_true",
-        help="Show version and exit",
-    )
-
-    args = parser.parse_args()
-
-    # Show help if no arguments
-    if show_help and not any(arg in sys.argv for arg in ["-h", "--help"]):
-        parser.print_help()
-        print("\nExample usage:")
-        print("  # Start interactive chat (default mode):")
-        print("  python -m forge_cli")
-        print()
-        print("  # Start chat with specific model:")
-        print("  python -m forge_cli -m qwen3-235b-a22b")
-        print()
-        print("  # Start chat with file search enabled:")
-        print("  python -m forge_cli --vec-id vec_123 -t file-search")
-        print()
-        print("  # Start chat with web search enabled:")
-        print("  python -m forge_cli -t web-search")
-        print()
-        print("  # Start chat with initial question:")
-        print('  python -m forge_cli -q "What information is in these documents?"')
-        print()
-        print("  # Resume existing conversation:")
-        print("  python -m forge_cli --resume conv_123")
-        return
-
-    # Handle version
-    if args.version:
-        from . import __version__
-
-        print(f"Knowledge Forge File Search Refactored v{__version__}")
-        return
-
-    # Handle dataset if provided
+    # Handle dataset configuration if provided
     dataset = None
     if getattr(args, "dataset", None):
         dataset = TestDataset.from_json(args.dataset)
-        if not args.quiet:
+        if not config.quiet:
             print(f"Loaded dataset from {args.dataset}")
             print(f"  Vector Store ID: {dataset.vectorstore_id}")
             print(f"  Files: {len(dataset.files)}")
 
-    # Create configuration
-    config = SearchConfig.from_args(args)
-
-    # Use vectorstore ID from dataset if no command line vec_ids provided
-    if dataset and dataset.vectorstore_id and not args.vec_id:
-        config.vec_ids = [dataset.vectorstore_id]
-        # Enable file-search tool when using dataset
-        if "file-search" not in config.enabled_tools:
-            config.enabled_tools.append("file-search")
-
-    # Use default vector IDs if none provided
-    if not config.vec_ids:
-        config.vec_ids = SearchConfig().vec_ids
-
-    # Default to file-search if vec_ids provided but no tools specified
-    if not config.enabled_tools and config.vec_ids:
-        config.enabled_tools = ["file-search"]
+    # Apply dataset-specific configuration
+    config.apply_dataset_config(dataset, args)
 
     # Update environment if server specified
     if config.server_url != os.environ.get("KNOWLEDGE_FORGE_URL"):
@@ -355,12 +41,23 @@ async def main():
         if not config.quiet and not config.json_output:
             print(f"🔗 Using server: {config.server_url}")
 
-    # Check if resume mode is requested, otherwise start new chat
-    if hasattr(args, "resume") and args.resume:
-        # Resume existing conversation
-        await start_chat_mode(config, None, args.resume)
-    else:
-        await start_chat_mode(config, None)
+    return config
+
+
+async def main():
+    """Main function - simplified and refactored for better organization."""
+    # Parse command line arguments with help and version handling
+    args = CLIParser.parse_args()
+
+    # Create and configure SearchConfig
+    config = create_config_from_args(args)
+
+    # Create display
+    display = DisplayFactory.create_display(config)
+
+    # Create and start chat session
+    session_manager = ChatSessionManager(config, display)
+    await session_manager.start_session(initial_question=None, resume_conversation_id=getattr(args, "resume", None))
 
 
 def run_main_async():
