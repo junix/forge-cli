@@ -211,7 +211,7 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
 
         # Start the display for this message
         # The v3 Display class always has show_request_info method
-        message_display.show_request_info({"query": content})
+        message_display.show_request_info({"question": content})
 
         # Create typed handler and stream
         handler = TypedStreamHandler(message_display, debug=config.debug)

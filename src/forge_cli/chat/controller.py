@@ -381,7 +381,7 @@ class ChatController:
         # Start the display for this message (creates Live display if needed)
         # Use the Display's show_request_info method directly - it handles capability checking internally
         # The v3 Display class always has show_request_info method
-        self.display.show_request_info({"query": content})
+        self.display.show_request_info({"question": content})
 
         if self.config.debug:
             print(f"\nDEBUG: Conversation has {self.conversation.get_message_count()} messages")

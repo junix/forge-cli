@@ -145,7 +145,7 @@ class Display:
         elif hasattr(self._renderer, "_console"):
             # Fallback for rich renderers
             console = self._renderer._console
-            console.print(f"[cyan]Query:[/cyan] {info.get('question', 'N/A')}")
+            # console.print(f"[cyan]Query:[/cyan] {info.get('question', 'N/A')}")
             if info.get("model"):
                 console.print(f"[cyan]Model:[/cyan] {info['model']}")
             if info.get("tools"):
