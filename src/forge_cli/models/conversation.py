@@ -71,6 +71,17 @@ class ConversationState:
     metadata: dict[str, Union[str, int, float, bool]] = field(default_factory=dict)
     # Use proper ResponseUsage instead of manual tracking
     usage: Union[ResponseUsage, None] = None
+    used_vector_store_ids: set[str] = field(default_factory=set)
+
+    def __post_init__(self):
+        """Initialize used_vector_store_ids from tools if not set."""
+        if not self.used_vector_store_ids and self.tools:
+            # Extract vector store IDs from file search and document finder tools
+            for tool in self.tools:
+                if is_file_search_tool(tool):
+                    self.used_vector_store_ids.update(tool.vector_store_ids)
+                elif is_document_finder_tool(tool):
+                    self.used_vector_store_ids.update(tool.vector_store_ids)
 
     def add_message(self, message: ResponseInputMessageItem) -> None:
         """Add a message to the conversation."""
@@ -170,6 +181,7 @@ class ConversationState:
             "metadata": self.metadata,
             "usage": self.usage.model_dump() if self.usage else None,
             "messages": [msg.model_dump() for msg in self.messages],
+            "used_vector_store_ids": list(self.used_vector_store_ids),
         }
 
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -205,6 +217,9 @@ class ConversationState:
         if tools_data:
             tools = cls._load_tools(tools_data)
 
+        # Load used_vector_store_ids
+        used_vector_store_ids = set(data.get("used_vector_store_ids", []))
+
         conversation = cls(
             session_id=data["session_id"],
             created_at=data["created_at"],
@@ -212,6 +227,7 @@ class ConversationState:
             tools=tools,
             metadata=data.get("metadata", {}),
             usage=usage,
+            used_vector_store_ids=used_vector_store_ids,
         )
 
         # Load messages using Pydantic models
