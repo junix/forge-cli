@@ -12,14 +12,14 @@ from rich.text import Text
 
 from forge_cli.response._types.response import Response
 from forge_cli.response.type_guards import (
-    is_file_search_call,
-    is_web_search_call,
+    is_code_interpreter_call,
     is_document_finder_call,
     is_file_reader_call,
-    is_code_interpreter_call,
+    is_file_search_call,
     is_function_call,
     is_message_item,
     is_reasoning_item,
+    is_web_search_call,
 )
 
 from ..base import BaseRenderer
@@ -481,11 +481,7 @@ class RichRenderer(BaseRenderer):
                     lang = "Code"
 
                 # Extract first meaningful line
-                lines = [
-                    line.strip()
-                    for line in code.split("\n")
-                    if line.strip() and not line.strip().startswith("#")
-                ]
+                lines = [line.strip() for line in code.split("\n") if line.strip() and not line.strip().startswith("#")]
                 if lines:
                     code_preview = lines[0][:35] + "..." if len(lines[0]) > 35 else lines[0]
                     parts.append(f"{ICONS['code']}{lang}: `{code_preview}`")
@@ -498,9 +494,7 @@ class RichRenderer(BaseRenderer):
             # Show output if available
             output = getattr(tool_item, "output", None)
             if output:
-                output_preview = (
-                    str(output)[:30] + "..." if len(str(output)) > 30 else str(output)
-                )
+                output_preview = str(output)[:30] + "..." if len(str(output)) > 30 else str(output)
                 parts.append(f"{ICONS['output_tokens']}output: {output_preview}")
 
             if parts:
@@ -534,9 +528,7 @@ class RichRenderer(BaseRenderer):
             # Show result preview if available
             output = getattr(tool_item, "output", None)
             if output:
-                output_str = (
-                    str(output)[:40] + "..." if len(str(output)) > 40 else str(output)
-                )
+                output_str = str(output)[:40] + "..." if len(str(output)) > 40 else str(output)
                 parts.append(f"{ICONS['check']}{output_str}")
 
             if parts:
