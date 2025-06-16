@@ -331,10 +331,10 @@ class ConversationState:
         conversations.sort(key=lambda x: x["created_at"], reverse=True)
         return conversations
 
-    def update_stream_state(self, state: "StreamState") -> None:
-        """Update conversation state from stream state.
+    def update_from_response(self, response: "Response") -> None:
+        """Update conversation state from response object.
 
-        This method transfers relevant information from a StreamState object
+        This method transfers relevant information from a Response object
         to the ConversationState, including:
         - Token usage statistics
         - Accessed files
@@ -342,38 +342,46 @@ class ConversationState:
         - Model information
 
         Args:
-            state: StreamState object from stream processing
+            response: Response object from stream processing
         """
-        # Import here to avoid circular imports
-
         # Handle usage information from response
-        if state.response and state.response.usage:
-            self.add_token_usage(state.response.usage)
+        if response.usage:
+            self.add_token_usage(response.usage)
 
         # Handle accessed files - extract from response
-        if state.response:
-            accessed_files = self._extract_accessed_files_from_response(state.response)
-            if accessed_files:
-                self.add_accessed_files(accessed_files)
+        accessed_files = self._extract_accessed_files_from_response(response)
+        if accessed_files:
+            self.add_accessed_files(accessed_files)
 
-        # Handle vector store IDs
-        vector_store_ids = state.get_vector_store_ids()
+        # Handle vector store IDs - extract from response instead of config
+        vector_store_ids = self._extract_vector_store_ids_from_response(response)
         if vector_store_ids:
             self.used_vector_store_ids.update(vector_store_ids)
 
         # Handle model information from response
-        if state.response and state.response.model:
+        if response.model:
             # Only update if we don't have a model set or if it's different
-            if not self.model or self.model != state.response.model:
-                self.model = state.response.model
+            if not self.model or self.model != response.model:
+                self.model = response.model
 
         # Add assistant message from response
+        assistant_text = response.output_text
+        if assistant_text:
+            self.add_assistant_message(assistant_text)
+            # Increment turn count when we successfully add an assistant message
+            self.increment_turn_count()
+
+    def update_stream_state(self, state: "StreamState") -> None:
+        """Update conversation state from stream state.
+
+        DEPRECATED: Use update_from_response() instead.
+        This method is kept for backward compatibility.
+
+        Args:
+            state: StreamState object from stream processing
+        """
         if state.response:
-            assistant_text = state.response.output_text
-            if assistant_text:
-                self.add_assistant_message(assistant_text)
-                # Increment turn count when we successfully add an assistant message
-                self.increment_turn_count()
+            self.update_from_response(state.response)
 
     def _extract_accessed_files_from_response(self, response: "Response") -> list[str]:
         """Extract accessed files from Response object using type guards."""
@@ -390,6 +398,20 @@ class ConversationState:
                         file_mapping[file_id] = filename
 
         return list(file_mapping.values())
+
+    def _extract_vector_store_ids_from_response(self, response: "Response") -> list[str]:
+        """Extract vector store IDs from Response object by looking at file search tool calls."""
+        from ..response.type_guards import is_file_search_call
+
+        vector_store_ids = set()
+        for item in response.output:
+            if is_file_search_call(item):
+                # Extract vector store IDs from the tool call if available
+                vs_ids = getattr(item, "vector_store_ids", None)
+                if vs_ids:
+                    vector_store_ids.update(vs_ids)
+
+        return list(vector_store_ids)
 
     def save(self, path: Path) -> None:
         """Save conversation to a JSON file."""

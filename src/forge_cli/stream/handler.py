@@ -4,7 +4,6 @@ from collections.abc import AsyncIterator
 
 from ..display.v3.base import Display
 from ..response._types import Response
-from .stream_state import StreamState
 
 
 class TypedStreamHandler:
@@ -19,9 +18,9 @@ class TypedStreamHandler:
     async def handle_stream(
         self,
         stream: AsyncIterator[tuple[str, Response | None]],
-        initial_request: str,
-        vector_store_ids: list[str] | None = None,
-    ) -> StreamState:
+        initial_request: str,  # noqa: ARG002 - kept for API compatibility
+        vector_store_ids: list[str] | None = None,  # noqa: ARG002 - kept for API compatibility
+    ) -> Response | None:
         """
         Handle streaming events from typed API.
 
@@ -31,22 +30,16 @@ class TypedStreamHandler:
             vector_store_ids: Optional list of vector store IDs from user configuration
 
         Returns:
-            Final StreamState after processing all events
+            Final Response object after processing all events, or None if no response
         """
-        state = StreamState()
-
-        # Initialize vector store IDs from user configuration if provided
-        if vector_store_ids:
-            state.initialize_vector_store_ids(vector_store_ids)
+        final_response: Response | None = None
 
         # Process events
         async for event_type, event_data in stream:
-            state.event_count += 1
-
             if self.debug:
                 if event_data is not None and isinstance(event_data, Response):
                     # Show the FULL model dump for Response objects
-                    print(f"[{state.event_count}] {event_type}: Response data:")
+                    print(f"{event_type}: Response data:")
                     try:
                         # Use model_dump() to get the full dictionary representation
                         import json
@@ -59,12 +52,12 @@ class TypedStreamHandler:
                         print(f"  Error dumping model: {e}")
                         print(f"  Response repr: {repr(event_data)}")
                 else:
-                    print(f"[{state.event_count}] {event_type}: {type(event_data)}")
+                    print(f"{event_type}: {type(event_data)}")
 
             # Handle snapshot events (events with Response objects)
             if event_data is not None and isinstance(event_data, Response):
                 # Store the Response snapshot directly
-                state.response = event_data
+                final_response = event_data
                 # Render the complete Response snapshot using v3 display
                 self.display.handle_response(event_data)
 
@@ -91,7 +84,7 @@ class TypedStreamHandler:
             if self.debug and event_data is None:
                 print(f"  └─ Event {event_type} (no data)")
 
-        return state
+        return final_response
 
     # Note: Most processing logic has been moved to v3 renderers
     # The TypedStreamHandler now focuses purely on routing Response objects to displays

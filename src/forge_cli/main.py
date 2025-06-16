@@ -99,16 +99,15 @@ async def process_search(config: SearchConfig, question: str) -> dict[str, str |
 
     # Stream and process with typed API
     event_stream = astream_typed_response(request, debug=config.debug)
-    state = await handler.handle_stream(event_stream, question, config.vec_ids)
+    response = await handler.handle_stream(event_stream, question, config.vec_ids)
 
-    # Return state information
+    # Return response information
     return {
-        "response_id": state.response.id if state.response else None,
-        "model": state.response.model if state.response else None,
-        "usage": state.response.usage if state.response else None,
-        "event_count": state.event_count,
-        "citations": state.response,  # Return full response for citation extraction
-        "vector_store_ids": state.get_vector_store_ids(),
+        "response_id": response.id if response else None,
+        "model": response.model if response else None,
+        "usage": response.usage if response else None,
+        "citations": response,  # Return full response for citation extraction
+        "vector_store_ids": config.vec_ids,  # Use config vector store IDs directly
     }
 
 
@@ -158,11 +157,11 @@ async def start_chat_mode(
 
         # Stream the response
         event_stream = astream_typed_response(request, debug=config.debug)
-        state = await handler.handle_stream(event_stream, content, config.vec_ids)
+        response = await handler.handle_stream(event_stream, content, config.vec_ids)
 
-        # Update conversation state from stream state (includes adding assistant message)
-        if state:
-            controller.conversation.update_stream_state(state)
+        # Update conversation state from response (includes adding assistant message)
+        if response:
+            controller.conversation.update_from_response(response)
 
     # Replace method
     controller.send_message = typed_send_message
