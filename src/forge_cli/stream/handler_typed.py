@@ -122,6 +122,10 @@ class StreamState:
                     if file_id and filename:
                         self.file_id_to_name[file_id] = filename
 
+    def get_accessed_files(self) -> list[str]:
+        """Get list of files accessed during this stream session."""
+        return list(self.file_id_to_name.values())
+
     def _extract_reasoning_typed(self, response: Response) -> None:
         """Extract reasoning from typed Response using type guards."""
         for item in response.output:

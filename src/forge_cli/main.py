@@ -198,6 +198,9 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
         # Add user message to conversation
         controller.conversation.add_user_message(content)
 
+        # Increment turn count for each user message
+        controller.conversation.increment_turn_count()
+
         # Create a fresh display for this message
         message_display = create_display(config)
 
@@ -221,6 +224,26 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
             # Stream the response
             event_stream = astream_typed_response(request, debug=config.debug)
             state = await handler.handle_stream(event_stream, content, config.vec_ids)
+
+            # Track accessed files from the stream state
+            if state:
+                accessed_files = state.get_accessed_files()
+                if accessed_files:
+                    controller.conversation.add_accessed_files(accessed_files)
+
+            # Track token usage from the stream state
+            if state and state.usage:
+                # Convert dict usage to ResponseUsage
+                from .response._types.response_usage import ResponseUsage, InputTokensDetails, OutputTokensDetails
+
+                usage = ResponseUsage(
+                    input_tokens=state.usage["input_tokens"],
+                    output_tokens=state.usage["output_tokens"],
+                    total_tokens=state.usage["total_tokens"],
+                    input_tokens_details=InputTokensDetails(cached_tokens=0),
+                    output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
+                )
+                controller.conversation.add_token_usage(usage)
 
             # Extract assistant response from state using type guards
             if state and state.output_items:

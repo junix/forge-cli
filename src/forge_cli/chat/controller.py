@@ -369,6 +369,9 @@ class ChatController:
         # Add user message to conversation
         self.conversation.add_user_message(content)
 
+        # Increment turn count for each user message
+        self.conversation.increment_turn_count()
+
         # Show user message if display supports it
         # For v3 displays, we don't need to show user message - it's already visible in the terminal
 
@@ -424,6 +427,26 @@ class ChatController:
 
             event_stream = astream_typed_response(typed_request, debug=self.config.debug)
             stream_state = await handler.handle_stream(event_stream, content)
+
+            # Track accessed files from the stream state
+            if stream_state:
+                accessed_files = stream_state.get_accessed_files()
+                if accessed_files:
+                    self.conversation.add_accessed_files(accessed_files)
+
+            # Track token usage from the stream state
+            if stream_state and stream_state.usage:
+                # Convert dict usage to ResponseUsage
+                from ..response._types.response_usage import ResponseUsage, InputTokensDetails, OutputTokensDetails
+
+                usage = ResponseUsage(
+                    input_tokens=stream_state.usage["input_tokens"],
+                    output_tokens=stream_state.usage["output_tokens"],
+                    total_tokens=stream_state.usage["total_tokens"],
+                    input_tokens_details=InputTokensDetails(cached_tokens=0),
+                    output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
+                )
+                self.conversation.add_token_usage(usage)
 
             # StreamState is a typed dataclass with a final_response attribute
             if stream_state and stream_state.final_response:

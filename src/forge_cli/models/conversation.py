@@ -72,6 +72,10 @@ class ConversationState:
     # Use proper ResponseUsage instead of manual tracking
     usage: Union[ResponseUsage, None] = None
     used_vector_store_ids: set[str] = field(default_factory=set)
+    # Track files accessed during the session
+    accessed_files: set[str] = field(default_factory=set)
+    # Track conversation turns
+    turn_count: int = 0
 
     def __post_init__(self):
         """Initialize used_vector_store_ids from tools if not set."""
@@ -171,6 +175,24 @@ class ConversationState:
         """Reset token usage."""
         self.usage = None
 
+    def add_accessed_file(self, file_path: str) -> None:
+        """Add a file to the accessed files set."""
+        if file_path:
+            self.accessed_files.add(file_path)
+
+    def add_accessed_files(self, file_paths: list[str]) -> None:
+        """Add multiple files to the accessed files set."""
+        for file_path in file_paths:
+            self.add_accessed_file(file_path)
+
+    def get_accessed_files(self) -> list[str]:
+        """Get sorted list of accessed files."""
+        return sorted(list(self.accessed_files))
+
+    def increment_turn_count(self) -> None:
+        """Increment the conversation turn counter."""
+        self.turn_count += 1
+
     def save(self, path: Path) -> None:
         """Save conversation to a JSON file."""
         data = {
@@ -182,6 +204,8 @@ class ConversationState:
             "usage": self.usage.model_dump() if self.usage else None,
             "messages": [msg.model_dump() for msg in self.messages],
             "used_vector_store_ids": list(self.used_vector_store_ids),
+            "accessed_files": list(self.accessed_files),
+            "turn_count": self.turn_count,
         }
 
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -220,6 +244,12 @@ class ConversationState:
         # Load used_vector_store_ids
         used_vector_store_ids = set(data.get("used_vector_store_ids", []))
 
+        # Load accessed_files
+        accessed_files = set(data.get("accessed_files", []))
+
+        # Load turn_count
+        turn_count = data.get("turn_count", 0)
+
         conversation = cls(
             session_id=data["session_id"],
             created_at=data["created_at"],
@@ -228,6 +258,8 @@ class ConversationState:
             metadata=data.get("metadata", {}),
             usage=usage,
             used_vector_store_ids=used_vector_store_ids,
+            accessed_files=accessed_files,
+            turn_count=turn_count,
         )
 
         # Load messages using Pydantic models

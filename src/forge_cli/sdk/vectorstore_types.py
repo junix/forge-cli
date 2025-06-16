@@ -23,15 +23,9 @@ class Vectorstore(BaseModel):
     description: str | None = None
     file_ids: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] | None = None
-    status: str  # e.g., "active", "creating", "failed"
     created_at: datetime
-    updated_at: datetime
     bytes: int | None = None
     file_counts: FileCounts
-    task_id: str | None = None  # ID of the task that created/updated this vector store
-    last_task_status: str | None = None  # Status of the last task related to this vector store
-    last_processed_at: datetime | None = None
-
     class Config:
         populate_by_name = True
         allow_population_by_field_name = True
