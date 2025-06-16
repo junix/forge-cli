@@ -323,7 +323,7 @@ class ChatController:
         else:
             # Check for empty messages
             if not user_input or user_input.isspace():
-                self.display.show_error("Empty messages cannot be sent. Please type something.")
+                # self.display.show_error("Empty messages cannot be sent. Please type something.")
                 return True
 
             # Send as message

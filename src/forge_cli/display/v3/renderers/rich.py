@@ -22,9 +22,9 @@ from forge_cli.response.type_guards import (
     is_web_search_call,
 )
 
+from ...citation_styling import long2circled
 from ..base import BaseRenderer
 from ..style import ICONS, STATUS_ICONS, pack_queries
-from ...citation_styling import long2circled
 
 
 class RichDisplayConfig(BaseModel):
@@ -248,26 +248,29 @@ class RichRenderer(BaseRenderer):
         title_parts = []
 
         # Full message ID
-        title_parts.append(response.id)
+        # title_parts.append(response.id)
 
         # Status
-        if response.status:
-            title_parts.append(response.status)
+        # if response.status:
+        #     title_parts.append(response.status)
 
         # Usage information with icons from style.py
         if response.usage:
-            usage_part = f"{ICONS['input_tokens']}{response.usage.input_tokens or 0} {ICONS['output_tokens']}{response.usage.output_tokens or 0}"
-            title_parts.append(usage_part)
+            title_parts.append("[yellow]" + ICONS["input_tokens"] + "[/yellow]")
+            title_parts.append(f"[green]{response.usage.input_tokens}[/green]")
+            title_parts.append("[yellow]" + ICONS["output_tokens"] + "[/yellow]")
+            title_parts.append(f"[green]{response.usage.output_tokens}[/green]")
 
-        panel_title = " / ".join(title_parts)
+        panel_title = " ".join(title_parts)
 
         # Determine panel style based on response status
         border_style, title_style = self._get_panel_style(response)
 
         return Panel(
             markdown_content,
-            title=f"[{title_style}]{panel_title}[/{title_style}]",
+            title=panel_title,
             border_style=border_style,
+            title_align="left",
             padding=(1, 2),
         )
 
@@ -494,8 +497,7 @@ class RichRenderer(BaseRenderer):
         # ASCII art logo
         ascii_art = """
 ╔═══════════════════════════════════════╗
-║        Knowledge Forge v3             ║
-║        Rich Display Renderer          ║
+║        Knowledge Forge                ║
 ╚═══════════════════════════════════════╝
 """
         welcome_text.append(ascii_art, style="cyan")
