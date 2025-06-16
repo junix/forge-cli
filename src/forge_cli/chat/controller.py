@@ -103,67 +103,12 @@ class ChatController:
 
         if sys.stdin.isatty():
             from prompt_toolkit import PromptSession
-            from prompt_toolkit.completion import Completer, Completion
             from prompt_toolkit.formatted_text import FormattedText
             from prompt_toolkit.history import FileHistory
             from prompt_toolkit.styles import Style
 
-            # Custom completer class for commands
-            class CommandCompleter(Completer):
-                def __init__(self, commands_dict, aliases_dict):
-                    self.commands = commands_dict
-                    self.aliases = aliases_dict
-                    # Build list of all command names with leading slash
-                    self.all_commands = []
-                    for cmd in commands_dict.keys():
-                        self.all_commands.append(f"/{cmd}")
-                    for alias in aliases_dict.keys():
-                        self.all_commands.append(f"/{alias}")
-                    self.all_commands.sort()
-
-                def get_completions(self, document, complete_event):
-                    text = document.text_before_cursor.lstrip()
-
-                    # If text starts with /, show command completions
-                    if text.startswith("/"):
-                        # Get the partial command (including the /)
-                        partial = text.lower()
-
-                        # Find all matching commands
-                        for cmd in self.all_commands:
-                            if cmd.lower().startswith(partial):
-                                # Calculate the completion text (what to add)
-                                completion_text = cmd[len(text) :]
-                                yield Completion(
-                                    completion_text,
-                                    start_position=0,
-                                    display=cmd,  # Show full command in menu
-                                    display_meta=self._get_description(cmd),
-                                )
-
-                    # If just typed /, show all commands
-                    elif text == "":
-                        word_before_cursor = document.get_word_before_cursor(WORD=True)
-                        if word_before_cursor == "/":
-                            for cmd in self.all_commands:
-                                yield Completion(
-                                    cmd[1:],  # Remove the leading /
-                                    start_position=-1,  # Replace the /
-                                    display=cmd,
-                                    display_meta=self._get_description(cmd),
-                                )
-
-                def _get_description(self, cmd_with_slash):
-                    # Remove leading slash
-                    cmd = cmd_with_slash[1:] if cmd_with_slash.startswith("/") else cmd_with_slash
-
-                    # Check if it's an alias
-                    if cmd in self.aliases:
-                        actual_cmd = self.commands[self.aliases[cmd]]
-                        return f"(alias) {actual_cmd.description}"
-                    elif cmd in self.commands:
-                        return self.commands[cmd].description
-                    return ""
+            # Import command completer
+            from .command_completer import CommandCompleter
 
             # Create custom completer
             completer = CommandCompleter(self.commands.commands, self.commands.aliases)
@@ -296,18 +241,6 @@ class ChatController:
         # Create typed request with conversation history (automatically adds user message)
         typed_request = self.conversation.new_request(content, self.config)
 
-        # Start the display for this message (creates Live display if needed)
-        # Use the Display's show_request_info method directly - it handles capability checking internally
-        # The v3 Display class always has show_request_info method
-        self.display.show_request_info({"question": content})
-
-        if self.config.debug:
-            print(f"\nDEBUG: Conversation has {self.conversation.get_message_count()} messages")
-            print("DEBUG: Conversation history:")
-            for i, msg in enumerate(self.conversation.messages):
-                print(f"  [{i}] {msg.role}: {msg.content[:50]}...")
-
-        # Create stream handler
         handler = TypedStreamHandler(self.display, debug=self.config.debug)
 
         # Import typed SDK
@@ -323,15 +256,6 @@ class ChatController:
         # Update conversation state from response (includes adding assistant message)
         if response:
             self.conversation.update_from_response(response)
-            if self.config.debug:
-                assistant_text = response.output_text
-                if assistant_text:
-                    print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
-                else:
-                    print("DEBUG: No assistant message text found in response")
-                    print(
-                        f"DEBUG: Response output items: {[getattr(item, 'type', 'unknown') for item in response.output]}"
-                    )
 
         # Reset display mode to default after chat message
         self.display.mode = "default"
