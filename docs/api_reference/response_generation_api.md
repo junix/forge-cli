@@ -108,11 +108,11 @@ Knowledge Forge tools execute automatically within the system:
 }
 ```
 
-### Document Finder Tool
+### List Documents Tool
 
 ```json
 {
-  "type": "document_finder",
+  "type": "list_documents",
   "vector_store_ids": ["vs_123"],
   "max_num_results": 20,
   "score_threshold": 0.8,
@@ -407,7 +407,7 @@ data: {
 |-----------|---------|---------|---------|
 | `file_search` | `completed` | `incomplete` | `incomplete` |
 | `web_search` | `completed` | `incomplete` | `failed` |
-| `document_finder` | `completed` | `incomplete` | `incomplete` |
+| `list_documents` | `completed` | `incomplete` | `incomplete` |
 
 ## Citations
 
@@ -513,7 +513,7 @@ eventSource.addEventListener('response.file_search_call.in_progress', (event) =>
 ### Tool Selection
 
 - Use `file_search` for specific document content
-- Use `document_finder` for document discovery
+- Use `list_documents` for document discovery
 - Use `web_search` for current/external information
 - Combine multiple tools for comprehensive answers
 

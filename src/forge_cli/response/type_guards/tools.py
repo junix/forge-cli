@@ -3,10 +3,10 @@
 from typing import TypeGuard
 
 from .._types.computer_tool import ComputerTool
-from .._types.document_finder_tool import DocumentFinderTool
 from .._types.file_reader_tool import FileReaderTool
 from .._types.file_search_tool import FileSearchTool
 from .._types.function_tool import FunctionTool
+from .._types.list_documents_tool import ListDocumentsTool
 from .._types.tool import Tool
 from .._types.web_search_tool import WebSearchTool
 
@@ -59,16 +59,16 @@ def is_computer_tool(tool: Tool) -> TypeGuard[ComputerTool]:
     return tool.type == "computer_use_preview"
 
 
-def is_document_finder_tool(tool: Tool) -> TypeGuard[DocumentFinderTool]:
-    """Check if the given Tool object is a DocumentFinderTool.
+def is_list_documents_tool(tool: Tool) -> TypeGuard[ListDocumentsTool]:
+    """Check if the given Tool object is a ListDocumentsTool.
 
     Args:
         tool: The Tool object to check.
 
     Returns:
-        True if the tool is a DocumentFinderTool, False otherwise.
+        True if the tool is a ListDocumentsTool, False otherwise.
     """
-    return tool.type == "document_finder"
+    return tool.type == "list_documents"
 
 
 def is_file_reader_tool(tool: Tool) -> TypeGuard[FileReaderTool]:

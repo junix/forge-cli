@@ -78,7 +78,7 @@ ResponseOutputItem = Union[
     ResponseOutputMessage,        # Assistant messages with content
     ResponseFileSearchToolCall,   # File search tool execution results  
     ResponseFunctionWebSearch,    # Web search tool execution results
-    ResponseDocumentFinderToolCall, # Document finder tool execution results
+    ResponseListDocumentsToolCall, # Document finder tool execution results
     ResponseFunctionToolCall,     # Generic function tool calls
     ResponseComputerToolCall,     # Computer use tool calls
     ResponseReasoningItem,        # Reasoning content
@@ -217,10 +217,10 @@ class WebSearchTool(BaseModel):
     )
     user_location: Optional[Dict[str, Any]] = Field(None, description="User location hints")
 
-class DocumentFinderTool(BaseModel):
-    """Document finder tool definition."""
-    
-    type: Literal["document_finder"] = "document_finder"
+class ListDocumentsTool(BaseModel):
+    """List documents tool definition."""
+
+    type: Literal["list_documents"] = "list_documents"
     vector_store_ids: List[str] = Field(..., description="Vector stores to search")
     max_num_results: Optional[int] = Field(20, description="Maximum results (1-50)")
     score_threshold: Optional[float] = Field(None, description="Minimum relevance score")

@@ -24,7 +24,7 @@ The API returns responses with an `output` array containing different item types
 OutputItem = Union[
     ReasoningItem,      # Thinking/analysis
     FileSearchCall,     # File search tool
-    DocumentFinderCall, # Document finder tool
+    ListDocumentsCall, # List documents tool
     MessageItem,        # Final response with citations
 ]
 ```

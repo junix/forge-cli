@@ -34,7 +34,7 @@ forge_cli/
 │       ├── base_typed.py      # Typed base class
 │       ├── file_search_typed.py
 │       ├── web_search_typed.py  
-│       ├── document_finder_typed.py
+│       ├── list_documents_typed.py
 │       └── file_reader_typed.py
 ├── stream/
 │   └── handler_typed.py       # Typed handler only
@@ -91,7 +91,7 @@ request = Request(
 - Basic queries ✅
 - File search ✅  
 - Web search ✅
-- Document finder ✅
+- List documents ✅
 - Chat mode ✅
 - Multi-tool queries ✅
 

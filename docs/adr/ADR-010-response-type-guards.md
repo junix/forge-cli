@@ -11,7 +11,7 @@ The Knowledge Forge Response API returns a discriminated union of output items i
 - `"reasoning"` → `ResponseReasoningItem`
 - `"file_search_call"` → `ResponseFileSearchToolCall`
 - `"web_search_call"` → `ResponseFunctionWebSearch`
-- `"document_finder_call"` → `ResponseDocumentFinderToolCall`
+- `"list_documents_call"` → `ResponseListDocumentsToolCall`
 - `"file_reader_call"` → `ResponseFunctionFileReader`
 - `"code_interpreter_call"` → `ResponseCodeInterpreterToolCall`
 - `"function_call"` → `ResponseFunctionToolCall`
@@ -86,7 +86,7 @@ The `response/type_guards.py` module provides:
 - `is_reasoning_item()` → `ResponseReasoningItem`
 - `is_file_search_call()` → `ResponseFileSearchToolCall`
 - `is_web_search_call()` → `ResponseFunctionWebSearch`
-- `is_document_finder_call()` → `ResponseDocumentFinderToolCall`
+- `is_list_documents_call()` → `ResponseListDocumentsToolCall`
 - `is_file_reader_call()` → `ResponseFunctionFileReader`
 - `is_code_interpreter_call()` → `ResponseCodeInterpreterToolCall`
 - `is_function_call()` → `ResponseFunctionToolCall`

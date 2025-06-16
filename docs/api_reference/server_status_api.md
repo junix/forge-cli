@@ -42,7 +42,7 @@ curl "http://localhost:10000/v1/serverstatus"
     "response_api": true,
     "file_search": true,
     "web_search": true,
-    "document_finder": true,
+    "list_documents": true,
     "streaming": true,
     "citations": true
   }

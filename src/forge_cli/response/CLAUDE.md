@@ -26,7 +26,7 @@ response/
 │   ├── Tool Types
 │   │   ├── file_search_tool*.py      # File search tool definitions
 │   │   ├── web_search_tool*.py       # Web search tool definitions
-│   │   ├── document_finder_tool*.py  # Document finder definitions
+│   │   ├── list_documents_tool*.py  # Document finder definitions
 │   │   ├── function_tool*.py         # Function tool definitions
 │   │   └── computer_tool*.py         # Computer use tool definitions
 │   ├── Event Types
@@ -119,7 +119,7 @@ The response contains all output data and chunk compression capabilities:
 - Returns URLs with snippets
 - Includes date and relevance
 
-**Document Finder:**
+**List Documents:**
 - Discover relevant documents
 - Cross-collection search
 - Document-level results

@@ -7,9 +7,9 @@ if TYPE_CHECKING:
 from pydantic import Field, model_validator
 
 from ._models import BaseModel
-from .document_finder_tool import DocumentFinderTool
 from .file_search_tool import FileSearchTool
 from .input_message import InputMessage
+from .list_documents_tool import ListDocumentsTool
 from .response_file_search_tool_call import ResponseFileSearchToolCall
 from .response_format import ResponseFormat
 from .response_function_web_search import ResponseFunctionWebSearch
@@ -33,7 +33,7 @@ HOSTED_TOOL_TYPES = {
     "mcp",
     "image_generation",
     "web_search_preview_2025_03_11",
-    "document_finder",
+    "list_documents",
 }
 
 
@@ -153,16 +153,16 @@ class Request(BaseModel):
 
         return tools
 
-    def seek_document_finder_tools(self) -> list[DocumentFinderTool]:
+    def seek_list_documents_tools(self) -> list[ListDocumentsTool]:
         """
-        Extracts document finder tools from the request.
+        Extracts list documents tools from the request.
 
         Returns:
-            List[DocumentFinderTool]: A list of document finder tools if present, otherwise an empty list.
+            List[ListDocumentsTool]: A list of list documents tools if present, otherwise an empty list.
         """
         if not self.tools:
             return []
-        return [tool for tool in self.tools if tool.type == "document_finder"]
+        return [tool for tool in self.tools if tool.type == "list_documents"]
 
     def create_partial_response(
         self,

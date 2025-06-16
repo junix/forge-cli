@@ -13,10 +13,10 @@ from rich.text import Text
 from forge_cli.response._types.response import Response
 from forge_cli.response.type_guards import (
     is_code_interpreter_call,
-    is_document_finder_call,
     is_file_reader_call,
     is_file_search_call,
     is_function_call,
+    is_list_documents_call,
     is_message_item,
     is_reasoning_item,
     is_web_search_call,
@@ -164,7 +164,7 @@ class RichRenderer(BaseRenderer):
             elif item.type in [
                 "file_search_call",
                 "web_search_call",
-                "document_finder_call",
+                "list_documents_call",
                 "file_reader_call",
                 "code_interpreter_call",
                 "function_call",
@@ -174,7 +174,7 @@ class RichRenderer(BaseRenderer):
                 short_name = {
                     "web_search_call": "Web",
                     "file_search_call": "Search",
-                    "document_finder_call": "Finder",
+                    "list_documents_call": "List",
                     "file_reader_call": "Reader",
                     "code_interpreter_call": "Interpreter",
                     "function_call": "Tool",
@@ -373,8 +373,8 @@ class RichRenderer(BaseRenderer):
                 return f" {ICONS['bullet']} ".join(parts)
             return f"{ICONS['searching']} init"
 
-        elif is_document_finder_call(tool_item):
-            # Show document search with magnifying glass
+        elif is_list_documents_call(tool_item):
+            # Show document listing with magnifying glass
             parts = []
             if tool_item.queries:
                 # Use pack_queries for consistent display

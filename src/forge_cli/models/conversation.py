@@ -5,25 +5,25 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final, Literal, NewType, Protocol, TypeAlias, overload
+from typing import TYPE_CHECKING, Any, Final, Literal, NewType, Protocol, overload
 
 # Import proper types from response system
 from ..response._types.response_input_message_item import ResponseInputMessageItem
 from ..response._types.response_usage import InputTokensDetails, OutputTokensDetails, ResponseUsage
 from ..response._types.tool import Tool
 from ..response.type_guards import (
-    is_document_finder_tool,
     is_file_search_tool,
     is_input_text,
+    is_list_documents_tool,
 )
 
 if TYPE_CHECKING:
     from ..stream.handler_typed import StreamState
 
 # Type aliases for clarity
-MessageRole: TypeAlias = Literal["user", "system", "developer"]
-ToolType: TypeAlias = Literal[
-    "file_search", "web_search", "function", "computer_use_preview", "document_finder", "file_reader"
+type MessageRole = Literal["user", "system", "developer"]
+type ToolType = Literal[
+    "file_search", "web_search", "function", "computer_use_preview", "list_documents", "file_reader"
 ]
 
 # Domain-specific types
@@ -70,11 +70,11 @@ class ConversationState:
     def __post_init__(self):
         """Initialize used_vector_store_ids from tools if not set."""
         if not self.used_vector_store_ids and self.tools:
-            # Extract vector store IDs from file search and document finder tools
+            # Extract vector store IDs from file search and list documents tools
             for tool in self.tools:
                 if is_file_search_tool(tool):
                     self.used_vector_store_ids.update(tool.vector_store_ids)
-                elif is_document_finder_tool(tool):
+                elif is_list_documents_tool(tool):
                     self.used_vector_store_ids.update(tool.vector_store_ids)
 
     def add_message(self, message: ResponseInputMessageItem) -> None:
@@ -371,9 +371,9 @@ class ConversationState:
         """Load tools from data, handling both dict and Tool formats."""
         from ..response._types import (
             ComputerTool,
-            DocumentFinderTool,
             FileSearchTool,
             FunctionTool,
+            ListDocumentsTool,
             WebSearchTool,
         )
         from ..response._types.file_reader_tool import FileReaderTool
@@ -386,7 +386,7 @@ class ConversationState:
             "web_search_preview_2025_03_11": WebSearchTool,
             "function": FunctionTool,
             "computer_use_preview": ComputerTool,
-            "document_finder": DocumentFinderTool,
+            "list_documents": ListDocumentsTool,
             "file_reader": FileReaderTool,
         }
 

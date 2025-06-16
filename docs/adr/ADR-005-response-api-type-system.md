@@ -73,7 +73,7 @@ Unified interface for multiple tool types:
 
 - **FileSearchTool**: Vector store document search with citation tracking
 - **WebSearchTool**: Internet search with result structuring  
-- **DocumentFinderTool**: Document discovery across collections
+- **ListDocumentsTool**: Document discovery across collections
 - **FunctionTool**: User-defined function calls (OpenAI compatible)
 - **ComputerTool**: Computer use capabilities (screenshot, automation)
 - **FileReaderTool**: Direct file content access

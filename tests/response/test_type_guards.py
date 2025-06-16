@@ -1,18 +1,8 @@
 """Tests for response type guards."""
 
-import pytest
 from unittest.mock import Mock
 
 from forge_cli.response import type_guards
-from forge_cli.response._types.response_code_interpreter_tool_call import ResponseCodeInterpreterToolCall
-from forge_cli.response._types.response_computer_tool_call import ResponseComputerToolCall
-from forge_cli.response._types.response_document_finder_tool_call import ResponseDocumentFinderToolCall
-from forge_cli.response._types.response_file_search_tool_call import ResponseFileSearchToolCall
-from forge_cli.response._types.response_function_file_reader import ResponseFunctionFileReader
-from forge_cli.response._types.response_function_tool_call import ResponseFunctionToolCall
-from forge_cli.response._types.response_function_web_search import ResponseFunctionWebSearch
-from forge_cli.response._types.response_output_message import ResponseOutputMessage
-from forge_cli.response._types.response_reasoning_item import ResponseReasoningItem
 
 
 class TestToolCallTypeGuards:
@@ -54,14 +44,14 @@ class TestToolCallTypeGuards:
         mock_item.type = "file_search_call"
         assert not type_guards.is_web_search_call(mock_item)
 
-    def test_is_document_finder_call(self):
-        """Test document finder call type guard."""
+    def test_is_list_documents_call(self):
+        """Test list documents call type guard."""
         mock_item = Mock()
-        mock_item.type = "document_finder_call"
-        assert type_guards.is_document_finder_call(mock_item)
+        mock_item.type = "list_documents_call"
+        assert type_guards.is_list_documents_call(mock_item)
 
         mock_item.type = "file_search_call"
-        assert not type_guards.is_document_finder_call(mock_item)
+        assert not type_guards.is_list_documents_call(mock_item)
 
     def test_is_file_reader_call(self):
         """Test file reader call type guard."""
@@ -325,7 +315,7 @@ class TestStreamEventTypeGuards:
     def test_is_code_interpreter_events(self):
         """Test code interpreter event type guards."""
         mock_event = Mock()
-        
+
         mock_event.type = "response.code_interpreter_call.in_progress"
         assert type_guards.is_code_interpreter_call_in_progress_event(mock_event)
 
@@ -367,13 +357,13 @@ class TestStatusAndErrorGuards:
         assert type_guards.is_response_error(mock_error)
 
         # Test with object missing attributes
-        mock_incomplete = Mock(spec=['code'])  # Only has code, not message
+        mock_incomplete = Mock(spec=["code"])  # Only has code, not message
         assert not type_guards.is_response_error(mock_incomplete)
 
     def test_tool_call_status_guards(self):
         """Test tool call status guards."""
         mock_tool = Mock()
-        
+
         mock_tool.status = "completed"
         assert type_guards.is_tool_call_completed(mock_tool)
         assert not type_guards.is_tool_call_in_progress(mock_tool)
@@ -403,12 +393,13 @@ class TestUtilityFunctions:
 
     def test_safe_get_attr(self):
         """Test safe attribute getter."""
+
         # Create a real object instead of Mock to test proper attribute access
         class TestObj:
             existing_attr = "value"
-        
+
         test_obj = TestObj()
-        
+
         assert type_guards.safe_get_attr(test_obj, "existing_attr") == "value"
         assert type_guards.safe_get_attr(test_obj, "non_existing_attr") is None
         assert type_guards.safe_get_attr(test_obj, "non_existing_attr", "default") == "default"
@@ -445,7 +436,7 @@ class TestUtilityFunctions:
         mock_error = Mock()
         mock_error.code = "error_code"
         mock_error.message = "error message"
-        
+
         assert type_guards.get_error_message(mock_error) == "error message"
         assert type_guards.get_error_code(mock_error) == "error_code"
 

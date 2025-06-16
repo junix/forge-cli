@@ -48,7 +48,7 @@ forge-cli/
 │   │       ├── web_search.py   # Web search tool processor
 │   │       ├── file_reader.py  # File reader tool processor
 │   │   │   ├── code_analyzer.py # Code analyzer tool processor
-│   │       └── document_finder.py # Document finder processor
+│   │       └── list_documents.py # List documents processor
 │   ├── display/                # Display strategies (use relative imports)
 │   │   ├── registry.py         # Display factory with v2 architecture
 │   │   └── v2/                 # V2 event-based display architecture
@@ -188,8 +188,8 @@ These classes specify what tools are available and how to configure them:
    - `display_height: int`
    - `environment: "windows" | "mac" | "linux" | "ubuntu" | "browser"`
 
-5. **DocumentFinderTool** - Advanced document search configuration
-   - `type: "document_finder"`
+5. **ListDocumentsTool** - Advanced document listing configuration
+   - `type: "list_documents"`
    - `vector_store_ids: list[str]`
    - `max_num_results: int | None`
    - `filters: dict[str, str | float | bool | int] | None`
@@ -228,8 +228,8 @@ These classes represent execution state and results after tools are invoked:
    - `call_id: str`
    - `status: "in_progress" | "completed" | "incomplete"`
 
-5. **ResponseDocumentFinderToolCall** - Document finder execution results
-   - `type: "document_finder_call"`
+5. **ResponseListDocumentsToolCall** - List documents execution results
+   - `type: "list_documents_call"`
    - `id: str`
    - `queries: list[str]`
    - `count: int`
@@ -266,14 +266,14 @@ These classes represent execution state and results after tools are invoked:
 # Tool definitions union
 Tool: TypeAlias = Annotated[
     FileSearchTool | FunctionTool | WebSearchTool | ComputerTool |
-    DocumentFinderTool | FileReaderTool,
+    ListDocumentsTool | FileReaderTool,
     PropertyInfo(discriminator="type"),
 ]
 
 # Tool call results union
 ResponseOutputItem: TypeAlias = Annotated[
     ResponseOutputMessage | ResponseFileSearchToolCall | ResponseFunctionToolCall |
-    ResponseFunctionWebSearch | ResponseDocumentFinderToolCall |
+    ResponseFunctionWebSearch | ResponseListDocumentsToolCall |
     ResponseFunctionFileReader | ResponseComputerToolCall | ResponseReasoningItem,
     PropertyInfo(discriminator="type"),
 ]

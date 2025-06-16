@@ -227,14 +227,12 @@ class Response(BaseModel):
 
         return "".join(texts)
 
-
-
     def contain_non_internal_tool_call(self) -> bool:
         """Check if the response contains any non-internal tool calls.
 
         This method scans through all output items to determine if there are any tool calls
         that are not system-internal tools. Internal tools include file_search, web_search,
-        file_reader, and document_finder. Any other tool calls are considered user-defined
+        file_reader, and list_documents. Any other tool calls are considered user-defined
         and cannot be executed directly by the system.
 
         Returns:
@@ -243,18 +241,18 @@ class Response(BaseModel):
         """
         from .response_code_interpreter_tool_call import ResponseCodeInterpreterToolCall
         from .response_computer_tool_call import ResponseComputerToolCall
-        from .response_document_finder_tool_call import ResponseDocumentFinderToolCall
         from .response_file_search_tool_call import ResponseFileSearchToolCall
         from .response_function_file_reader import ResponseFunctionFileReader
         from .response_function_tool_call import ResponseFunctionToolCall
         from .response_function_web_search import ResponseFunctionWebSearch
+        from .response_list_documents_tool_call import ResponseListDocumentsToolCall
 
         # Define internal tool call types that are handled by the system
         internal_tool_types = {
             "file_search_call",
             "web_search_call",
             "file_reader_call",
-            "document_finder_call",
+            "list_documents_call",
         }
 
         # Tool call types that might be considered internal or have special handling
@@ -264,7 +262,7 @@ class Response(BaseModel):
             ResponseComputerToolCall,
             ResponseFunctionWebSearch,
             ResponseFunctionFileReader,
-            ResponseDocumentFinderToolCall,
+            ResponseListDocumentsToolCall,
             ResponseCodeInterpreterToolCall,
         )
 
@@ -282,7 +280,7 @@ class Response(BaseModel):
                         "file_search",
                         "web_search",
                         "file_reader",
-                        "document_finder",
+                        "list_documents",
                     }:
                         continue
                     # This is a user-defined function tool call
@@ -455,9 +453,6 @@ class Response(BaseModel):
 
     def _compact_all_chunks(self, rag_tool_types) -> "Response":
         """压缩所有检索片段的内容"""
-        from .response_file_search_tool_call import ResponseFileSearchToolCall
-        from .response_function_file_reader import ResponseFunctionFileReader
-        from .response_function_web_search import ResponseFunctionWebSearch
 
         for output_item in self.output:
             if not isinstance(output_item, rag_tool_types):
@@ -490,9 +485,7 @@ class Response(BaseModel):
         通过正向迭代确保保留最先出现的重复项，删除后续重复，
         这样可以避免回复引用"未来"片段的时间逻辑问题。
         """
-        from .response_file_search_tool_call import ResponseFileSearchToolCall
         from .response_function_file_reader import ResponseFunctionFileReader
-        from .response_function_web_search import ResponseFunctionWebSearch
 
         seen_annotations = set()
 
@@ -547,9 +540,6 @@ class Response(BaseModel):
         然后通过annotation对象的相等性比较来判断哪些结果应该保留。
         这比手动解析file_id/URL更可靠，且与去重逻辑保持一致。
         """
-        from .response_file_search_tool_call import ResponseFileSearchToolCall
-        from .response_function_file_reader import ResponseFunctionFileReader
-        from .response_function_web_search import ResponseFunctionWebSearch
 
         # 获取所有实际被引用的citation annotations
         referenced_citations = self.get_cited_annotations()

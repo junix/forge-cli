@@ -116,13 +116,13 @@ Search the web for current information.
 | `search_context_size` | string | - | "low", "medium", "high" (default: "medium") |
 | `user_location` | object | - | User location for localized results |
 
-### 3. Document Finder Tool
+### 3. List Documents Tool
 
-Discover documents across vector stores.
+List documents across vector stores.
 
 ```json
 {
-  "type": "document_finder",
+  "type": "list_documents",
   "vector_store_ids": ["vs_123"],
   "max_num_results": 20,
   "score_threshold": 0.8,
@@ -468,7 +468,7 @@ data: {"id": "resp_abc123", "status": "completed", "output": [...], "usage": {"i
 
 1. **File Search** - Automatically searches vector stores
 2. **Web Search** - Automatically searches the web
-3. **Document Finder** - Automatically discovers documents
+3. **List Documents** - Automatically discovers documents
 
 These tools execute within the system and return results in the response.
 
@@ -576,7 +576,7 @@ data: {"id": "resp_abc123", "status": "completed", "output": [...], "usage": {"i
 ### Tool Selection
 
 - Use **file_search** for specific document content
-- Use **document_finder** for document discovery
+- Use **list_documents** for document discovery
 - Use **web_search** for current/external information
 - Combine multiple tools for comprehensive answers
 

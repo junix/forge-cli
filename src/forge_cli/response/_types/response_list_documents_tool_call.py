@@ -4,12 +4,12 @@ from typing import Literal
 
 from ._models import BaseModel
 
-__all__ = ["ResponseDocumentFinderToolCall"]
+__all__ = ["ResponseListDocumentsToolCall"]
 
 
-class ResponseDocumentFinderToolCall(BaseModel):
+class ResponseListDocumentsToolCall(BaseModel):
     id: str
-    """The unique ID of the document finder tool call."""
+    """The unique ID of the list documents tool call."""
 
     queries: list[str]
     """The queries used to search for documents."""
@@ -18,10 +18,10 @@ class ResponseDocumentFinderToolCall(BaseModel):
     """The number of documents to return."""
 
     status: Literal["in_progress", "searching", "completed", "incomplete"]
-    """The status of the document finder tool call.
+    """The status of the list documents tool call.
 
     One of `in_progress`, `searching`, `completed` or `incomplete`.
     """
 
-    type: Literal["document_finder_call"]
-    """The type of the document finder tool call. Always `document_finder_call`."""
+    type: Literal["list_documents_call"]
+    """The type of the list documents tool call. Always `list_documents_call`."""

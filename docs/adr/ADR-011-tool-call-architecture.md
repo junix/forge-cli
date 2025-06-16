@@ -35,7 +35,7 @@ Tool Definitions (Input)          Tool Call Results (Output)
 ├── WebSearchTool                ├── ResponseFunctionWebSearch  
 ├── FunctionTool                 ├── ResponseFunctionToolCall
 ├── ComputerTool                 ├── ResponseComputerToolCall
-├── DocumentFinderTool           ├── ResponseDocumentFinderToolCall
+├── ListDocumentsTool            ├── ResponseListDocumentsToolCall
 ├── FileReaderTool               ├── ResponseFunctionFileReader
 └── TraceableToolCall (base)     └── ResponseCodeInterpreterToolCall
 ```
@@ -103,14 +103,14 @@ All tool types are unified through discriminated unions:
 # Tool definitions union
 Tool: TypeAlias = Annotated[
     FileSearchTool | FunctionTool | WebSearchTool | ComputerTool | 
-    DocumentFinderTool | FileReaderTool,
+    ListDocumentsTool | FileReaderTool,
     PropertyInfo(discriminator="type"),
 ]
 
 # Tool call results union  
 ResponseOutputItem: TypeAlias = Annotated[
     ResponseOutputMessage | ResponseFileSearchToolCall | ResponseFunctionToolCall |
-    ResponseFunctionWebSearch | ResponseDocumentFinderToolCall | 
+    ResponseFunctionWebSearch | ResponseListDocumentsToolCall |
     ResponseFunctionFileReader | ResponseComputerToolCall | ResponseReasoningItem,
     PropertyInfo(discriminator="type"),
 ]
@@ -295,8 +295,8 @@ async def stream_with_progress(request: Request):
    - Ranking and filtering options
    - Results accessed via response methods
 
-2. **DocumentFinderTool** → **ResponseDocumentFinderToolCall**
-   - Advanced document search with metadata filtering
+2. **ListDocumentsTool** → **ResponseListDocumentsToolCall**
+   - Advanced document listing with metadata filtering
    - Deduplication and score thresholding
    - Cross-vector-store search capabilities
 
@@ -393,7 +393,7 @@ The tool architecture is organized across multiple files in `src/forge_cli/respo
 - `web_search_tool.py` - Web search configuration
 - `function_tool.py` - Custom function configuration
 - `computer_tool.py` - Computer automation configuration
-- `document_finder_tool.py` - Document finder configuration
+- `list_documents_tool.py` - List documents configuration
 - `file_reader_tool.py` - File reader configuration
 - `tool.py` - Unified tool type alias
 
@@ -403,7 +403,7 @@ The tool architecture is organized across multiple files in `src/forge_cli/respo
 - `response_function_web_search.py` - Web search execution results
 - `response_function_tool_call.py` - Function call execution results
 - `response_computer_tool_call.py` - Computer tool execution results
-- `response_document_finder_tool_call.py` - Document finder execution results
+- `response_list_documents_tool_call.py` - List documents execution results
 - `response_function_file_reader.py` - File reader execution results
 - `response_code_interpreter_tool_call.py` - Code interpreter execution results
 

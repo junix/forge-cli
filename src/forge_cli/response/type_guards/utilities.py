@@ -6,10 +6,10 @@ from .._types.response_output_item import ResponseOutputItem
 from .output_items import (
     is_code_interpreter_call,
     is_computer_tool_call,
-    is_document_finder_call,
     is_file_reader_call,
     is_file_search_call,
     is_function_call,
+    is_list_documents_call,
     is_web_search_call,
 )
 from .status import is_response_error
@@ -18,7 +18,7 @@ from .status import is_response_error
 def get_tool_queries(tool_item: ResponseOutputItem) -> list[str]:
     """Extracts search queries from a ResponseOutputItem if it's a tool call that supports queries.
 
-    Handles tool calls like file search, web search, and document finder.
+    Handles tool calls like file search, web search, and list documents.
     Returns an empty list if the tool item doesn't have queries (e.g., file reader, computer tool).
 
     Args:
@@ -31,7 +31,7 @@ def get_tool_queries(tool_item: ResponseOutputItem) -> list[str]:
         return tool_item.queries
     elif is_web_search_call(tool_item):
         return tool_item.queries if tool_item.queries else []
-    elif is_document_finder_call(tool_item):
+    elif is_list_documents_call(tool_item):
         return tool_item.queries if tool_item.queries else []
     elif is_file_reader_call(tool_item):
         # File reader doesn't have queries, return empty list
@@ -65,8 +65,8 @@ def get_tool_results(tool_item: ResponseOutputItem) -> list[Any]:
         return []  # File search results are not directly accessible from tool call
     elif is_web_search_call(tool_item):
         return []  # Web search results are not directly accessible from tool call
-    elif is_document_finder_call(tool_item):
-        return []  # Document finder results are not directly accessible from tool call
+    elif is_list_documents_call(tool_item):
+        return []  # List documents results are not directly accessible from tool call
     elif is_file_reader_call(tool_item):
         return []  # File reader results are not directly accessible from tool call
     elif is_computer_tool_call(tool_item):
@@ -322,7 +322,7 @@ def is_any_tool_call(item: ResponseOutputItem) -> bool:
     return (
         is_file_search_call(item)
         or is_web_search_call(item)
-        or is_document_finder_call(item)
+        or is_list_documents_call(item)
         or is_file_reader_call(item)
         or is_computer_tool_call(item)
         or is_function_call(item)
@@ -485,7 +485,7 @@ def is_search_related_tool_call(item: ResponseOutputItem) -> bool:
     Returns:
         True if the item is a file search, web search, or document finder call, False otherwise.
     """
-    return is_file_search_call(item) or is_web_search_call(item) or is_document_finder_call(item)
+    return is_file_search_call(item) or is_web_search_call(item) or is_list_documents_call(item)
 
 
 def is_execution_tool_call(item: ResponseOutputItem) -> bool:

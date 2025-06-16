@@ -117,7 +117,7 @@ This renderer is perfect for environments where you want rich formatting but pre
 
     # Show welcome message
     mock_config = SimpleNamespace(
-        model="claude-3-sonnet", enabled_tools=["file_search", "web_search", "document_finder"]
+        model="claude-3-sonnet", enabled_tools=["file_search", "web_search", "list_documents"]
     )
     renderer.render_welcome(mock_config)
 

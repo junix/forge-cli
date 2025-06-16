@@ -21,7 +21,7 @@ hello_file_search_refactored/
 │   ├── message.py       # Message processor with citations
 │   └── tool_calls/      # Tool-specific processors
 │       ├── file_search.py
-│       ├── document_finder.py
+│       ├── list_documents.py
 │       ├── web_search.py
 │       └── file_reader.py
 ├── display/             # Display implementations

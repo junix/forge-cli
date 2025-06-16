@@ -99,7 +99,7 @@ Unlike Chat APIs that require external tool execution, Knowledge Forge tools exe
 
 - **File Search**: Automatic vector store queries
 - **Web Search**: Live web search integration  
-- **Document Finder**: Intelligent document discovery
+- **List Documents**: Intelligent document discovery
 
 ### Advanced Citation System
 

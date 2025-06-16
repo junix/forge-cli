@@ -21,9 +21,9 @@ from .annotations import (
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 from .computer_tool import ComputerTool as ComputerTool
 from .computer_tool_param import ComputerToolParam as ComputerToolParam
-from .document_finder_tool import DocumentFinderTool as DocumentFinderTool
-from .document_finder_tool_param import (
-    DocumentFinderToolParam as DocumentFinderToolParam,
+from .list_documents_tool import ListDocumentsTool as ListDocumentsTool
+from .list_documents_tool_param import (
+    ListDocumentsToolParam as ListDocumentsToolParam,
 )
 from .easy_input_message import EasyInputMessage as EasyInputMessage
 from .easy_input_message_param import EasyInputMessageParam as EasyInputMessageParam
@@ -109,8 +109,8 @@ from .response_content_part_done_event import (
 )
 from .response_create_params import ResponseCreateParams as ResponseCreateParams
 from .response_created_event import ResponseCreatedEvent as ResponseCreatedEvent
-from .response_document_finder_tool_call import (
-    ResponseDocumentFinderToolCall as ResponseDocumentFinderToolCall,
+from .response_list_documents_tool_call import (
+    ResponseListDocumentsToolCall as ResponseListDocumentsToolCall,
 )
 from .response_error import ResponseError as ResponseError
 from .response_error_event import ResponseErrorEvent as ResponseErrorEvent

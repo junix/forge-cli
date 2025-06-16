@@ -10,12 +10,12 @@ from rich.text import Text
 
 from forge_cli.response._types.response import Response
 from forge_cli.response.type_guards import (
-    is_file_search_call,
-    is_web_search_call,
-    is_document_finder_call,
     is_file_reader_call,
+    is_file_search_call,
+    is_list_documents_call,
     is_message_item,
     is_reasoning_item,
+    is_web_search_call,
 )
 
 from ..base import BaseRenderer
@@ -207,7 +207,7 @@ class PlaintextRenderer(BaseRenderer):
                     text.append("\n")
 
             elif (
-                item.type in ["file_search_call", "web_search_call", "document_finder_call", "file_reader_call"]
+                item.type in ["file_search_call", "web_search_call", "list_documents_call", "file_reader_call"]
                 and self._config.show_tool_details
             ):
                 # Handle tool calls with colorful display
@@ -297,7 +297,7 @@ class PlaintextRenderer(BaseRenderer):
 
             return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
-        elif is_document_finder_call(tool_item):
+        elif is_list_documents_call(tool_item):
             # Show queries and document count
             parts = []
             if tool_item.queries:

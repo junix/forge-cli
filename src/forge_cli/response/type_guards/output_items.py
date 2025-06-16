@@ -4,11 +4,11 @@ from typing import TypeGuard
 
 from .._types.response_code_interpreter_tool_call import ResponseCodeInterpreterToolCall
 from .._types.response_computer_tool_call import ResponseComputerToolCall
-from .._types.response_document_finder_tool_call import ResponseDocumentFinderToolCall
 from .._types.response_file_search_tool_call import ResponseFileSearchToolCall
 from .._types.response_function_file_reader import ResponseFunctionFileReader
 from .._types.response_function_tool_call import ResponseFunctionToolCall
 from .._types.response_function_web_search import ResponseFunctionWebSearch
+from .._types.response_list_documents_tool_call import ResponseListDocumentsToolCall
 from .._types.response_output_item import ResponseOutputItem
 from .._types.response_output_message import ResponseOutputMessage
 from .._types.response_reasoning_item import ResponseReasoningItem
@@ -62,16 +62,16 @@ def is_web_search_call(item: ResponseOutputItem) -> TypeGuard[ResponseFunctionWe
     return item.type == "web_search_call"
 
 
-def is_document_finder_call(item: ResponseOutputItem) -> TypeGuard[ResponseDocumentFinderToolCall]:
-    """Check if the given ResponseOutputItem is a ResponseDocumentFinderToolCall.
+def is_list_documents_call(item: ResponseOutputItem) -> TypeGuard[ResponseListDocumentsToolCall]:
+    """Check if the given ResponseOutputItem is a ResponseListDocumentsToolCall.
 
     Args:
         item: The ResponseOutputItem to check.
 
     Returns:
-        True if the item is a ResponseDocumentFinderToolCall, False otherwise.
+        True if the item is a ResponseListDocumentsToolCall, False otherwise.
     """
-    return item.type == "document_finder_call"
+    return item.type == "list_documents_call"
 
 
 def is_file_reader_call(item: ResponseOutputItem) -> TypeGuard[ResponseFunctionFileReader]:

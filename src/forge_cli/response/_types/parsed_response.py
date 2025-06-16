@@ -8,10 +8,10 @@ from openai._utils._transform import PropertyInfo
 from ._models import GenericModel
 from .response import Response
 from .response_computer_tool_call import ResponseComputerToolCall
-from .response_document_finder_tool_call import ResponseDocumentFinderToolCall
 from .response_file_search_tool_call import ResponseFileSearchToolCall
 from .response_function_tool_call import ResponseFunctionToolCall
 from .response_function_web_search import ResponseFunctionWebSearch
+from .response_list_documents_tool_call import ResponseListDocumentsToolCall
 from .response_output_message import ResponseOutputMessage
 from .response_output_refusal import ResponseOutputRefusal
 from .response_output_text import ResponseOutputText
@@ -49,7 +49,13 @@ class ParsedResponseFunctionToolCall(ResponseFunctionToolCall):
 
 
 ParsedResponseOutputItem: TypeAlias = Annotated[
-    ParsedResponseOutputMessage[ContentType] | ParsedResponseFunctionToolCall | ResponseFileSearchToolCall | ResponseDocumentFinderToolCall | ResponseFunctionWebSearch | ResponseComputerToolCall | ResponseReasoningItem,
+    ParsedResponseOutputMessage[ContentType]
+    | ParsedResponseFunctionToolCall
+    | ResponseFileSearchToolCall
+    | ResponseListDocumentsToolCall
+    | ResponseFunctionWebSearch
+    | ResponseComputerToolCall
+    | ResponseReasoningItem,
     PropertyInfo(discriminator="type"),
 ]
 
