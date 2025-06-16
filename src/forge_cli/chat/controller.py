@@ -395,90 +395,82 @@ class ChatController:
         # Create stream handler
         handler = TypedStreamHandler(self.display, debug=self.config.debug)
 
-        try:
-            # Import typed SDK
-            from ..response._types import InputMessage, Request
-            from ..sdk import astream_typed_response
+        # Import typed SDK
+        from ..response._types import InputMessage, Request
+        from ..sdk import astream_typed_response
 
-            # Convert dict request to typed Request
-            input_messages = []
-            if isinstance(request.get("input_messages"), list):
-                for msg in request["input_messages"]:
-                    if isinstance(msg, dict) and "role" in msg and "content" in msg:
-                        input_messages.append(InputMessage(role=msg["role"], content=msg["content"]))
-            elif isinstance(request.get("input_messages"), str):
-                input_messages = [InputMessage(role="user", content=request["input_messages"])]
+        # Convert dict request to typed Request
+        input_messages = []
+        if isinstance(request.get("input_messages"), list):
+            for msg in request["input_messages"]:
+                if isinstance(msg, dict) and "role" in msg and "content" in msg:
+                    input_messages.append(InputMessage(role=msg["role"], content=msg["content"]))
+        elif isinstance(request.get("input_messages"), str):
+            input_messages = [InputMessage(role="user", content=request["input_messages"])]
 
-            # Use typed tools
-            typed_tools = self.prepare_typed_tools()
+        # Use typed tools
+        typed_tools = self.prepare_typed_tools()
 
-            typed_request = Request(
-                input=input_messages,
-                model=request.get("model", "qwen-max"),
-                tools=typed_tools,
-                temperature=request.get("temperature", 0.7),
-                max_output_tokens=request.get("max_output_tokens", 2000),
-                effort=request.get("effort", "low"),
-            )
+        typed_request = Request(
+            input=input_messages,
+            model=request.get("model", "qwen-max"),
+            tools=typed_tools,
+            temperature=request.get("temperature", 0.7),
+            max_output_tokens=request.get("max_output_tokens", 2000),
+            effort=request.get("effort", "low"),
+        )
 
-            # Stream the response
-            if self.config.debug:
-                print(f"DEBUG: Typed Request: {typed_request.model_dump()}")
+        # Stream the response
+        if self.config.debug:
+            print(f"DEBUG: Typed Request: {typed_request.model_dump()}")
 
-            event_stream = astream_typed_response(typed_request, debug=self.config.debug)
-            stream_state = await handler.handle_stream(event_stream, content)
+        event_stream = astream_typed_response(typed_request, debug=self.config.debug)
+        stream_state = await handler.handle_stream(event_stream, content)
 
-            # Update conversation state from stream state
-            if stream_state:
-                self.conversation.update_stream_state(stream_state)
+        # Update conversation state from stream state
+        if stream_state:
+            self.conversation.update_stream_state(stream_state)
 
-            # StreamState is a typed dataclass with a final_response attribute
-            if stream_state and stream_state.final_response:
-                response = stream_state.final_response
-                # Extract and add the assistant's response using type guards
-                # Response is a typed Pydantic model with guaranteed output attribute
-                if response.output:
-                    assistant_added = False
-                    for item in response.output:
-                        # Use type guard for proper message identification
-                        if is_message_item(item):
-                            # Type guard ensures item is ResponseOutputMessage
-                            if item.content:
-                                # Extract text from content
-                                assistant_text = ""
-                                for content_part in item.content:
-                                    text = self._extract_text_from_content_item(content_part)
-                                    if text:
-                                        assistant_text += text
+        # StreamState is a typed dataclass with a final_response attribute
+        if stream_state and stream_state.final_response:
+            response = stream_state.final_response
+            # Extract and add the assistant's response using type guards
+            # Response is a typed Pydantic model with guaranteed output attribute
+            if response.output:
+                assistant_added = False
+                for item in response.output:
+                    # Use type guard for proper message identification
+                    if is_message_item(item):
+                        # Type guard ensures item is ResponseOutputMessage
+                        if item.content:
+                            # Extract text from content
+                            assistant_text = ""
+                            for content_part in item.content:
+                                text = self._extract_text_from_content_item(content_part)
+                                if text:
+                                    assistant_text += text
 
-                                if assistant_text:
-                                    self.conversation.add_assistant_message(assistant_text)
-                                    assistant_added = True
-                                    if self.config.debug:
-                                        print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
-                                    break  # Only add the first assistant message
+                            if assistant_text:
+                                self.conversation.add_assistant_message(assistant_text)
+                                assistant_added = True
+                                if self.config.debug:
+                                    print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
+                                break  # Only add the first assistant message
 
-                    if self.config.debug and not assistant_added:
-                        print("DEBUG: No assistant message found in response output")
-                        # Response.output is guaranteed to exist as a list
-                        print(
-                            f"DEBUG: Response output items: {[getattr(item, 'type', 'unknown') for item in response.output]}"
-                        )
+                if self.config.debug and not assistant_added:
+                    print("DEBUG: No assistant message found in response output")
+                    # Response.output is guaranteed to exist as a list
+                    print(
+                        f"DEBUG: Response output items: {[getattr(item, 'type', 'unknown') for item in response.output]}"
+                    )
 
-                # Update conversation metadata
-                # Response.model is a guaranteed attribute (ResponsesModel type)
-                if response.model:
-                    self.conversation.model = response.model
+            # Update conversation metadata
+            # Response.model is a guaranteed attribute (ResponsesModel type)
+            if response.model:
+                self.conversation.model = response.model
 
-        except Exception as e:
-            self.display.show_error(f"Failed to get response: {str(e)}")
-            if self.config.debug:
-                import traceback
-
-                traceback.print_exc()
-        finally:
-            # Reset display mode to default after chat message
-            self.display.mode = "default"
+        # Reset display mode to default after chat message
+        self.display.mode = "default"
 
     def prepare_request(self) -> RequestDict:
         """Prepares the request dictionary for the API call.

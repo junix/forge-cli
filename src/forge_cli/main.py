@@ -154,32 +154,25 @@ async def process_search(config: SearchConfig, question: str) -> dict[str, str |
     # Prepare typed request
     request = prepare_request(config, question)
 
-    try:
-        # Stream and process with typed API
-        event_stream = astream_typed_response(request, debug=config.debug)
-        state = await handler.handle_stream(event_stream, question, config.vec_ids)
+    # Stream and process with typed API
+    event_stream = astream_typed_response(request, debug=config.debug)
+    state = await handler.handle_stream(event_stream, question, config.vec_ids)
 
-        # Display vector store info if not in JSON mode
-        if state and not config.json_output and config.vec_ids:
-            await display_vectorstore_info(config.vec_ids, config.use_rich)
+    # Display vector store info if not in JSON mode
+    # if state and not config.json_output and config.vec_ids:
+    #     await display_vectorstore_info(config.vec_ids, config.use_rich)
 
-        # Return state information
-        return {
-            "response_id": state.response_id,
-            "model": state.model,
-            "usage": state.usage,
-            "event_count": state.event_count,
-            "citations": state.citations,
-            "vector_store_ids": state.get_vector_store_ids(),
-        }
+    # Return state information
+    return {
+        "response_id": state.response_id,
+        "model": state.model,
+        "usage": state.usage,
+        "event_count": state.event_count,
+        "citations": state.citations,
+        "vector_store_ids": state.get_vector_store_ids(),
+    }
 
-    except Exception as e:
-        display.show_error(f"Processing error: {str(e)}")
-        if config.debug:
-            import traceback
 
-            traceback.print_exc()
-        return None
 
 
 async def start_chat_mode(config: SearchConfig, initial_question: str | None = None) -> None:
@@ -220,64 +213,56 @@ async def start_chat_mode(config: SearchConfig, initial_question: str | None = N
         # Create typed handler and stream
         handler = TypedStreamHandler(message_display, debug=config.debug)
 
-        try:
-            # Stream the response
-            event_stream = astream_typed_response(request, debug=config.debug)
-            state = await handler.handle_stream(event_stream, content, config.vec_ids)
+        # Stream the response
+        event_stream = astream_typed_response(request, debug=config.debug)
+        state = await handler.handle_stream(event_stream, content, config.vec_ids)
 
-            # Update conversation state from stream state
-            if state:
-                controller.conversation.update_stream_state(state)
+        # Update conversation state from stream state
+        if state:
+            controller.conversation.update_stream_state(state)
 
-            # Extract assistant response from state using type guards
-            if state and state.output_items:
-                # Import type guards for proper type checking
-                from .response.type_guards import is_message_item
+        # Extract assistant response from state using type guards
+        if state and state.output_items:
+            # Import type guards for proper type checking
+            from .response.type_guards import is_message_item
 
-                # Look for ResponseOutputMessage items using type guards
-                for item in state.output_items:
-                    # Use type guard for proper message identification
-                    if is_message_item(item) and item.role == "assistant":
-                        # Type guard ensures item is ResponseOutputMessage - extract text from content
-                        assistant_text = ""
-                        if item.content:
-                            for content_item in item.content:
-                                # Use type guard for content type checking
-                                if getattr(content_item, "type", None) == "output_text":
-                                    assistant_text += content_item.text
+            # Look for ResponseOutputMessage items using type guards
+            for item in state.output_items:
+                # Use type guard for proper message identification
+                if is_message_item(item) and item.role == "assistant":
+                    # Type guard ensures item is ResponseOutputMessage - extract text from content
+                    assistant_text = ""
+                    if item.content:
+                        for content_item in item.content:
+                            # Use type guard for content type checking
+                            if getattr(content_item, "type", None) == "output_text":
+                                assistant_text += content_item.text
 
-                        if assistant_text:
-                            controller.conversation.add_assistant_message(assistant_text)
-                            if config.debug:
-                                print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
-                            break
-                    # Also handle dict format for backward compatibility
-                    elif isinstance(item, dict) and item.get("type") == "message" and item.get("role") == "assistant":
-                        # Extract text content using existing method
-                        assistant_text = controller.extract_text_from_message(item)
-                        if assistant_text:
-                            controller.conversation.add_assistant_message(assistant_text)
-                            if config.debug:
-                                print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
-                            break
+                    if assistant_text:
+                        controller.conversation.add_assistant_message(assistant_text)
+                        if config.debug:
+                            print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
+                        break
+                # Also handle dict format for backward compatibility
+                elif isinstance(item, dict) and item.get("type") == "message" and item.get("role") == "assistant":
+                    # Extract text content using existing method
+                    assistant_text = controller.extract_text_from_message(item)
+                    if assistant_text:
+                        controller.conversation.add_assistant_message(assistant_text)
+                        if config.debug:
+                            print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
+                        break
 
-                # If we didn't find any assistant messages, debug log the structure
-                if config.debug:
-                    print(
-                        f"DEBUG: State output_items types: {[getattr(item, 'type', type(item).__name__) for item in state.output_items]}"
-                    )
-                    for i, item in enumerate(state.output_items):
-                        # Use getattr for safe access to type and role attributes
-                        item_type = getattr(item, "type", "unknown")
-                        item_role = getattr(item, "role", "N/A")
-                        print(f"DEBUG: Item {i}: type={item_type}, role={item_role}")
-
-        except Exception as e:
-            message_display.show_error(f"Error processing message: {str(e)}")
+            # If we didn't find any assistant messages, debug log the structure
             if config.debug:
-                import traceback
-
-                traceback.print_exc()
+                print(
+                    f"DEBUG: State output_items types: {[getattr(item, 'type', type(item).__name__) for item in state.output_items]}"
+                )
+                for i, item in enumerate(state.output_items):
+                    # Use getattr for safe access to type and role attributes
+                    item_type = getattr(item, "type", "unknown")
+                    item_role = getattr(item, "role", "N/A")
+                    print(f"DEBUG: Item {i}: type={item_type}, role={item_role}")
 
     # Replace method
     controller.send_message = typed_send_message
@@ -329,52 +314,45 @@ async def display_vectorstore_info(vec_ids: list[str], use_rich: bool = True) ->
         print("\n📚 Vector Store Information:")
 
     for i, vec_id in enumerate(vec_ids, 1):
-        try:
-            vec_info = await async_get_vectorstore(vec_id)
-            if vec_info:
-                if use_rich:
-                    from rich.text import Text
-
-                    vec_text = Text()
-                    vec_text.append(f"  🔍 Vector Store #{i}:\n", style="blue bold")
-                    vec_text.append("    🔑 ID: ", style="yellow")
-                    vec_text.append(f"{vec_id}\n")
-                    vec_text.append("    📝 Name: ", style="yellow")
-                    vec_text.append(f"{vec_info.get('name', 'Unknown')}\n")
-
-                    if vec_info.get("description"):
-                        vec_text.append("    📄 Description: ", style="yellow")
-                        vec_text.append(f"{vec_info.get('description')}\n")
-
-                    file_count = len(vec_info.get("file_ids", []))
-                    vec_text.append("    📊 File Count: ", style="yellow")
-                    vec_text.append(f"{file_count}\n")
-
-                    console.print(vec_text)
-                else:
-                    print(f"  🔍 Vector Store #{i}:")
-                    print(f"    🔑 ID: {vec_id}")
-                    print(f"    📝 Name: {vec_info.get('name', 'Unknown')}")
-
-                    if vec_info.get("description"):
-                        print(f"    📄 Description: {vec_info.get('description')}")
-
-                    file_count = len(vec_info.get("file_ids", []))
-                    print(f"    📊 File Count: {file_count}")
-            else:
-                if use_rich:
-                    console.print(
-                        f"  ❓ Vector Store #{i}: Unable to fetch details",
-                        style="yellow",
-                    )
-                else:
-                    print(f"  ❓ Vector Store #{i}: Unable to fetch details")
-
-        except Exception as e:
+        vec_info = await async_get_vectorstore(vec_id)
+        if vec_info:
             if use_rich:
-                console.print(f"  ❌ Vector Store #{i}: Error - {e}", style="red")
+                from rich.text import Text
+
+                vec_text = Text()
+                vec_text.append(f"  🔍 Vector Store #{i}:\n", style="blue bold")
+                vec_text.append("    🔑 ID: ", style="yellow")
+                vec_text.append(f"{vec_id}\n")
+                vec_text.append("    📝 Name: ", style="yellow")
+                vec_text.append(f"{vec_info.get('name', 'Unknown')}\n")
+
+                if vec_info.get("description"):
+                    vec_text.append("    📄 Description: ", style="yellow")
+                    vec_text.append(f"{vec_info.get('description')}\n")
+
+                file_count = len(vec_info.get("file_ids", []))
+                vec_text.append("    📊 File Count: ", style="yellow")
+                vec_text.append(f"{file_count}\n")
+
+                console.print(vec_text)
             else:
-                print(f"  ❌ Vector Store #{i}: Error - {e}")
+                print(f"  🔍 Vector Store #{i}:")
+                print(f"    🔑 ID: {vec_id}")
+                print(f"    📝 Name: {vec_info.get('name', 'Unknown')}")
+
+                if vec_info.get("description"):
+                    print(f"    📄 Description: {vec_info.get('description')}")
+
+                file_count = len(vec_info.get("file_ids", []))
+                print(f"    📊 File Count: {file_count}")
+        else:
+            if use_rich:
+                console.print(
+                    f"  ❓ Vector Store #{i}: Unable to fetch details",
+                    style="yellow",
+                )
+            else:
+                print(f"  ❓ Vector Store #{i}: Unable to fetch details")
 
 
 async def main():
@@ -555,14 +533,11 @@ async def main():
     # Handle dataset if provided
     dataset = None
     if getattr(args, "dataset", None):
-        try:
-            dataset = TestDataset.from_json(args.dataset)
-            if not args.quiet:
-                print(f"Loaded dataset from {args.dataset}")
-                print(f"  Vector Store ID: {dataset.vectorstore_id}")
-                print(f"  Files: {len(dataset.files)}")
-        except Exception as e:
-            print(f"Error loading dataset: {e}")
+        dataset = TestDataset.from_json(args.dataset)
+        if not args.quiet:
+            print(f"Loaded dataset from {args.dataset}")
+            print(f"  Vector Store ID: {dataset.vectorstore_id}")
+            print(f"  Files: {len(dataset.files)}")
 
     # Create configuration
     config = SearchConfig.from_args(args)
