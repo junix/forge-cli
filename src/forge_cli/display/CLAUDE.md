@@ -96,7 +96,7 @@ Defines the contract all v1 display strategies must implement:
 class BaseDisplay(ABC):
     """Abstract base class for display strategies."""
     
-    def __init__(self, config: SearchConfig):
+    def __init__(self, config: AppConfig):
         self.config = config
         self.start_time = time.time()
     

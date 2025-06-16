@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 from forge_cli.chat.controller import ChatController
+from forge_cli.config import AppConfig
 from forge_cli.sdk import astream_typed_response
 from forge_cli.stream.handler_typed import TypedStreamHandler
 

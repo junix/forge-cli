@@ -330,11 +330,11 @@ from typing import cast, Dict, Any
 from pydantic import BaseModel
 
 # GOOD: Cast after validation
-def parse_config(data: Dict[str, Any]) -> SearchConfig:
+def parse_config(data: Dict[str, Any]) -> AppConfig:
     # Pydantic validates the data
-    validated = SearchConfig.model_validate(data)
+    validated = AppConfig.model_validate(data)
     # Cast is safe here because model_validate ensures correct type
-    return cast(SearchConfig, validated)
+    return cast(AppConfig, validated)
 
 # GOOD: Cast with runtime check
 def get_tool_name(item: Any) -> str:
@@ -559,9 +559,9 @@ These advanced typing techniques work together to create a robust, maintainable 
 ```python
 # BAD: Defensive programming that hides errors
 try:
-    config = SearchConfig(**user_data)
+    config = AppConfig(**user_data)
 except ValidationError:
-    config = SearchConfig()  # Silent fallback masks the real issue
+    config = AppConfig()  # Silent fallback masks the real issue
 
 # BAD: Ignoring validation failures
 def process_file(file_data):
@@ -575,7 +575,7 @@ def process_file(file_data):
 
 ```python
 # GOOD: Let validation errors bubble up
-config = SearchConfig(**user_data)  # Will raise ValidationError if invalid
+config = AppConfig(**user_data)  # Will raise ValidationError if invalid
 
 # GOOD: Explicit error handling with user feedback
 try:
@@ -611,7 +611,7 @@ Files at the top level use **absolute imports**:
 ```python
 # In src/forge_cli/main.py
 from forge_cli.sdk import astream_response, async_get_vectorstore
-from forge_cli.config import SearchConfig
+from forge_cli.config import AppConfig
 from forge_cli.display.base import BaseDisplay
 from forge_cli.display.rich_display import RichDisplay
 from forge_cli.stream.handler import StreamHandler
@@ -643,7 +643,7 @@ Scripts use **absolute imports** since they are standalone utilities:
 ```python
 # In src/forge_cli/scripts/hello-async.py
 from forge_cli.sdk import async_create_response, astream_response
-from forge_cli.config import SearchConfig
+from forge_cli.config import AppConfig
 ```
 
 ## Installation & Setup

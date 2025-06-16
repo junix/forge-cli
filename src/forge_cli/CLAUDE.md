@@ -283,7 +283,7 @@ The modular design makes these enhancements straightforward:
 - Plugins: Add a dynamic loader to the registry
 - Caching: Wrap the stream handler
 - Metrics: Add observers to key points
-- Config: Extend the `SearchConfig` class
+- Config: Extend the `AppConfig` class
 - i18n: Add translation layer to processors
 
 ## Best Practices

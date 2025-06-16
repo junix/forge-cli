@@ -49,14 +49,14 @@ The `StreamHandler` class is the main orchestrator for event processing:
 ```python
 class StreamHandler:
     """Handles streaming responses from the Knowledge Forge API."""
-    
-    def __init__(self, 
+
+    def __init__(self,
                  display: BaseDisplay,
                  processor_registry: Optional[ProcessorRegistry] = None,
-                 config: Optional[SearchConfig] = None):
+                 config: Optional[AppConfig] = None):
         self.display = display
         self.processor_registry = processor_registry or initialize_default_registry()
-        self.config = config or SearchConfig()
+        self.config = config or AppConfig()
         self.state = StreamState()
 ```
 

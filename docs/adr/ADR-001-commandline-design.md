@@ -42,7 +42,7 @@ This approach:
 - Integrates well with the uv package manager
 
 ### 4. Unified Configuration System
-Configuration is handled through a centralized `SearchConfig` dataclass:
+Configuration is handled through a centralized `AppConfig` dataclass:
 - Command-line arguments (primary)
 - Environment variables: `KNOWLEDGE_FORGE_URL`
 - Sensible defaults for all options

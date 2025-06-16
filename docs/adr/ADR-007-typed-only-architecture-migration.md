@@ -167,7 +167,7 @@ async for event_type, response in astream_typed_response(request):
 ### Configuration Changes
 ```python
 # JSON output now supports Rich rendering
-SearchConfig(
+AppConfig(
     json_output=True,    # Enables JsonRenderer with Rich Live updates
     quiet=False,         # Shows panel borders and formatting
     debug=True           # Includes session metadata

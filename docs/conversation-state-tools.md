@@ -221,7 +221,7 @@ forge-cli --resume conv_abc12345
 
 ```python
 from forge_cli.models.conversation import ConversationState
-from forge_cli.config import SearchConfig
+from forge_cli.config import AppConfig
 
 # Create conversation
 conversation = ConversationState()
@@ -232,7 +232,7 @@ conversation.enable_file_search()
 conversation.set_vector_store_ids(["vs_123"])
 
 # Create request (conversation state takes priority)
-config = SearchConfig()  # May have different settings
+config = AppConfig()  # May have different settings
 request = conversation.new_request("Your question", config)
 
 # Request will use conversation state settings

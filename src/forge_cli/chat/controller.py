@@ -2,7 +2,7 @@
 
 from typing import Final
 
-from ..config import SearchConfig
+from ..config import AppConfig
 from ..display.v3.base import Display
 from ..models.conversation import ConversationState
 from .commands import CommandRegistry
@@ -21,7 +21,7 @@ class ChatController:
     Message processing and API communication is handled in main.py.
 
     Attributes:
-        config (SearchConfig): The configuration settings for the chat session.
+        config (AppConfig): The configuration settings for the chat session.
         display (Display): The display handler for rendering output.
         conversation (ConversationState): The current state of the conversation,
             including messages and tool configurations.
@@ -30,11 +30,11 @@ class ChatController:
             (Note: Actual loop is managed in main.py for v3).
     """
 
-    def __init__(self, config: SearchConfig, display: Display):
+    def __init__(self, config: AppConfig, display: Display):
         """Initializes the ChatController.
 
         Args:
-            config: The `SearchConfig` object containing chat settings.
+            config: The `AppConfig` object containing chat settings.
             display: The `Display` object for rendering output.
         """
         self.config = config
@@ -48,7 +48,7 @@ class ChatController:
         self._initialize_conversation_from_config()
 
     def _initialize_conversation_from_config(self) -> None:
-        """Initialize conversation state from SearchConfig."""
+        """Initialize conversation state from AppConfig."""
         # Set tool enablement based on config
         if "web-search" in self.config.enabled_tools:
             self.conversation.enable_web_search()

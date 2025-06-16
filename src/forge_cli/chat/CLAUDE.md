@@ -49,7 +49,7 @@ The `ChatController` manages the entire chat session lifecycle:
 class ChatController:
     """Main controller for interactive chat sessions."""
     
-    def __init__(self, config: SearchConfig, display: BaseDisplay):
+    def __init__(self, config: AppConfig, display: BaseDisplay):
         self.config = config
         self.display = display
         self.conversation = Conversation()
@@ -370,9 +370,9 @@ When working with the chat module:
 ```python
 from forge_cli.chat.controller import ChatController
 from forge_cli.display.rich_display import RichDisplay
-from forge_cli.config import SearchConfig
+from forge_cli.config import AppConfig
 
-config = SearchConfig(
+config = AppConfig(
     model="gpt-4",
     tools={"file-search", "web-search"}
 )
@@ -572,7 +572,7 @@ from unittest.mock import Mock, AsyncMock
 
 async def test_chat_controller():
     # Mock dependencies
-    config = Mock(spec=SearchConfig)
+    config = Mock(spec=AppConfig)
     display = Mock(spec=BaseDisplay)
     
     # Create controller

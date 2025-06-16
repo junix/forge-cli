@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from forge_cli.config import SearchConfig
+from forge_cli.config import AppConfig
 
 if TYPE_CHECKING:
     from forge_cli.display.v3.base import Display
@@ -12,11 +12,11 @@ class DisplayFactory:
     """Factory for creating display instances based on configuration."""
 
     @staticmethod
-    def create_display(config: SearchConfig) -> "Display":
+    def create_display(config: AppConfig) -> "Display":
         """Create appropriate display based on configuration using v3 architecture.
 
         Args:
-            config: SearchConfig containing display preferences
+            config: AppConfig containing display preferences
 
         Returns:
             Display instance configured for the specified output format
