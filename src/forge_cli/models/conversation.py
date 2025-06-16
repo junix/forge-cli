@@ -197,39 +197,51 @@ class ConversationState:
             state: StreamState object from stream processing
         """
         # Import here to avoid circular imports
-        from ..response._types.response_usage import InputTokensDetails, OutputTokensDetails, ResponseUsage
 
-        # Handle usage information
-        if state.usage:
-            if isinstance(state.usage, dict):
-                # Handle dict-based usage from handler_typed.StreamState
-                usage = ResponseUsage(
-                    input_tokens=state.usage.get("input_tokens", 0),
-                    output_tokens=state.usage.get("output_tokens", 0),
-                    total_tokens=state.usage.get("total_tokens", 0),
-                    input_tokens_details=InputTokensDetails(cached_tokens=0),
-                    output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
-                )
-                self.add_token_usage(usage)
-            else:
-                # Handle ResponseUsage object from models.state.StreamState
-                self.add_token_usage(state.usage)
+        # Handle usage information from response
+        if state.response and state.response.usage:
+            self.add_token_usage(state.response.usage)
 
-        # Handle accessed files
-        accessed_files = state.get_accessed_files()
-        if accessed_files:
-            self.add_accessed_files(accessed_files)
+        # Handle accessed files - extract from response
+        if state.response:
+            accessed_files = self._extract_accessed_files_from_response(state.response)
+            if accessed_files:
+                self.add_accessed_files(accessed_files)
 
         # Handle vector store IDs
         vector_store_ids = state.get_vector_store_ids()
         if vector_store_ids:
             self.used_vector_store_ids.update(vector_store_ids)
 
-        # Handle model information
-        if state.model:
+        # Handle model information from response
+        if state.response and state.response.model:
             # Only update if we don't have a model set or if it's different
-            if not self.model or self.model != state.model:
-                self.model = state.model
+            if not self.model or self.model != state.response.model:
+                self.model = state.response.model
+
+        # Add assistant message from response
+        if state.response:
+            assistant_text = state.response.output_text
+            if assistant_text:
+                self.add_assistant_message(assistant_text)
+                # Increment turn count when we successfully add an assistant message
+                self.increment_turn_count()
+
+    def _extract_accessed_files_from_response(self, response: "Response") -> list[str]:
+        """Extract accessed files from Response object using type guards."""
+        from ..response.type_guards import get_tool_results, is_file_search_call
+
+        file_mapping = {}
+        for item in response.output:
+            if is_file_search_call(item):
+                results = get_tool_results(item)
+                for result in results:
+                    file_id = getattr(result, "file_id", None)
+                    filename = getattr(result, "filename", None)
+                    if file_id and filename:
+                        file_mapping[file_id] = filename
+
+        return list(file_mapping.values())
 
     def save(self, path: Path) -> None:
         """Save conversation to a JSON file."""
@@ -365,6 +377,72 @@ class ConversationState:
             if is_input_text(content_item):
                 text_content.append(content_item.text)
         return text_content
+
+    def new_request(self, content: str, config: "SearchConfig") -> "Request":
+        """Create a new typed request with conversation history and current content.
+
+        Args:
+            content: The new user message content
+            config: SearchConfig containing tool and model settings
+
+        Returns:
+            A typed Request object ready for the API
+        """
+        from ..response._types import FileSearchTool, InputMessage, Request, WebSearchTool
+        from ..response._types.user_location import UserLocation
+
+        # Build tools list based on config
+        tools = []
+
+        # File search tool
+        if "file-search" in config.enabled_tools and config.vec_ids:
+            tools.append(
+                FileSearchTool(
+                    type="file_search",
+                    vector_store_ids=config.vec_ids,
+                    max_num_results=config.max_results,
+                )
+            )
+
+        # Web search tool
+        if "web-search" in config.enabled_tools:
+            tool_params = {"type": "web_search"}
+            location = config.get_web_location()
+            if location:
+                user_location = UserLocation(
+                    type="approximate",
+                    country=location.get("country"),
+                    city=location.get("city"),
+                )
+                tool_params["user_location"] = user_location
+            tools.append(WebSearchTool(**tool_params))
+
+        # Build input messages - include conversation history plus new message
+        input_messages = []
+
+        # Convert existing conversation history to InputMessage objects
+        for msg in self.messages:
+            # Extract text content from ResponseInputText objects
+            content_parts = []
+            for content_item in msg.content:
+                if is_input_text(content_item):
+                    content_parts.append(content_item.text)
+
+            content_str = " ".join(content_parts)
+            input_messages.append(InputMessage(role=msg.role, content=content_str))
+
+        # Add the new user message
+        input_messages.append(InputMessage(role="user", content=content))
+
+        # Create typed request
+        return Request(
+            input=input_messages,
+            model=config.model,
+            tools=tools,
+            temperature=config.temperature or 0.7,
+            max_output_tokens=config.max_output_tokens or 2000,
+            effort=config.effort or "low",
+        )
 
     @classmethod
     def _load_tools(cls, tools_data: list[dict[str, Any] | Tool]) -> list[Tool]:
