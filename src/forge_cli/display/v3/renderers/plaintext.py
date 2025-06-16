@@ -281,9 +281,7 @@ class PlaintextRenderer(BaseRenderer):
                 shortened_queries = [q[:30] + "..." if len(q) > 30 else q for q in tool_item.queries]
                 packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
                 parts.append(packed)
-            # Note: results may not be available during in_progress status
-            if getattr(tool_item, "results", None):
-                parts.append(f"found {len(tool_item.results)} results")
+            # Note: results are not directly accessible from tool_item
 
             return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
@@ -295,9 +293,7 @@ class PlaintextRenderer(BaseRenderer):
                 shortened_queries = [q[:30] + "..." if len(q) > 30 else q for q in tool_item.queries]
                 packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
                 parts.append(packed)
-            # Note: results may not be available during in_progress status
-            if getattr(tool_item, "results", None):
-                parts.append(f"found {len(tool_item.results)} results")
+            # Note: results are not directly accessible from tool_item
 
             return f" {ICONS['bullet']} ".join(parts) if parts else ""
 

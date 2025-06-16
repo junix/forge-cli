@@ -12,6 +12,7 @@ from ..display.v3.base import Display
 
 # Note: Registry system removed - all processing now done in v3 renderers
 from ..response._types import Response
+from ..response._types.response_output_item import ResponseOutputItem
 
 # Additional imports for proper typing
 from ..response.type_guards import (

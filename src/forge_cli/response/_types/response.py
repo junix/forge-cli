@@ -393,12 +393,8 @@ class Response(BaseModel):
                 continue
 
             if output_item.type == "file_search_call":
-                file_search_call = cast(ResponseFileSearchToolCall, output_item)
-                if file_search_call.results:
-                    for result in file_search_call.results:
-                        result.set_citation_id(citation_id)
-                        citation_id += 1
-                        citable_items.append(result)
+                # File search results are not directly accessible from tool call
+                pass
 
             elif output_item.type == "web_search_call":
                 web_search_call = cast(ResponseFunctionWebSearch, output_item)
@@ -455,9 +451,8 @@ class Response(BaseModel):
                 continue
 
             if output_item.type == "file_search_call":
-                file_search_call = cast(ResponseFileSearchToolCall, output_item)
-                if file_search_call.results:
-                    citable_items.extend(file_search_call.results)
+                # File search results are not directly accessible from tool call
+                pass
 
             elif output_item.type == "web_search_call":
                 web_search_call = cast(ResponseFunctionWebSearch, output_item)
@@ -543,16 +538,8 @@ class Response(BaseModel):
                 continue
 
             if output_item.type == "file_search_call":
-                file_search_call = cast(ResponseFileSearchToolCall, output_item)
-                if file_search_call.results:
-                    for result in file_search_call.results:
-                        # 替换内容为压缩说明
-                        result.text = "【内容因上下文长度限制已压缩】"
-                        # 标记为不可引用
-                        if result.attributes:
-                            result.attributes["segment_type"] = "compressed"
-                        else:
-                            result.attributes = {"segment_type": "compressed"}
+                # File search results are not directly accessible from tool call
+                pass
 
             elif output_item.type == "web_search_call":
                 web_search_call = cast(ResponseFunctionWebSearch, output_item)
@@ -604,27 +591,8 @@ class Response(BaseModel):
                 continue
 
             if output_item.type == "file_search_call":
-                file_search_call = cast(ResponseFileSearchToolCall, output_item)
-                if file_search_call.results:
-                    kept_results = []
-                    # 正向处理结果列表，保留最先出现的
-                    for result in file_search_call.results:
-                        should_keep = True
-
-                        # 检查是否可引用并获取annotation进行去重
-                        if result.is_citable():
-                            # Use as_annotation() which uses document segment index for proper deduplication
-                            annotation = result.as_annotation()
-                            if annotation and annotation in seen_annotations:
-                                should_keep = False  # 重复，跳过
-                            elif annotation:
-                                seen_annotations.add(annotation)
-
-                        if should_keep:
-                            kept_results.append(result)
-
-                    # 直接更新结果，保持原有顺序
-                    file_search_call.results = kept_results
+                # File search results are not directly accessible from tool call
+                pass
 
             elif output_item.type == "web_search_call":
                 web_search_call = cast(ResponseFunctionWebSearch, output_item)
@@ -712,24 +680,8 @@ class Response(BaseModel):
                 continue
 
             if output_item.type == "file_search_call":
-                file_search_call = cast(ResponseFileSearchToolCall, output_item)
-                if file_search_call.results:
-                    kept_results = []
-                    for result in file_search_call.results:
-                        should_keep = True
-
-                        # 检查结果是否可引用，如果可引用则检查是否被实际引用
-                        if result.is_citable():
-                            # Use as_annotation() which uses document segment index for proper comparison
-                            annotation = result.as_annotation()
-                            if annotation and annotation not in referenced_annotations_set:
-                                should_keep = False  # 可引用但未被引用，删除
-                                removed_file_count += 1
-                        # 不可引用的结果（如navigate类型）总是保留
-
-                        if should_keep:
-                            kept_results.append(result)
-                    file_search_call.results = kept_results
+                # File search results are not directly accessible from tool call
+                pass
 
             elif output_item.type == "web_search_call":
                 web_search_call = cast(ResponseFunctionWebSearch, output_item)
@@ -864,16 +816,8 @@ class Response(BaseModel):
                 continue
 
             if output_item.type == "file_search_call":
-                # 处理文件搜索结果
-                file_search_call = cast(ResponseFileSearchToolCall, output_item)
-                if file_search_call.results:
-                    for result in file_search_call.results:
-                        # 检查是否可引用
-                        if result.is_citable():
-                            # Use as_annotation() to get document-based annotation
-                            annotation = result.as_annotation()
-                            if annotation is not None:
-                                candidate_annotations.append(annotation)
+                # File search results are not directly accessible from tool call
+                pass
 
             elif output_item.type == "web_search_call":
                 # 处理网页搜索结果
@@ -985,33 +929,12 @@ class Response(BaseModel):
 
                 if output_item.type == "file_search_call":
                     tool_type = "file_search"
-                    file_search_call = cast(ResponseFileSearchToolCall, output_item)
-
-                    if file_search_call.results:
-                        stats["results_by_type"][tool_type]["before"] += len(file_search_call.results)
-
-                        for result in file_search_call.results:
-                            # Only deduplicate citable results
-                            if result.is_citable():
-                                annotation = result.as_annotation()
-                                if annotation and annotation not in seen_annotations:
-                                    kept_results.append(result)
-                                    seen_annotations.add(annotation)
-                                else:
-                                    stats["results_by_type"][tool_type]["removed"] += 1
-                            else:
-                                # Keep non-citable results (navigate type)
-                                kept_results.append(result)
-
-                        if kept_results:
-                            file_search_call.results = kept_results
-                            new_output.append(file_search_call)
-                            stats["total_tool_calls_after"] += 1
-                            stats["results_by_type"][tool_type]["after"] += len(kept_results)
-                            stats["kept_tool_call_ids"].append(file_search_call.id)
-                        else:
-                            stats["removed_tool_calls"] += 1
-                            stats["removed_tool_call_ids"].append(file_search_call.id)
+                    # File search results are not directly accessible from tool call
+                    # Keep the tool call as-is
+                    new_output.append(output_item)
+                    stats["total_tool_calls_after"] += 1
+                    if hasattr(output_item, "id"):
+                        stats["kept_tool_call_ids"].append(output_item.id)
 
                 elif output_item.type == "web_search_call":
                     tool_type = "web_search"

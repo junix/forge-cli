@@ -473,8 +473,6 @@ class RichRenderer(BaseRenderer):
             return f"{ICONS['processing']}calling function..."
 
         # Default fallback
-        if getattr(tool_item, "results", None):
-            return f"{ICONS['check']}{len(tool_item.results)} results"
         return ""
 
     # Additional methods for chat mode and error handling
