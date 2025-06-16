@@ -18,8 +18,6 @@ from forge_cli.dataset import TestDataset
 from forge_cli.sdk import astream_typed_response
 from forge_cli.stream.handler_typed import TypedStreamHandler
 
-from .common.logger import logger
-
 if TYPE_CHECKING:
     from forge_cli.display.v3.base import Display
 
@@ -77,38 +75,6 @@ def create_display(config: SearchConfig) -> "Display":
 
     # Create v3 display
     return Display(renderer, mode=mode)
-
-
-async def process_search(config: SearchConfig, question: str) -> dict[str, str | int | float | bool | list] | None:
-    """Process search with the typed API."""
-    # Note: Registry initialization removed - processing handled by v3 renderers
-
-    # Create display
-    display = create_display(config)
-
-    # Create typed stream handler
-    handler = TypedStreamHandler(display, debug=config.debug)
-
-    # Create a temporary conversation state for single-turn search
-    from forge_cli.models.conversation import ConversationState
-
-    conversation = ConversationState(model=config.model)
-
-    # Prepare typed request using conversation state
-    request = conversation.new_request(question, config)
-
-    # Stream and process with typed API
-    event_stream = astream_typed_response(request, debug=config.debug)
-    response = await handler.handle_stream(event_stream)
-
-    # Return response information
-    return {
-        "response_id": response.id if response else None,
-        "model": response.model if response else None,
-        "usage": response.usage if response else None,
-        "citations": response,  # Return full response for citation extraction
-        "vector_store_ids": config.vec_ids,  # Use config vector store IDs directly
-    }
 
 
 async def start_chat_mode(
@@ -176,25 +142,18 @@ async def start_chat_mode(
     # Start chat loop
     controller.running = True
 
-    try:
-        while controller.running:
-            # Get user input
-            user_input = await controller.get_user_input()
+    while controller.running:
+        # Get user input
+        user_input = await controller.get_user_input()
 
-            if user_input is None:  # EOF or interrupt
-                break
+        if user_input is None:  # EOF or interrupt
+            break
 
-            # Process the input
-            continue_chat = await controller.process_input(user_input)
+        # Process the input
+        continue_chat = await controller.process_input(user_input)
 
-            if not continue_chat:
-                break
-
-    except KeyboardInterrupt:
-        display.show_status("\n\n👋 Chat interrupted. Goodbye!")
-
-    except Exception:
-        logger.exeption("Chat error")
+        if not continue_chat:
+            break
 
 
 async def main():
@@ -314,28 +273,12 @@ async def main():
         help="Server URL",
     )
 
-    # Chat mode argument
-    parser.add_argument(
-        "--chat",
-        "--interactive",
-        "-i",
-        action="store_true",
-        help="Start interactive chat mode",
-    )
-
     # Resume conversation argument
     parser.add_argument(
         "--resume",
         "-r",
         type=str,
         help="Resume an existing conversation by ID",
-    )
-
-    # Legacy API argument (for backward compatibility)
-    parser.add_argument(
-        "--legacy-api",
-        action="store_true",
-        help="Use legacy dict-based API (not recommended)",
     )
 
     # Other arguments
@@ -352,19 +295,23 @@ async def main():
     if show_help and not any(arg in sys.argv for arg in ["-h", "--help"]):
         parser.print_help()
         print("\nExample usage:")
-        print("  # File search:")
-        print('  python -m hello_file_search_refactored -q "What information is in these documents?"')
-        print("  python -m hello_file_search_refactored --vec-id vec_123 -t file-search")
+        print("  # Start interactive chat (default mode):")
+        print("  python -m forge_cli")
         print()
-        print("  # Web search:")
-        print('  python -m hello_file_search_refactored -t web-search -q "Latest AI news"')
+        print("  # Start chat with specific model:")
+        print("  python -m forge_cli -m qwen3-235b-a22b")
         print()
-        print("  # Both tools:")
-        print("  python -m hello_file_search_refactored -t file-search -t web-search --vec-id vec_123")
+        print("  # Start chat with file search enabled:")
+        print("  python -m forge_cli --vec-id vec_123 -t file-search")
         print()
-        print("  # Interactive chat mode:")
-        print("  python -m hello_file_search_refactored --chat")
-        print("  python -m hello_file_search_refactored -i -t file-search --vec-id vec_123")
+        print("  # Start chat with web search enabled:")
+        print("  python -m forge_cli -t web-search")
+        print()
+        print("  # Start chat with initial question:")
+        print('  python -m forge_cli -q "What information is in these documents?"')
+        print()
+        print("  # Resume existing conversation:")
+        print("  python -m forge_cli --resume conv_123")
         return
 
     # Handle version
@@ -373,12 +320,6 @@ async def main():
 
         print(f"Knowledge Forge File Search Refactored v{__version__}")
         return
-
-    # Warn about legacy API
-    if args.legacy_api:
-        print("⚠️  Warning: Using legacy dict-based API. Consider using the typed API (default).")
-        print("   The legacy API will be deprecated in future versions.")
-        sys.exit(1)
 
     # Handle dataset if provided
     dataset = None
@@ -413,26 +354,22 @@ async def main():
         if not config.quiet and not config.json_output:
             print(f"🔗 Using server: {config.server_url}")
 
-    # Check if resume mode is requested
+    # Check if resume mode is requested, otherwise start new chat
     if hasattr(args, "resume") and args.resume:
         # Resume existing conversation
         await start_chat_mode(config, None, args.resume)
-    elif config.chat_mode:
-        # If a question was provided with -q, send it as the first message
-        initial_question = args.question if args.question != "What information can you find in the documents?" else None
-        await start_chat_mode(config, initial_question)
     else:
-        # Run single-turn search
-        await process_search(config, args.question)
+        # Start new chat mode (always chat mode now)
+        initial_question = (
+            config.question if config.question != "What information can you find in the documents?" else None
+        )
+        await start_chat_mode(config, initial_question)
 
 
 def run_main_async():
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nChat interrupted by user.")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
         sys.exit(1)
 
 

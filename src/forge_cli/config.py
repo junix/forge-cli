@@ -40,6 +40,9 @@ class SearchConfig:
     chat_mode: bool = False
     show_reasoning: bool = True  # Whether to show reasoning/thinking in output
 
+    # Question/query
+    question: str = "What information can you find in the documents?"
+
     # Web search location
     web_country: str | None = None
     web_city: str | None = None
@@ -57,6 +60,10 @@ class SearchConfig:
             config.model = args.model
         if hasattr(args, "effort"):
             config.effort = args.effort
+
+        # Question/query
+        if hasattr(args, "question"):
+            config.question = args.question
 
         # Search settings
         if hasattr(args, "max_results"):
