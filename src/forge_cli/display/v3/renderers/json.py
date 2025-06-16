@@ -11,6 +11,26 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 
 from forge_cli.response._types.response import Response
+from forge_cli.response.type_guards.output_items import (
+    is_message_item,
+    is_reasoning_item,
+    is_file_search_call,
+    is_web_search_call,
+    is_list_documents_call,
+    is_file_reader_call,
+    is_function_call,
+    is_computer_call,
+    is_code_interpreter_call,
+)
+from forge_cli.response.type_guards.content import (
+    is_output_text,
+    is_output_refusal,
+)
+from forge_cli.response.type_guards.annotations import (
+    is_file_citation,
+    is_url_citation,
+    is_file_path,
+)
 
 from ..base import BaseRenderer
 
@@ -131,7 +151,7 @@ class JsonRenderer(BaseRenderer):
             error_json = {
                 "error": "JSON rendering failed",
                 "message": str(e),
-                "response_id": getattr(response, "id", None),
+                "response_id": response.id if hasattr(response, 'id') else None,
             }
             error_output = json.dumps(error_json, indent=self._config.indent)
 
@@ -213,102 +233,218 @@ class JsonRenderer(BaseRenderer):
         # Add timing information if enabled
         if self._config.include_timing:
             result["timing"] = {
-                "created_at": getattr(response, "created_at", None),
-                "completed_at": getattr(response, "completed_at", None),
+                "created_at": getattr(response, "created_at", None),  # TODO: Add to Response type
+                "completed_at": getattr(response, "completed_at", None),  # TODO: Add to Response type
             }
 
         return result
 
     def _serialize_output_item(self, item: Any) -> dict[str, Any]:
-        """Serialize an output item to dictionary format."""
-        if not getattr(item, "type", None):
-            return {"raw_data": str(item)}
+        """Serialize an output item to dictionary format using type guards."""
+        # Handle message items
+        if is_message_item(item):
+            item_dict = {"type": "message"}
+            if item.content:
+                item_dict["content"] = [
+                    self._serialize_content_item(content) for content in item.content
+                ]
+            return item_dict
 
-        item_dict = {"type": item.type}
+        # Handle reasoning items
+        elif is_reasoning_item(item):
+            item_dict = {"type": "reasoning"}
+            if item.summary:
+                item_dict["summary"] = [
+                    {"text": summary.text} for summary in item.summary if hasattr(summary, 'text')
+                ]
+            return item_dict
 
-        # Handle different item types
-        if item.type == "message":
-            if getattr(item, "content", None):
-                item_dict["content"] = []
-                for content in item.content:
-                    content_dict = self._serialize_content_item(content)
-                    item_dict["content"].append(content_dict)
-
-        elif getattr(item, "status", None):
-            # Tool-related items
-            item_dict["status"] = item.status
-
-            if getattr(item, "queries", None):
+        # Handle file search tool calls
+        elif is_file_search_call(item):
+            item_dict = {
+                "type": "file_search_call",
+                "id": item.id,
+                "status": item.status,
+            }
+            if item.queries:
                 item_dict["queries"] = item.queries
+            # Note: Results are accessed through response methods, not directly from item
+            return item_dict
 
-            results = getattr(item, "results", None)
-            if results:
-                item_dict["results"] = results
+        # Handle web search tool calls
+        elif is_web_search_call(item):
+            item_dict = {
+                "type": "web_search_call",
+                "id": item.id,
+                "status": item.status,
+            }
+            if item.queries:
+                item_dict["queries"] = item.queries
+            return item_dict
 
-        elif item.type == "reasoning":
-            if getattr(item, "summary", None):
-                item_dict["summary"] = []
-                for summary in item.summary:
-                    if getattr(summary, "text", None):
-                        item_dict["summary"].append({"text": summary.text})
+        # Handle list documents tool calls
+        elif is_list_documents_call(item):
+            item_dict = {
+                "type": "list_documents_call",
+                "id": item.id,
+                "status": item.status,
+            }
+            if item.queries:
+                item_dict["queries"] = item.queries
+            if hasattr(item, 'count'):
+                item_dict["count"] = item.count
+            return item_dict
 
-        # Add any other attributes that might be useful
-        for attr in ["role", "status", "queries", "results", "summary"]:
-            if getattr(item, attr, None) is not None and attr not in item_dict:
-                value = getattr(item, attr)
-                item_dict[attr] = value
+        # Handle file reader tool calls
+        elif is_file_reader_call(item):
+            item_dict = {
+                "type": "file_reader_call",
+                "id": item.id,
+                "status": item.status,
+            }
+            if item.doc_ids:
+                item_dict["doc_ids"] = item.doc_ids
+            if item.query:
+                item_dict["query"] = item.query
+            if hasattr(item, 'progress') and item.progress is not None:
+                item_dict["progress"] = item.progress
+            return item_dict
 
-        return item_dict
+        # Handle function tool calls
+        elif is_function_call(item):
+            item_dict = {
+                "type": "function_call",
+                "id": item.id,
+                "call_id": item.call_id,
+                "name": item.name,
+                "arguments": item.arguments,
+            }
+            if item.status:
+                item_dict["status"] = item.status
+            return item_dict
+
+        # Handle computer tool calls
+        elif is_computer_call(item):
+            item_dict = {
+                "type": "computer_call",
+                "id": item.id,
+                "call_id": item.call_id,
+                "status": item.status,
+            }
+            if hasattr(item, 'action'):
+                item_dict["action"] = item.action
+            return item_dict
+
+        # Handle code interpreter tool calls
+        elif is_code_interpreter_call(item):
+            item_dict = {
+                "type": "code_interpreter_call",
+                "id": item.id,
+                "status": item.status,
+            }
+            if item.code:
+                item_dict["code"] = item.code
+            if item.results:
+                item_dict["results"] = item.results
+            return item_dict
+
+        # Fallback for unknown item types
+        else:
+            return {
+                "type": "unknown",
+                "raw_data": str(item),
+                "item_type": type(item).__name__,
+            }
 
     def _serialize_content_item(self, content: Any) -> dict[str, Any]:
-        """Serialize a content item to dictionary format."""
-        if not getattr(content, "type", None):
-            return {"raw_data": str(content)}
-
-        content_dict = {"type": content.type}
-
-        if content.type == "output_text":
-            content_dict["text"] = getattr(content, "text", "")
-
+        """Serialize a content item to dictionary format using type guards."""
+        # Handle output text content
+        if is_output_text(content):
+            content_dict = {
+                "type": "output_text",
+                "text": content.text,
+            }
+            
             # Add annotations if present
-            if getattr(content, "annotations", None):
-                content_dict["annotations"] = []
-                for annotation in content.annotations:
-                    ann_dict = self._serialize_annotation(annotation)
-                    content_dict["annotations"].append(ann_dict)
+            if content.annotations:
+                content_dict["annotations"] = [
+                    self._serialize_annotation(annotation) for annotation in content.annotations
+                ]
+            
+            return content_dict
 
-        elif content.type == "output_refusal":
-            content_dict["refusal"] = getattr(content, "refusal", "")
+        # Handle output refusal content
+        elif is_output_refusal(content):
+            return {
+                "type": "output_refusal",
+                "refusal": content.refusal,
+            }
 
-        return content_dict
+        # Fallback for unknown content types
+        else:
+            return {
+                "type": "unknown_content",
+                "raw_data": str(content),
+                "content_type": type(content).__name__,
+            }
 
     def _serialize_annotation(self, annotation: Any) -> dict[str, Any]:
-        """Serialize an annotation to dictionary format."""
-        if not getattr(annotation, "type", None):
-            return {"raw_data": str(annotation)}
+        """Serialize an annotation to dictionary format using type guards."""
+        # Handle file citation annotations
+        if is_file_citation(annotation):
+            ann_dict = {"type": "file_citation"}
+            
+            # Add available attributes
+            if hasattr(annotation, 'file_id') and annotation.file_id:
+                ann_dict["file_id"] = annotation.file_id
+            if hasattr(annotation, 'filename') and annotation.filename:
+                ann_dict["filename"] = annotation.filename
+            if hasattr(annotation, 'index') and annotation.index is not None:
+                ann_dict["index"] = annotation.index
+            if hasattr(annotation, 'snippet') and annotation.snippet:
+                ann_dict["snippet"] = annotation.snippet
+            if hasattr(annotation, 'quote') and annotation.quote:
+                ann_dict["quote"] = annotation.quote
+                
+            return ann_dict
 
-        ann_dict = {"type": annotation.type}
+        # Handle URL citation annotations
+        elif is_url_citation(annotation):
+            ann_dict = {"type": "url_citation"}
+            
+            # Add available attributes
+            if hasattr(annotation, 'url') and annotation.url:
+                ann_dict["url"] = annotation.url
+            if hasattr(annotation, 'title') and annotation.title:
+                ann_dict["title"] = annotation.title
+            if hasattr(annotation, 'snippet') and annotation.snippet:
+                ann_dict["snippet"] = annotation.snippet
+            if hasattr(annotation, 'start_index') and annotation.start_index is not None:
+                ann_dict["start_index"] = annotation.start_index
+            if hasattr(annotation, 'end_index') and annotation.end_index is not None:
+                ann_dict["end_index"] = annotation.end_index
+                
+            return ann_dict
 
-        # Handle different annotation types
-        if annotation.type == "file_citation":
-            for attr in ["file_id", "filename", "index", "snippet"]:
-                value = getattr(annotation, attr, None)
-                if value is not None:
-                    ann_dict[attr] = value
+        # Handle file path annotations
+        elif is_file_path(annotation):
+            ann_dict = {"type": "file_path"}
+            
+            # Add available attributes
+            if hasattr(annotation, 'file_id') and annotation.file_id:
+                ann_dict["file_id"] = annotation.file_id
+            if hasattr(annotation, 'index') and annotation.index is not None:
+                ann_dict["index"] = annotation.index
+                
+            return ann_dict
 
-        elif annotation.type == "url_citation":
-            for attr in ["url", "title", "snippet", "start_index", "end_index"]:
-                value = getattr(annotation, attr, None)
-                if value is not None:
-                    ann_dict[attr] = value
-
-        elif annotation.type == "file_path":
-            for attr in ["file_id", "index"]:
-                value = getattr(annotation, attr, None)
-                if value is not None:
-                    ann_dict[attr] = value
-
-        return ann_dict
+        # Fallback for unknown annotation types
+        else:
+            return {
+                "type": "unknown_annotation",
+                "raw_data": str(annotation),
+                "annotation_type": type(annotation).__name__,
+            }
 
     def _json_serializer(self, obj: Any) -> Any:
         """Custom JSON serializer for objects that aren't natively JSON serializable."""
@@ -348,10 +484,11 @@ class JsonRenderer(BaseRenderer):
             "timestamp": self._get_current_timestamp(),
         }
 
-        if getattr(config, "model", None):
+        # Use hasattr instead of getattr for better type checking
+        if hasattr(config, "model") and config.model:
             welcome_data["model"] = config.model
 
-        if getattr(config, "enabled_tools", None):
+        if hasattr(config, "enabled_tools") and config.enabled_tools:
             welcome_data["enabled_tools"] = config.enabled_tools
 
         try:

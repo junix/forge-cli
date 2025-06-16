@@ -3,7 +3,6 @@
 from typing import TYPE_CHECKING
 
 from forge_cli.chat.controller import ChatController
-from forge_cli.config import SearchConfig
 from forge_cli.sdk import astream_typed_response
 from forge_cli.stream.handler_typed import TypedStreamHandler
 
@@ -14,11 +13,11 @@ if TYPE_CHECKING:
 class ChatSessionManager:
     """Manages chat sessions including conversation flow and message processing."""
 
-    def __init__(self, config: SearchConfig, display: "Display"):
+    def __init__(self, config: AppConfig, display: "Display"):
         """Initialize chat session manager.
 
         Args:
-            config: SearchConfig containing chat settings
+            config: AppConfig containing chat settings
             display: Display instance for rendering output
         """
         self.config = config

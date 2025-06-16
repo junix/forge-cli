@@ -10,8 +10,8 @@ DEFAULT_VEC_IDS = [
 
 
 @dataclass
-class SearchConfig:
-    """Central configuration for search operations."""
+class AppConfig:
+    """Central configuration for the forge-cli application."""
 
     # Model settings
     model: str = "qwen-max-latest"
@@ -51,7 +51,7 @@ class SearchConfig:
     display_api_debug: bool = False  # Debug logging for display API
 
     @classmethod
-    def from_args(cls, args) -> "SearchConfig":
+    def from_args(cls, args) -> "AppConfig":
         """Create config from command line arguments using type-safe attribute access."""
         config = cls()
 
@@ -104,7 +104,7 @@ class SearchConfig:
 
         # Use default vector IDs if none provided
         if not self.vec_ids:
-            self.vec_ids = SearchConfig().vec_ids
+            self.vec_ids = AppConfig().vec_ids
 
         # Default to file-search if vec_ids provided but no tools specified
         if not self.enabled_tools and self.vec_ids:

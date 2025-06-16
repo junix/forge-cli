@@ -6,22 +6,22 @@ import sys
 
 from forge_cli.chat.session import ChatSessionManager
 from forge_cli.cli.parser import CLIParser
-from forge_cli.config import SearchConfig
+from forge_cli.config import AppConfig
 from forge_cli.dataset import TestDataset
 from forge_cli.display.factory import DisplayFactory
 
 
-def create_config_from_args(args) -> SearchConfig:
-    """Create and configure SearchConfig from parsed arguments.
+def create_config_from_args(args) -> AppConfig:
+    """Create and configure AppConfig from parsed arguments.
 
     Args:
         args: Parsed command line arguments
 
     Returns:
-        Configured SearchConfig instance
+        Configured AppConfig instance
     """
     # Create base configuration
-    config = SearchConfig.from_args(args)
+    config = AppConfig.from_args(args)
 
     # Handle dataset configuration if provided
     dataset = None
@@ -49,7 +49,7 @@ async def main():
     # Parse command line arguments with help and version handling
     args = CLIParser.parse_args()
 
-    # Create and configure SearchConfig
+    # Create and configure AppConfig
     config = create_config_from_args(args)
 
     # Create display

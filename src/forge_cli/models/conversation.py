@@ -18,7 +18,7 @@ from ..response.type_guards import (
 )
 
 if TYPE_CHECKING:
-    from ..config import SearchConfig
+    from ..config import AppConfig
     from ..response._types import Request, Response
 
 # Type aliases for clarity
@@ -559,7 +559,7 @@ class ConversationState:
                 text_content.append(content_item.text)
         return text_content
 
-    def new_request(self, content: str, config: "SearchConfig") -> "Request":
+    def new_request(self, content: str, config: "AppConfig") -> "Request":
         """Create a new typed request with conversation history and current content.
 
         This method automatically adds the new user message to the conversation history
@@ -568,7 +568,7 @@ class ConversationState:
 
         Args:
             content: The new user message content
-            config: SearchConfig containing fallback tool and model settings
+            config: AppConfig containing fallback tool and model settings
 
         Returns:
             A typed Request object ready for the API
