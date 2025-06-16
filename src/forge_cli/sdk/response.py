@@ -12,7 +12,6 @@ from forge_cli.response._types import Response
 
 from .config import BASE_URL
 
-
 # All legacy dict-based response creation functions have been removed.
 # Use typed_api.py functions instead:
 # - async_create_typed_response() instead of async_create_response()
