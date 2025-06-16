@@ -1,13 +1,33 @@
 """Chat controller for managing interactive conversations."""
 
 import asyncio
+from typing import TYPE_CHECKING, Any, Final
 
 from ..config import SearchConfig
 from ..display.v3.base import Display
 from ..models.conversation import ConversationState
 from ..response._types.tool import Tool
+from ..response.type_guards import (
+    get_content_text,
+    is_dict_with_type,
+    is_output_text,
+)
 from ..stream.handler_typed import TypedStreamHandler
 from .commands import CommandRegistry
+
+if TYPE_CHECKING:
+    from ..response._types import (
+        Response,
+    )
+
+# Type aliases
+type ToolConfig = dict[str, Any]
+type RequestDict = dict[str, Any]
+
+# Constants
+DEFAULT_TEMPERATURE: Final[float] = 0.7
+DEFAULT_MAX_OUTPUT_TOKENS: Final[int] = 2000
+DEFAULT_EFFORT: Final[str] = "low"
 
 
 class ChatController:
@@ -38,9 +58,9 @@ class ChatController:
         self.display = display
         self.conversation = ConversationState(model=config.model, tools=self.prepare_typed_tools())
         self.commands = CommandRegistry()
-        self.running = False # Actual loop is in main.py for v3
+        self.running = False  # Actual loop is in main.py for v3
 
-    def _prepare_tool_config(self, tool_type: str, config: SearchConfig) -> dict | None:
+    def _prepare_tool_config(self, tool_type: str, config: SearchConfig) -> ToolConfig | None:
         """Prepares the configuration for a single tool based on its type and global config.
 
         This is a helper method used by `prepare_tools` and `prepare_typed_tools`.
@@ -70,7 +90,7 @@ class ChatController:
                 return tool_config
         return None
 
-    def prepare_tools(self) -> list[dict[str, str | bool | list[str]]]:
+    def prepare_tools(self) -> list[ToolConfig]:
         """Prepares a list of tool configurations in dictionary format.
 
         This method generates tool configurations compatible with older or
@@ -84,16 +104,13 @@ class ChatController:
         tools = []
 
         # File search tool
-        file_search_config = self._prepare_tool_config("file-search", self.config)
-        if file_search_config:
+        if file_search_config := self._prepare_tool_config("file-search", self.config):
             tools.append(file_search_config)
 
         # Web search tool
-        web_search_config = self._prepare_tool_config("web-search", self.config)
-        if web_search_config:
+        if web_search_config := self._prepare_tool_config("web-search", self.config):
             # Adapt location_info for dict-based tool
-            if "location_info" in web_search_config:
-                location = web_search_config.pop("location_info")
+            if location := web_search_config.pop("location_info", None):
                 web_search_config["user_location"] = {"type": "approximate", **location}
             tools.append(web_search_config)
 
@@ -111,27 +128,23 @@ class ChatController:
             for enabled tools.
         """
         from ..response._types import FileSearchTool, WebSearchTool
+        from ..response._types.web_search_tool import UserLocation
 
         tools = []
 
         # File search tool
-        file_search_config = self._prepare_tool_config("file-search", self.config)
-        if file_search_config:
+        if file_search_config := self._prepare_tool_config("file-search", self.config):
             tools.append(FileSearchTool(**file_search_config))
 
         # Web search tool
-        web_search_config = self._prepare_tool_config("web-search", self.config)
-        if web_search_config:
+        if web_search_config := self._prepare_tool_config("web-search", self.config):
             # Adapt location_info for WebSearchTool
-            from ..response._types.web_search_tool import UserLocation
-            
-            tool_params = {"type": web_search_config["type"]}
-            if "location_info" in web_search_config:
-                location = web_search_config["location_info"]
+            tool_params: dict[str, Any] = {"type": web_search_config["type"]}
+            if location_info := web_search_config.get("location_info"):
                 user_location = UserLocation(
                     type="approximate",
-                    country=location.get("country"),
-                    city=location.get("city"),
+                    country=location_info.get("country"),
+                    city=location_info.get("city"),
                 )
                 tool_params["user_location"] = user_location
             tools.append(WebSearchTool(**tool_params))
@@ -156,9 +169,10 @@ class ChatController:
         and enabled tools. It attempts to use the display's `show_welcome`
         method if available, otherwise falls back to a default formatted message.
         """
-        if hasattr(self.display, "show_welcome"):
-            self.display.show_welcome(self.config)
-        else:
+        # Use duck typing check for show_welcome method
+        try:
+            self.display.show_welcome(self.config)  # type: ignore
+        except AttributeError:
             # Fallback welcome message
             lines = [
                 "╭─ Knowledge Forge Chat ─────────────────────────────────────╮",
@@ -288,9 +302,9 @@ class ChatController:
             pass
 
         # Fallback to display method or basic input
-        if hasattr(self.display, "prompt_for_input"):
-            return await self.display.prompt_for_input()
-        else:
+        try:
+            return await self.display.prompt_for_input()  # type: ignore
+        except AttributeError:
             # Basic fallback
             try:
                 loop = asyncio.get_event_loop()
@@ -468,7 +482,7 @@ class ChatController:
             if hasattr(self.display, "_in_chat_mode"):
                 delattr(self.display, "_in_chat_mode")
 
-    def prepare_request(self) -> dict[str, str | int | float | bool | list]:
+    def prepare_request(self) -> RequestDict:
         """Prepares the request dictionary for the API call.
 
         This method compiles the conversation history and current configuration
@@ -479,14 +493,14 @@ class ChatController:
             A dictionary representing the API request.
         """
         # Update tools in case they changed
-        self.conversation.tools = self.prepare_tools() # Uses dict-based tools for now
+        self.conversation.tools = self.prepare_tools()  # Uses dict-based tools for now
 
         # The SDK expects "input_messages"
-        request = {
-            "input_messages": self.conversation.to_api_format(), # Converts messages
+        request: RequestDict = {
+            "input_messages": self.conversation.to_api_format(),  # Converts messages
             "model": self.config.model,
             "effort": self.config.effort,
-            "store": True, # Assuming we always want to store in chat context
+            "store": True,  # Assuming we always want to store in chat context
             "debug": self.config.debug,
             # Temperature and max_output_tokens are handled by prepare_typed_tools
             # when constructing the Typed Request object in send_message.
@@ -498,7 +512,7 @@ class ChatController:
 
         return request
 
-    def _extract_text_from_content_item(self, content_item: any) -> str | None:
+    def _extract_text_from_content_item(self, content_item: Any) -> str | None:
         """Extracts text from a single content item.
 
         A content item can be a string, a dictionary (e.g., `{"type": "text", "text": "..."}`),
@@ -512,17 +526,21 @@ class ChatController:
         """
         if isinstance(content_item, str):
             return content_item
-        if isinstance(content_item, dict):
-            if content_item.get("type") == "output_text":
-                return content_item.get("text", "")
-            if content_item.get("type") == "text":
-                return content_item.get("text", "")
-        # Check for typed content part (e.g., from ..response._types.ContentPart)
-        elif hasattr(content_item, "type") and content_item.type == "text" and hasattr(content_item, "text"):
-            return content_item.text
-        return None
 
-    def extract_text_from_message(self, message_item: dict[str, str | int | float | bool | list | dict]) -> str | None:
+        # Use type guards for proper type checking
+        if is_output_text(content_item):
+            return content_item.text
+
+        # Check dict types
+        if is_dict_with_type(content_item, "output_text"):
+            return content_item.get("text", "")
+        if is_dict_with_type(content_item, "text"):
+            return content_item.get("text", "")
+
+        # Use generic get_content_text helper
+        return get_content_text(content_item)
+
+    def extract_text_from_message(self, message_item: dict[str, Any]) -> str | None:
         """Extracts the primary text content from a message dictionary.
 
         A message item (typically from an API response) can have its content

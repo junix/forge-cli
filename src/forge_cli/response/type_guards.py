@@ -16,67 +16,161 @@ from ._types.response_reasoning_item import ResponseReasoningItem
 
 
 def is_message_item(item: ResponseOutputItem) -> TypeGuard[ResponseOutputMessage]:
-    """Check if output item is a message."""
+    """Check if the given ResponseOutputItem is a ResponseOutputMessage.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is a ResponseOutputMessage, False otherwise.
+    """
     return item.type == "message"
 
 
 def is_reasoning_item(item: ResponseOutputItem) -> TypeGuard[ResponseReasoningItem]:
-    """Check if output item is reasoning."""
+    """Check if the given ResponseOutputItem is a ResponseReasoningItem.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is a ResponseReasoningItem, False otherwise.
+    """
     return item.type == "reasoning"
 
 
 def is_file_search_call(item: ResponseOutputItem) -> TypeGuard[ResponseFileSearchToolCall]:
-    """Check if output item is a file search tool call."""
+    """Check if the given ResponseOutputItem is a ResponseFileSearchToolCall.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is a ResponseFileSearchToolCall, False otherwise.
+    """
     return item.type == "file_search_call"
 
 
 def is_web_search_call(item: ResponseOutputItem) -> TypeGuard[ResponseFunctionWebSearch]:
-    """Check if output item is a web search tool call."""
+    """Check if the given ResponseOutputItem is a ResponseFunctionWebSearch.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is a ResponseFunctionWebSearch, False otherwise.
+    """
     return item.type == "web_search_call"
 
 
 def is_document_finder_call(item: ResponseOutputItem) -> TypeGuard[ResponseDocumentFinderToolCall]:
-    """Check if output item is a document finder tool call."""
+    """Check if the given ResponseOutputItem is a ResponseDocumentFinderToolCall.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is a ResponseDocumentFinderToolCall, False otherwise.
+    """
     return item.type == "document_finder_call"
 
 
 def is_file_reader_call(item: ResponseOutputItem) -> TypeGuard[ResponseFunctionFileReader]:
-    """Check if output item is a file reader tool call."""
+    """Check if the given ResponseOutputItem is a ResponseFunctionFileReader.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is a ResponseFunctionFileReader, False otherwise.
+    """
     return item.type == "file_reader_call"
 
 
 def is_computer_tool_call(item: ResponseOutputItem) -> TypeGuard[ResponseComputerToolCall]:
-    """Check if output item is a computer tool call."""
+    """Check if the given ResponseOutputItem is a ResponseComputerToolCall.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is a ResponseComputerToolCall, False otherwise.
+    """
     return item.type == "computer_call"
 
 
 def is_function_call(item: ResponseOutputItem) -> TypeGuard[ResponseFunctionToolCall]:
-    """Check if output item is a function call."""
+    """Check if the given ResponseOutputItem is a ResponseFunctionToolCall.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is a ResponseFunctionToolCall, False otherwise.
+    """
     return item.type == "function_call"
 
 
 def is_code_interpreter_call(item: ResponseOutputItem) -> TypeGuard[ResponseCodeInterpreterToolCall]:
-    """Check if output item is a code interpreter tool call."""
+    """Check if the given ResponseOutputItem is a ResponseCodeInterpreterToolCall.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is a ResponseCodeInterpreterToolCall, False otherwise.
+    """
     return item.type == "code_interpreter_call"
 
 
 def is_file_citation(annotation: Any) -> TypeGuard[AnnotationFileCitation]:
-    """Check if annotation is a file citation."""
+    """Check if the given annotation is an AnnotationFileCitation.
+
+    Args:
+        annotation: The annotation object to check.
+
+    Returns:
+        True if the annotation is an AnnotationFileCitation, False otherwise.
+    """
     return hasattr(annotation, "type") and annotation.type == "file_citation"
 
 
 def is_url_citation(annotation: Any) -> TypeGuard[AnnotationURLCitation]:
-    """Check if annotation is a URL citation."""
+    """Check if the given annotation is an AnnotationURLCitation.
+
+    Args:
+        annotation: The annotation object to check.
+
+    Returns:
+        True if the annotation is an AnnotationURLCitation, False otherwise.
+    """
     return hasattr(annotation, "type") and annotation.type == "url_citation"
 
 
 def is_file_path(annotation: Any) -> TypeGuard[AnnotationFilePath]:
-    """Check if annotation is a file path."""
+    """Check if the given annotation is an AnnotationFilePath.
+
+    Args:
+        annotation: The annotation object to check.
+
+    Returns:
+        True if the annotation is an AnnotationFilePath, False otherwise.
+    """
     return hasattr(annotation, "type") and annotation.type == "file_path"
 
 
 def get_tool_queries(tool_item: ResponseOutputItem) -> list[str]:
-    """Get queries from a tool item, handling both single query and multiple queries."""
+    """Extracts search queries from a ResponseOutputItem if it's a tool call that supports queries.
+
+    Handles tool calls like file search, web search, and document finder.
+    Returns an empty list if the tool item doesn't have queries (e.g., file reader, computer tool).
+
+    Args:
+        tool_item: The ResponseOutputItem to extract queries from.
+
+    Returns:
+        A list of query strings, or an empty list if no queries are applicable.
+    """
     if is_file_search_call(tool_item):
         return tool_item.queries
     elif is_web_search_call(tool_item):
@@ -100,7 +194,17 @@ def get_tool_queries(tool_item: ResponseOutputItem) -> list[str]:
 
 
 def get_tool_results(tool_item: ResponseOutputItem) -> list[Any]:
-    """Get results from a tool item."""
+    """Extracts results from a ResponseOutputItem if it's a tool call that produces results.
+
+    Handles tool calls like file search, web search, document finder, file reader, and code interpreter.
+    Returns an empty list for tool calls that don't have results in this format (e.g., computer tool, function call).
+
+    Args:
+        tool_item: The ResponseOutputItem to extract results from.
+
+    Returns:
+        A list of results, or an empty list if no results are applicable or available.
+    """
     if is_file_search_call(tool_item):
         return tool_item.results if tool_item.results else []
     elif is_web_search_call(tool_item):
@@ -120,7 +224,17 @@ def get_tool_results(tool_item: ResponseOutputItem) -> list[Any]:
 
 
 def get_tool_content(tool_item: ResponseOutputItem) -> str | None:
-    """Get content from a tool item."""
+    """Extracts content (e.g., file content, code) from a ResponseOutputItem.
+
+    Applicable to tool calls like file reader (content) and code interpreter (code).
+    Returns None for tool calls that don't have a direct 'content' or 'code' field (e.g., computer tool, function call).
+
+    Args:
+        tool_item: The ResponseOutputItem to extract content from.
+
+    Returns:
+        The content string if available, otherwise None.
+    """
     if is_file_reader_call(tool_item):
         return tool_item.content
     elif is_computer_tool_call(tool_item):
@@ -135,7 +249,17 @@ def get_tool_content(tool_item: ResponseOutputItem) -> str | None:
 
 
 def get_tool_output(tool_item: ResponseOutputItem) -> str | None:
-    """Get output from a tool item."""
+    """Extracts the output from a ResponseOutputItem, typically from a function call.
+
+    Primarily used for `ResponseFunctionToolCall` to get its `output` attribute.
+    Returns None for other tool types or if the output attribute is not present.
+
+    Args:
+        tool_item: The ResponseOutputItem to extract output from.
+
+    Returns:
+        The output string if available (for function calls), otherwise None.
+    """
     if is_computer_tool_call(tool_item):
         # Computer tool calls don't have output field in the same way
         return None
@@ -146,7 +270,14 @@ def get_tool_output(tool_item: ResponseOutputItem) -> str | None:
 
 
 def get_tool_function_name(tool_item: ResponseOutputItem) -> str | None:
-    """Get function name from a function call tool item."""
+    """Extracts the function name from a ResponseOutputItem if it's a ResponseFunctionToolCall.
+
+    Args:
+        tool_item: The ResponseOutputItem to check.
+
+    Returns:
+        The function name string if the item is a function call, otherwise None.
+    """
     if is_function_call(tool_item):
         return tool_item.name
     else:
@@ -154,7 +285,14 @@ def get_tool_function_name(tool_item: ResponseOutputItem) -> str | None:
 
 
 def get_tool_arguments(tool_item: ResponseOutputItem) -> str | None:
-    """Get arguments from a function call tool item."""
+    """Extracts the arguments string from a ResponseOutputItem if it's a ResponseFunctionToolCall.
+
+    Args:
+        tool_item: The ResponseOutputItem to check.
+
+    Returns:
+        The arguments string if the item is a function call, otherwise None.
+    """
     if is_function_call(tool_item):
         return tool_item.arguments
     else:
@@ -162,20 +300,52 @@ def get_tool_arguments(tool_item: ResponseOutputItem) -> str | None:
 
 
 def safe_get_attr(obj: Any, attr: str, default: Any = None) -> Any:
-    """Safely get attribute from object, returning default if not present."""
+    """Safely retrieve an attribute from an object.
+
+    If the attribute does not exist, returns the provided default value.
+
+    Args:
+        obj: The object from which to get the attribute.
+        attr: The name of the attribute to retrieve.
+        default: The value to return if the attribute is not found. Defaults to None.
+
+    Returns:
+        The attribute's value or the default value.
+    """
     return getattr(obj, attr, default)
 
 
 # Content Type Guards (for ResponseOutputMessage.content)
 
+from ._types.response_output_refusal import ResponseOutputRefusal
+from ._types.response_output_text import ResponseOutputText
 
-def is_output_text(content: Any) -> bool:
-    """Check if content is output text."""
+
+def is_output_text(content: Any) -> TypeGuard[ResponseOutputText]:
+    """Check if the given content object is a ResponseOutputText.
+
+    This is used to narrow down the type of `ResponseOutputMessage.content`.
+
+    Args:
+        content: The content object to check.
+
+    Returns:
+        True if the content is ResponseOutputText, False otherwise.
+    """
     return hasattr(content, "type") and content.type == "output_text"
 
 
-def is_output_refusal(content: Any) -> bool:
-    """Check if content is output refusal."""
+def is_output_refusal(content: Any) -> TypeGuard[ResponseOutputRefusal]:
+    """Check if the given content object is a ResponseOutputRefusal.
+
+    This is used to narrow down the type of `ResponseOutputMessage.content`.
+
+    Args:
+        content: The content object to check.
+
+    Returns:
+        True if the content is ResponseOutputRefusal, False otherwise.
+    """
     return hasattr(content, "type") and content.type == "refusal"
 
 
@@ -194,17 +364,44 @@ from ._types.web_search_tool import WebSearchTool
 
 
 def is_input_text(content: Any) -> TypeGuard[ResponseInputText]:
-    """Check if input content is text."""
+    """Check if the given input content object is a ResponseInputText.
+
+    This is used to narrow down the type of items in `Response.input.content`.
+
+    Args:
+        content: The input content object to check.
+
+    Returns:
+        True if the input content is ResponseInputText, False otherwise.
+    """
     return hasattr(content, "type") and content.type == "input_text"
 
 
 def is_input_image(content: Any) -> TypeGuard[ResponseInputImage]:
-    """Check if input content is image."""
+    """Check if the given input content object is a ResponseInputImage.
+
+    This is used to narrow down the type of items in `Response.input.content`.
+
+    Args:
+        content: The input content object to check.
+
+    Returns:
+        True if the input content is ResponseInputImage, False otherwise.
+    """
     return hasattr(content, "type") and content.type == "input_image"
 
 
 def is_input_file(content: Any) -> TypeGuard[ResponseInputFile]:
-    """Check if input content is file."""
+    """Check if the given input content object is a ResponseInputFile.
+
+    This is used to narrow down the type of items in `Response.input.content`.
+
+    Args:
+        content: The input content object to check.
+
+    Returns:
+        True if the input content is ResponseInputFile, False otherwise.
+    """
     return hasattr(content, "type") and content.type == "input_file"
 
 
@@ -212,12 +409,26 @@ def is_input_file(content: Any) -> TypeGuard[ResponseInputFile]:
 
 
 def is_code_interpreter_logs(result: Any) -> bool:
-    """Check if code interpreter result is logs."""
+    """Check if a result from a Code Interpreter tool call is of type 'logs'.
+
+    Args:
+        result: The result item from `ResponseCodeInterpreterToolCall.results`.
+
+    Returns:
+        True if the result type is 'logs', False otherwise.
+    """
     return hasattr(result, "type") and result.type == "logs"
 
 
 def is_code_interpreter_files(result: Any) -> bool:
-    """Check if code interpreter result is files."""
+    """Check if a result from a Code Interpreter tool call is of type 'files'.
+
+    Args:
+        result: The result item from `ResponseCodeInterpreterToolCall.results`.
+
+    Returns:
+        True if the result type is 'files', False otherwise.
+    """
     return hasattr(result, "type") and result.type == "files"
 
 
@@ -225,7 +436,16 @@ def is_code_interpreter_files(result: Any) -> bool:
 
 
 def is_computer_tool_output(item: Any) -> bool:
-    """Check if item is computer tool call output."""
+    """Check if an item is a computer tool call output.
+
+    This typically refers to the structured output from a computer interaction.
+
+    Args:
+        item: The item to check.
+
+    Returns:
+        True if the item's type is 'computer_call_output', False otherwise.
+    """
     return hasattr(item, "type") and item.type == "computer_call_output"
 
 
@@ -233,32 +453,74 @@ def is_computer_tool_output(item: Any) -> bool:
 
 
 def is_response_created_event(event: Any) -> bool:
-    """Check if event is response created."""
+    """Check if a stream event indicates that a response has been created.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.created', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.created"
 
 
 def is_response_completed_event(event: Any) -> bool:
-    """Check if event is response completed."""
+    """Check if a stream event indicates that a response has been completed.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.completed', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.completed"
 
 
 def is_response_failed_event(event: Any) -> bool:
-    """Check if event is response failed."""
+    """Check if a stream event indicates that a response has failed.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.failed', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.failed"
 
 
 def is_text_delta_event(event: Any) -> bool:
-    """Check if event is text delta."""
+    """Check if a stream event is a text delta, indicating a chunk of text content.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.text.delta', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.text.delta"
 
 
 def is_text_done_event(event: Any) -> bool:
-    """Check if event is text done."""
+    """Check if a stream event indicates that text streaming is done.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.text.done', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.text.done"
 
 
 def is_error_event(event: Any) -> bool:
-    """Check if event is error event."""
+    """Check if a stream event is an error event.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'error', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "error"
 
 
@@ -266,27 +528,62 @@ def is_error_event(event: Any) -> bool:
 
 
 def is_code_interpreter_call_in_progress_event(event: Any) -> bool:
-    """Check if event is code interpreter call in progress."""
+    """Check if a stream event indicates a code interpreter call is in progress.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.code_interpreter_call.in_progress', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.code_interpreter_call.in_progress"
 
 
 def is_code_interpreter_call_interpreting_event(event: Any) -> bool:
-    """Check if event is code interpreter call interpreting."""
+    """Check if a stream event indicates a code interpreter call is currently interpreting code.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.code_interpreter_call.interpreting', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.code_interpreter_call.interpreting"
 
 
 def is_code_interpreter_call_completed_event(event: Any) -> bool:
-    """Check if event is code interpreter call completed."""
+    """Check if a stream event indicates a code interpreter call has completed.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.code_interpreter_call.completed', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.code_interpreter_call.completed"
 
 
 def is_code_interpreter_call_code_delta_event(event: Any) -> bool:
-    """Check if event is code interpreter call code delta."""
+    """Check if a stream event is a code delta for a code interpreter call.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.code_interpreter_call.code.delta', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.code_interpreter_call.code.delta"
 
 
 def is_code_interpreter_call_code_done_event(event: Any) -> bool:
-    """Check if event is code interpreter call code done."""
+    """Check if a stream event indicates that code streaming for a code interpreter call is done.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.code_interpreter_call.code.done', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.code_interpreter_call.code.done"
 
 
@@ -294,17 +591,38 @@ def is_code_interpreter_call_code_done_event(event: Any) -> bool:
 
 
 def is_file_search_call_in_progress_event(event: Any) -> bool:
-    """Check if event is file search call in progress."""
+    """Check if a stream event indicates a file search call is in progress.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.file_search_call.in_progress', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.file_search_call.in_progress"
 
 
 def is_file_search_call_searching_event(event: Any) -> bool:
-    """Check if event is file search call searching."""
+    """Check if a stream event indicates a file search call is currently searching.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.file_search_call.searching', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.file_search_call.searching"
 
 
 def is_file_search_call_completed_event(event: Any) -> bool:
-    """Check if event is file search call completed."""
+    """Check if a stream event indicates a file search call has completed.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.file_search_call.completed', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.file_search_call.completed"
 
 
@@ -312,17 +630,38 @@ def is_file_search_call_completed_event(event: Any) -> bool:
 
 
 def is_web_search_call_in_progress_event(event: Any) -> bool:
-    """Check if event is web search call in progress."""
+    """Check if a stream event indicates a web search call is in progress.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.web_search_call.in_progress', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.web_search_call.in_progress"
 
 
 def is_web_search_call_searching_event(event: Any) -> bool:
-    """Check if event is web search call searching."""
+    """Check if a stream event indicates a web search call is currently searching.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.web_search_call.searching', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.web_search_call.searching"
 
 
 def is_web_search_call_completed_event(event: Any) -> bool:
-    """Check if event is web search call completed."""
+    """Check if a stream event indicates a web search call has completed.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.web_search_call.completed', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.web_search_call.completed"
 
 
@@ -330,12 +669,26 @@ def is_web_search_call_completed_event(event: Any) -> bool:
 
 
 def is_function_call_arguments_delta_event(event: Any) -> bool:
-    """Check if event is function call arguments delta."""
+    """Check if a stream event is an arguments delta for a function call.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.function_call.arguments.delta', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.function_call.arguments.delta"
 
 
 def is_function_call_arguments_done_event(event: Any) -> bool:
-    """Check if event is function call arguments done."""
+    """Check if a stream event indicates that arguments streaming for a function call is done.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.function_call.arguments.done', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.function_call.arguments.done"
 
 
@@ -343,12 +696,26 @@ def is_function_call_arguments_done_event(event: Any) -> bool:
 
 
 def is_content_part_added_event(event: Any) -> bool:
-    """Check if event is content part added."""
+    """Check if a stream event indicates a content part has been added.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.content_part.added', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.content_part.added"
 
 
 def is_content_part_done_event(event: Any) -> bool:
-    """Check if event is content part done."""
+    """Check if a stream event indicates that processing for a content part is done.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.content_part.done', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.content_part.done"
 
 
@@ -356,12 +723,26 @@ def is_content_part_done_event(event: Any) -> bool:
 
 
 def is_output_item_added_event(event: Any) -> bool:
-    """Check if event is output item added."""
+    """Check if a stream event indicates an output item has been added.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.output_item.added', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.output_item.added"
 
 
 def is_output_item_done_event(event: Any) -> bool:
-    """Check if event is output item done."""
+    """Check if a stream event indicates that processing for an output item is done.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.output_item.done', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.output_item.done"
 
 
@@ -369,22 +750,50 @@ def is_output_item_done_event(event: Any) -> bool:
 
 
 def is_reasoning_summary_part_added_event(event: Any) -> bool:
-    """Check if event is reasoning summary part added."""
+    """Check if a stream event indicates a reasoning summary part has been added.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.reasoning_summary.part.added', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.reasoning_summary.part.added"
 
 
 def is_reasoning_summary_part_done_event(event: Any) -> bool:
-    """Check if event is reasoning summary part done."""
+    """Check if a stream event indicates that processing for a reasoning summary part is done.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.reasoning_summary.part.done', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.reasoning_summary.part.done"
 
 
 def is_reasoning_summary_text_delta_event(event: Any) -> bool:
-    """Check if event is reasoning summary text delta."""
+    """Check if a stream event is a text delta for a reasoning summary.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.reasoning_summary.text.delta', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.reasoning_summary.text.delta"
 
 
 def is_reasoning_summary_text_done_event(event: Any) -> bool:
-    """Check if event is reasoning summary text done."""
+    """Check if a stream event indicates that text streaming for a reasoning summary is done.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.reasoning_summary.text.done', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.reasoning_summary.text.done"
 
 
@@ -392,12 +801,26 @@ def is_reasoning_summary_text_done_event(event: Any) -> bool:
 
 
 def is_refusal_delta_event(event: Any) -> bool:
-    """Check if event is refusal delta."""
+    """Check if a stream event is a refusal delta, indicating a chunk of refusal message content.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.refusal.delta', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.refusal.delta"
 
 
 def is_refusal_done_event(event: Any) -> bool:
-    """Check if event is refusal done."""
+    """Check if a stream event indicates that refusal message streaming is done.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.refusal.done', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.refusal.done"
 
 
@@ -405,7 +828,14 @@ def is_refusal_done_event(event: Any) -> bool:
 
 
 def is_text_annotation_delta_event(event: Any) -> bool:
-    """Check if event is text annotation delta."""
+    """Check if a stream event is a text annotation delta.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.text.annotation.delta', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.text.annotation.delta"
 
 
@@ -413,22 +843,50 @@ def is_text_annotation_delta_event(event: Any) -> bool:
 
 
 def is_audio_delta_event(event: Any) -> bool:
-    """Check if event is audio delta."""
+    """Check if a stream event is an audio delta, indicating a chunk of audio data.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.audio.delta', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.audio.delta"
 
 
 def is_audio_done_event(event: Any) -> bool:
-    """Check if event is audio done."""
+    """Check if a stream event indicates that audio streaming is done.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.audio.done', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.audio.done"
 
 
 def is_audio_transcript_delta_event(event: Any) -> bool:
-    """Check if event is audio transcript delta."""
+    """Check if a stream event is an audio transcript delta.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.audio.transcript.delta', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.audio_transcript.delta"
 
 
 def is_audio_transcript_done_event(event: Any) -> bool:
-    """Check if event is audio transcript done."""
+    """Check if a stream event indicates that audio transcript streaming is done.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.audio.transcript.done', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.audio_transcript.done"
 
 
@@ -436,12 +894,26 @@ def is_audio_transcript_done_event(event: Any) -> bool:
 
 
 def is_in_progress_event(event: Any) -> bool:
-    """Check if event is in progress."""
+    """Check if a stream event indicates that the overall response generation is in progress.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.in_progress', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.in_progress"
 
 
 def is_incomplete_event(event: Any) -> bool:
-    """Check if event is incomplete."""
+    """Check if a stream event indicates that the response is incomplete.
+
+    Args:
+        event: The stream event object.
+
+    Returns:
+        True if the event type is 'response.incomplete', False otherwise.
+    """
     return hasattr(event, "type") and event.type == "response.incomplete"
 
 
@@ -449,27 +921,64 @@ def is_incomplete_event(event: Any) -> bool:
 
 
 def is_response_completed_status(status: str) -> bool:
-    """Check if response status is completed."""
+    """Check if a response status string indicates 'completed'.
+
+    Args:
+        status: The response status string.
+
+    Returns:
+        True if the status is 'completed', False otherwise.
+    """
     return status == "completed"
 
 
 def is_response_failed_status(status: str) -> bool:
-    """Check if response status is failed."""
+    """Check if a response status string indicates 'failed'.
+
+    Args:
+        status: The response status string.
+
+    Returns:
+        True if the status is 'failed', False otherwise.
+    """
     return status == "failed"
 
 
 def is_response_in_progress_status(status: str) -> bool:
-    """Check if response status is in progress."""
+    """Check if a response status string indicates 'in_progress'.
+
+    Args:
+        status: The response status string.
+
+    Returns:
+        True if the status is 'in_progress', False otherwise.
+    """
     return status == "in_progress"
 
 
 def is_response_incomplete_status(status: str) -> bool:
-    """Check if response status is incomplete."""
+    """Check if a response status string indicates 'incomplete'.
+
+    Args:
+        status: The response status string.
+
+    Returns:
+        True if the status is 'incomplete', False otherwise.
+    """
     return status == "incomplete"
 
 
 def is_response_error(obj: Any) -> bool:
-    """Check if object is a response error."""
+    """Check if an object represents a response error structure.
+
+    This typically checks for the presence of 'type' and 'error' attributes.
+
+    Args:
+        obj: The object to check.
+
+    Returns:
+        True if the object appears to be a response error, False otherwise.
+    """
     return hasattr(obj, "code") and hasattr(obj, "message")
 
 
@@ -477,7 +986,16 @@ def is_response_error(obj: Any) -> bool:
 
 
 def get_content_text(content: Any) -> str | None:
-    """Get text from content item."""
+    """Extracts the text value from a content item if it's a ResponseOutputText.
+
+    Args:
+        content: The content item, expected to be of a type with a 'text' attribute
+                 if it's an output text item (e.g., ResponseOutputText).
+
+    Returns:
+        The text string if the content is ResponseOutputText and has a text value,
+        otherwise None.
+    """
     if is_output_text(content):
         return content.text
     elif is_input_text(content):
@@ -486,8 +1004,43 @@ def get_content_text(content: Any) -> str | None:
         return None
 
 
+def is_dict_with_type(obj: Any, type_value: str) -> bool:
+    """Check if an object is a dictionary and has a 'type' key with a specific value.
+
+    Args:
+        obj: The object to check.
+        type_value: The expected value for the 'type' key.
+
+    Returns:
+        True if obj is a dict and obj.get('type') == type_value, False otherwise.
+    """
+    return isinstance(obj, dict) and obj.get("type") == type_value
+
+
+def is_assistant_message_dict(obj: Any) -> bool:
+    """Check if an object is a dictionary representing an assistant message.
+
+    This specifically checks if it's a dict with 'role': 'assistant'.
+
+    Args:
+        obj: The object to check.
+
+    Returns:
+        True if obj is a dict with obj.get('role') == 'assistant', False otherwise.
+    """
+    return isinstance(obj, dict) and obj.get("type") == "message" and obj.get("role") == "assistant"
+
+
 def get_content_refusal(content: Any) -> str | None:
-    """Get refusal text from content item."""
+    """Extracts the refusal message from a content item if it's a ResponseOutputRefusal.
+
+    Args:
+        content: The content item, expected to be ResponseOutputRefusal.
+
+    Returns:
+        The refusal message string if the content is ResponseOutputRefusal,
+        otherwise None.
+    """
     if is_output_refusal(content):
         return content.refusal
     else:
@@ -495,7 +1048,16 @@ def get_content_refusal(content: Any) -> str | None:
 
 
 def get_error_message(error: Any) -> str | None:
-    """Get error message from error object."""
+    """Safely extracts the error message string from an error object.
+
+    Assumes the error object might have a 'message' attribute.
+
+    Args:
+        error: The error object.
+
+    Returns:
+        The error message string if present, otherwise None.
+    """
     if is_response_error(error):
         return error.message
     else:
@@ -503,7 +1065,16 @@ def get_error_message(error: Any) -> str | None:
 
 
 def get_error_code(error: Any) -> str | None:
-    """Get error code from error object."""
+    """Safely extracts the error code from an error object.
+
+    Assumes the error object might have a 'code' attribute.
+
+    Args:
+        error: The error object.
+
+    Returns:
+        The error code string if present, otherwise None.
+    """
     if is_response_error(error):
         return error.code
     else:
@@ -511,27 +1082,66 @@ def get_error_code(error: Any) -> str | None:
 
 
 def is_tool_call_completed(tool_item: ResponseOutputItem) -> bool:
-    """Check if tool call is completed."""
+    """Check if the status of a tool call item indicates it has completed.
+
+    Args:
+        tool_item: The ResponseOutputItem representing a tool call.
+
+    Returns:
+        True if the tool call's status is 'completed', False otherwise.
+    """
     return hasattr(tool_item, "status") and tool_item.status == "completed"
 
 
 def is_tool_call_in_progress(tool_item: ResponseOutputItem) -> bool:
-    """Check if tool call is in progress."""
+    """Check if the status of a tool call item indicates it is in progress.
+
+    Args:
+        tool_item: The ResponseOutputItem representing a tool call.
+
+    Returns:
+        True if the tool call's status is 'in_progress', False otherwise.
+    """
     return hasattr(tool_item, "status") and tool_item.status == "in_progress"
 
 
 def is_tool_call_failed(tool_item: ResponseOutputItem) -> bool:
-    """Check if tool call failed."""
+    """Check if the status of a tool call item indicates it has failed.
+
+    Args:
+        tool_item: The ResponseOutputItem representing a tool call.
+
+    Returns:
+        True if the tool call's status is 'failed', False otherwise.
+    """
     return hasattr(tool_item, "status") and tool_item.status in ["failed", "incomplete"]
 
 
 def is_tool_call_searching(tool_item: ResponseOutputItem) -> bool:
-    """Check if tool call is searching."""
+    """Check if the status of a tool call item indicates it is currently searching.
+
+    Applicable to search-related tools like file search, web search, document finder.
+
+    Args:
+        tool_item: The ResponseOutputItem representing a tool call.
+
+    Returns:
+        True if the tool call's status is 'searching', False otherwise.
+    """
     return hasattr(tool_item, "status") and tool_item.status == "searching"
 
 
 def is_tool_call_interpreting(tool_item: ResponseOutputItem) -> bool:
-    """Check if tool call is interpreting (for code interpreter)."""
+    """Check if the status of a tool call item indicates it is interpreting code.
+
+    Specifically for Code Interpreter tool calls.
+
+    Args:
+        tool_item: The ResponseOutputItem representing a tool call.
+
+    Returns:
+        True if the tool call's status is 'interpreting', False otherwise.
+    """
     return hasattr(tool_item, "status") and tool_item.status == "interpreting"
 
 
@@ -539,7 +1149,17 @@ def is_tool_call_interpreting(tool_item: ResponseOutputItem) -> bool:
 
 
 def is_any_tool_call(item: ResponseOutputItem) -> bool:
-    """Check if output item is any type of tool call."""
+    """Check if a ResponseOutputItem is any known type of tool call.
+
+    This includes file search, web search, document finder, file reader,
+    computer tool, function call, and code interpreter calls.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is one of the recognized tool call types, False otherwise.
+    """
     return (
         is_file_search_call(item)
         or is_web_search_call(item)
@@ -555,42 +1175,102 @@ def is_any_tool_call(item: ResponseOutputItem) -> bool:
 
 
 def is_file_search_tool(tool: Tool) -> TypeGuard[FileSearchTool]:
-    """Check if tool is a file search tool."""
+    """Check if the given Tool object is a FileSearchTool.
+
+    Args:
+        tool: The Tool object to check.
+
+    Returns:
+        True if the tool is a FileSearchTool, False otherwise.
+    """
     return tool.type == "file_search"
 
 
 def is_web_search_tool(tool: Tool) -> TypeGuard[WebSearchTool]:
-    """Check if tool is a web search tool."""
+    """Check if the given Tool object is a WebSearchTool.
+
+    Args:
+        tool: The Tool object to check.
+
+    Returns:
+        True if the tool is a WebSearchTool, False otherwise.
+    """
     return tool.type in ["web_search", "web_search_preview", "web_search_preview_2025_03_11"]
 
 
 def is_function_tool(tool: Tool) -> TypeGuard[FunctionTool]:
-    """Check if tool is a function tool."""
+    """Check if the given Tool object is a FunctionTool.
+
+    Args:
+        tool: The Tool object to check.
+
+    Returns:
+        True if the tool is a FunctionTool, False otherwise.
+    """
     return tool.type == "function"
 
 
 def is_computer_tool(tool: Tool) -> TypeGuard[ComputerTool]:
-    """Check if tool is a computer use tool."""
+    """Check if the given Tool object is a ComputerTool.
+
+    Args:
+        tool: The Tool object to check.
+
+    Returns:
+        True if the tool is a ComputerTool, False otherwise.
+    """
     return tool.type == "computer_use_preview"
 
 
 def is_document_finder_tool(tool: Tool) -> TypeGuard[DocumentFinderTool]:
-    """Check if tool is a document finder tool."""
+    """Check if the given Tool object is a DocumentFinderTool.
+
+    Args:
+        tool: The Tool object to check.
+
+    Returns:
+        True if the tool is a DocumentFinderTool, False otherwise.
+    """
     return tool.type == "document_finder"
 
 
 def is_file_reader_tool(tool: Tool) -> TypeGuard[FileReaderTool]:
-    """Check if tool is a file reader tool."""
+    """Check if the given Tool object is a FileReaderTool.
+
+    Args:
+        tool: The Tool object to check.
+
+    Returns:
+        True if the tool is a FileReaderTool, False otherwise.
+    """
     return tool.type == "file_reader"
 
 
 def is_search_related_tool_call(item: ResponseOutputItem) -> bool:
-    """Check if output item is a search-related tool call."""
+    """Check if a ResponseOutputItem is a search-related tool call.
+
+    This includes file search, web search, and document finder calls.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is a file search, web search, or document finder call, False otherwise.
+    """
     return is_file_search_call(item) or is_web_search_call(item) or is_document_finder_call(item)
 
 
 def is_execution_tool_call(item: ResponseOutputItem) -> bool:
-    """Check if output item is an execution tool call (computer or code interpreter)."""
+    """Check if a ResponseOutputItem is an execution-related tool call.
+
+    This includes computer tool calls and code interpreter calls.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is a computer tool call or code interpreter call, False otherwise.
+    """
     return is_computer_tool_call(item) or is_code_interpreter_call(item)
 
 
@@ -598,7 +1278,14 @@ def is_execution_tool_call(item: ResponseOutputItem) -> bool:
 
 
 def get_event_type(event: Any) -> str | None:
-    """Get the event type from any event object."""
+    """Safely retrieves the 'type' attribute from an event object.
+
+    Args:
+        event: The event object.
+
+    Returns:
+        The event type string if present and is a string, otherwise None.
+    """
     return getattr(event, "type", None)
 
 
@@ -606,17 +1293,38 @@ def get_event_type(event: Any) -> str | None:
 
 
 def get_tool_call_id(tool_item: ResponseOutputItem) -> str | None:
-    """Get the ID from any tool call."""
+    """Safely retrieves the 'id' attribute from a tool call item.
+
+    Args:
+        tool_item: The ResponseOutputItem representing a tool call.
+
+    Returns:
+        The tool call ID string if present and is a string, otherwise None.
+    """
     return getattr(tool_item, "id", None)
 
 
 def get_tool_call_status(tool_item: ResponseOutputItem) -> str | None:
-    """Get the status from any tool call."""
+    """Safely retrieves the 'status' attribute from a tool call item.
+
+    Args:
+        tool_item: The ResponseOutputItem representing a tool call.
+
+    Returns:
+        The tool call status string if present and is a string, otherwise None.
+    """
     return getattr(tool_item, "status", None)
 
 
 def get_tool_call_type(tool_item: ResponseOutputItem) -> str | None:
-    """Get the type from any tool call."""
+    """Safely retrieves the 'type' attribute from a tool call item.
+
+    Args:
+        tool_item: The ResponseOutputItem representing a tool call.
+
+    Returns:
+        The tool call type string if present and is a string, otherwise None.
+    """
     return getattr(tool_item, "type", None)
 
 
@@ -624,45 +1332,108 @@ def get_tool_call_type(tool_item: ResponseOutputItem) -> str | None:
 
 
 def is_computer_action_click(action: Any) -> bool:
-    """Check if computer action is a click."""
+    """Check if a computer tool action is a 'click' action.
+
+    Args:
+        action: The computer tool action object.
+
+    Returns:
+        True if the action type is 'click', False otherwise.
+    """
     return hasattr(action, "type") and action.type == "click"
 
 
 def is_computer_action_double_click(action: Any) -> bool:
-    """Check if computer action is a double click."""
+    """Check if a computer tool action is a 'double_click' action.
+
+    Args:
+        action: The computer tool action object.
+
+    Returns:
+        True if the action type is 'double_click', False otherwise.
+    """
     return hasattr(action, "type") and action.type == "double_click"
 
 
 def is_computer_action_drag(action: Any) -> bool:
-    """Check if computer action is a drag."""
+    """Check if a computer tool action is a 'drag' action.
+
+    Args:
+        action: The computer tool action object.
+
+    Returns:
+        True if the action type is 'drag', False otherwise.
+    """
     return hasattr(action, "type") and action.type == "drag"
 
 
 def is_computer_action_keypress(action: Any) -> bool:
-    """Check if computer action is a keypress."""
+    """Check if a computer tool action is a 'keypress' action.
+
+    Args:
+        action: The computer tool action object.
+
+    Returns:
+        True if the action type is 'keypress', False otherwise.
+    """
     return hasattr(action, "type") and action.type == "keypress"
 
 
 def is_computer_action_move(action: Any) -> bool:
-    """Check if computer action is a move."""
+    """Check if a computer tool action is a 'move' action.
+
+    Args:
+        action: The computer tool action object.
+
+    Returns:
+        True if the action type is 'move', False otherwise.
+    """
     return hasattr(action, "type") and action.type == "move"
 
 
 def is_computer_action_screenshot(action: Any) -> bool:
-    """Check if computer action is a screenshot."""
+    """Check if a computer tool action is a 'screenshot' action.
+
+    Args:
+        action: The computer tool action object.
+
+    Returns:
+        True if the action type is 'screenshot', False otherwise.
+    """
     return hasattr(action, "type") and action.type == "screenshot"
 
 
 def is_computer_action_scroll(action: Any) -> bool:
-    """Check if computer action is a scroll."""
+    """Check if a computer tool action is a 'scroll' action.
+
+    Args:
+        action: The computer tool action object.
+
+    Returns:
+        True if the action type is 'scroll', False otherwise.
+    """
     return hasattr(action, "type") and action.type == "scroll"
 
 
 def is_computer_action_type(action: Any) -> bool:
-    """Check if computer action is a type action."""
+    """Check if a computer tool action is a 'type' (text input) action.
+
+    Args:
+        action: The computer tool action object.
+
+    Returns:
+        True if the action type is 'type', False otherwise.
+    """
     return hasattr(action, "type") and action.type == "type"
 
 
 def is_computer_action_wait(action: Any) -> bool:
-    """Check if computer action is a wait."""
+    """Check if a computer tool action is a 'wait' action.
+
+    Args:
+        action: The computer tool action object.
+
+    Returns:
+        True if the action type is 'wait', False otherwise.
+    """
     return hasattr(action, "type") and action.type == "wait"
