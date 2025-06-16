@@ -18,16 +18,12 @@ class TypedStreamHandler:
     async def handle_stream(
         self,
         stream: AsyncIterator[tuple[str, Response | None]],
-        initial_request: str,  # noqa: ARG002 - kept for API compatibility
-        vector_store_ids: list[str] | None = None,  # noqa: ARG002 - kept for API compatibility
     ) -> Response | None:
         """
         Handle streaming events from typed API.
 
         Args:
             stream: Iterator yielding (event_type, Response) tuples
-            initial_request: The initial query/request text
-            vector_store_ids: Optional list of vector store IDs from user configuration
 
         Returns:
             Final Response object after processing all events, or None if no response
@@ -37,22 +33,11 @@ class TypedStreamHandler:
         # Process events
         async for event_type, event_data in stream:
             if self.debug:
+                # Simple debug logging - detailed JSON output is handled by JsonRenderer
                 if event_data is not None and isinstance(event_data, Response):
-                    # Show the FULL model dump for Response objects
-                    print(f"{event_type}: Response data:")
-                    try:
-                        # Use model_dump() to get the full dictionary representation
-                        import json
-
-                        full_dump = event_data.model_dump()
-                        # Pretty print the entire response with indentation
-                        print(json.dumps(full_dump, indent=2, ensure_ascii=False))
-                    except Exception as e:
-                        # Fallback if model_dump fails
-                        print(f"  Error dumping model: {e}")
-                        print(f"  Response repr: {repr(event_data)}")
+                    print(f"[DEBUG] {event_type}: Response snapshot (id: {event_data.id})")
                 else:
-                    print(f"{event_type}: {type(event_data)}")
+                    print(f"[DEBUG] {event_type}: {type(event_data)}")
 
             # Handle snapshot events (events with Response objects)
             if event_data is not None and isinstance(event_data, Response):

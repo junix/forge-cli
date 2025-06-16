@@ -1,25 +1,13 @@
 """Chat controller for managing interactive conversations."""
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Final
+from typing import Final
 
 from ..config import SearchConfig
 from ..display.v3.base import Display
 from ..models.conversation import ConversationState
-from ..response.type_guards import (
-    get_content_text,
-    is_dict_with_type,
-    is_message_item,
-    is_output_text,
-)
 from ..stream.handler_typed import TypedStreamHandler
 from .commands import CommandRegistry
-
-if TYPE_CHECKING:
-    from ..response._types import (
-        Response,
-    )
-
 
 # Constants
 DEFAULT_TEMPERATURE: Final[float] = 0.7
@@ -103,136 +91,131 @@ class ChatController:
 
         This method attempts to use `prompt_toolkit` for a richer input
         experience with command auto-completion if `prompt_toolkit` is installed
-        and the session is interactive. Otherwise, it falls back to the
-        display's `prompt_for_input` method or the basic `input()` function.
+        and the session is interactive. For non-interactive sessions (pipes,
+        scripts), it reads from stdin line by line.
 
         Returns:
             The user's input as a string, or None if input fails (e.g., EOF).
             The returned string is stripped of leading/trailing whitespace.
         """
-        try:
-            # Try to use prompt_toolkit for better input experience
-            import sys
+        # Try to use prompt_toolkit for better input experience
+        import sys
 
-            if sys.stdin.isatty():
-                try:
-                    from prompt_toolkit import PromptSession
-                    from prompt_toolkit.completion import Completer, Completion
-                    from prompt_toolkit.formatted_text import FormattedText
-                    from prompt_toolkit.history import FileHistory
-                    from prompt_toolkit.styles import Style
+        if sys.stdin.isatty():
+            from prompt_toolkit import PromptSession
+            from prompt_toolkit.completion import Completer, Completion
+            from prompt_toolkit.formatted_text import FormattedText
+            from prompt_toolkit.history import FileHistory
+            from prompt_toolkit.styles import Style
 
-                    # Custom completer class for commands
-                    class CommandCompleter(Completer):
-                        def __init__(self, commands_dict, aliases_dict):
-                            self.commands = commands_dict
-                            self.aliases = aliases_dict
-                            # Build list of all command names with leading slash
-                            self.all_commands = []
-                            for cmd in commands_dict.keys():
-                                self.all_commands.append(f"/{cmd}")
-                            for alias in aliases_dict.keys():
-                                self.all_commands.append(f"/{alias}")
-                            self.all_commands.sort()
+            # Custom completer class for commands
+            class CommandCompleter(Completer):
+                def __init__(self, commands_dict, aliases_dict):
+                    self.commands = commands_dict
+                    self.aliases = aliases_dict
+                    # Build list of all command names with leading slash
+                    self.all_commands = []
+                    for cmd in commands_dict.keys():
+                        self.all_commands.append(f"/{cmd}")
+                    for alias in aliases_dict.keys():
+                        self.all_commands.append(f"/{alias}")
+                    self.all_commands.sort()
 
-                        def get_completions(self, document, complete_event):
-                            text = document.text_before_cursor.lstrip()
+                def get_completions(self, document, complete_event):
+                    text = document.text_before_cursor.lstrip()
 
-                            # If text starts with /, show command completions
-                            if text.startswith("/"):
-                                # Get the partial command (including the /)
-                                partial = text.lower()
+                    # If text starts with /, show command completions
+                    if text.startswith("/"):
+                        # Get the partial command (including the /)
+                        partial = text.lower()
 
-                                # Find all matching commands
-                                for cmd in self.all_commands:
-                                    if cmd.lower().startswith(partial):
-                                        # Calculate the completion text (what to add)
-                                        completion_text = cmd[len(text) :]
-                                        yield Completion(
-                                            completion_text,
-                                            start_position=0,
-                                            display=cmd,  # Show full command in menu
-                                            display_meta=self._get_description(cmd),
-                                        )
+                        # Find all matching commands
+                        for cmd in self.all_commands:
+                            if cmd.lower().startswith(partial):
+                                # Calculate the completion text (what to add)
+                                completion_text = cmd[len(text) :]
+                                yield Completion(
+                                    completion_text,
+                                    start_position=0,
+                                    display=cmd,  # Show full command in menu
+                                    display_meta=self._get_description(cmd),
+                                )
 
-                            # If just typed /, show all commands
-                            elif text == "":
-                                word_before_cursor = document.get_word_before_cursor(WORD=True)
-                                if word_before_cursor == "/":
-                                    for cmd in self.all_commands:
-                                        yield Completion(
-                                            cmd[1:],  # Remove the leading /
-                                            start_position=-1,  # Replace the /
-                                            display=cmd,
-                                            display_meta=self._get_description(cmd),
-                                        )
+                    # If just typed /, show all commands
+                    elif text == "":
+                        word_before_cursor = document.get_word_before_cursor(WORD=True)
+                        if word_before_cursor == "/":
+                            for cmd in self.all_commands:
+                                yield Completion(
+                                    cmd[1:],  # Remove the leading /
+                                    start_position=-1,  # Replace the /
+                                    display=cmd,
+                                    display_meta=self._get_description(cmd),
+                                )
 
-                        def _get_description(self, cmd_with_slash):
-                            # Remove leading slash
-                            cmd = cmd_with_slash[1:] if cmd_with_slash.startswith("/") else cmd_with_slash
+                def _get_description(self, cmd_with_slash):
+                    # Remove leading slash
+                    cmd = cmd_with_slash[1:] if cmd_with_slash.startswith("/") else cmd_with_slash
 
-                            # Check if it's an alias
-                            if cmd in self.aliases:
-                                actual_cmd = self.commands[self.aliases[cmd]]
-                                return f"(alias) {actual_cmd.description}"
-                            elif cmd in self.commands:
-                                return self.commands[cmd].description
-                            return ""
+                    # Check if it's an alias
+                    if cmd in self.aliases:
+                        actual_cmd = self.commands[self.aliases[cmd]]
+                        return f"(alias) {actual_cmd.description}"
+                    elif cmd in self.commands:
+                        return self.commands[cmd].description
+                    return ""
 
-                    # Create custom completer
-                    completer = CommandCompleter(self.commands.commands, self.commands.aliases)
+            # Create custom completer
+            completer = CommandCompleter(self.commands.commands, self.commands.aliases)
 
-                    # Initialize input history if not already done
-                    if self.input_history is None:
-                        # Create history file path in user's home directory
-                        import os
+            # Initialize input history if not already done
+            if self.input_history is None:
+                # Create history file path in user's home directory
+                import os
 
-                        self.history_file = os.path.expanduser("~/.forge_cli_history")
-                        self.input_history = FileHistory(self.history_file)
+                self.history_file = os.path.expanduser("~/.forge_cli_history")
+                self.input_history = FileHistory(self.history_file)
 
-                    # Create style
-                    style = Style.from_dict(
-                        {
-                            "prompt": "bold cyan",
-                            "": "#ffffff",  # Default text color
-                        }
-                    )
+            # Create style
+            style = Style.from_dict(
+                {
+                    "prompt": "bold cyan",
+                    "": "#ffffff",  # Default text color
+                }
+            )
 
-                    # Create prompt session with custom completer and history
-                    session = PromptSession(
-                        completer=completer,
-                        complete_while_typing=True,
-                        style=style,
-                        complete_style="MULTI_COLUMN",  # Show completions in columns
-                        mouse_support=True,  # Enable mouse support
-                        history=self.input_history,  # Enable up/down arrow history navigation
-                    )
+            # Create prompt session with custom completer and history
+            session = PromptSession(
+                completer=completer,
+                complete_while_typing=True,
+                style=style,
+                complete_style="MULTI_COLUMN",  # Show completions in columns
+                mouse_support=True,  # Enable mouse support
+                history=self.input_history,  # Enable up/down arrow history navigation
+            )
 
-                    # Use prompt_toolkit with auto-completion
-                    loop = asyncio.get_event_loop()
-                    future = loop.run_in_executor(None, lambda: session.prompt(FormattedText([("class:prompt", " ")])))
-                    user_input: str = await future
-                    return user_input.strip()
-                except ImportError:
-                    pass
-                except Exception as e:
-                    if self.config.debug:
-                        print(f"DEBUG: prompt_toolkit error: {e}")
-        except:
-            pass
-
-        # Fallback to display method or basic input
-        try:
-            return await self.display.prompt_for_input()  # type: ignore
-        except AttributeError:
-            # Basic fallback
+            # Use prompt_toolkit with auto-completion
             try:
                 loop = asyncio.get_event_loop()
-                future = loop.run_in_executor(None, input, "\nYou: ")
-                user_input = await future
+                future = loop.run_in_executor(None, lambda: session.prompt(FormattedText([("class:prompt", " ")])))
+                user_input: str = await future
                 return user_input.strip()
-            except (EOFError, KeyboardInterrupt):
-                return None
+            except Exception:
+                # Fall through to non-interactive input
+                pass
+
+        # Fallback for non-interactive input (pipes, scripts, etc.)
+        try:
+            loop = asyncio.get_event_loop()
+            future = loop.run_in_executor(None, input)
+            user_input: str = await future
+            return user_input.strip()
+        except EOFError:
+            # End of input stream
+            return None
+        except Exception:
+            # Any other input error
+            return None
 
     async def process_input(self, user_input: str) -> bool:
         """Processes the user's input, determining if it's a command or a message.
@@ -335,136 +318,20 @@ class ChatController:
             print(f"DEBUG: Typed Request: {typed_request.model_dump()}")
 
         event_stream = astream_typed_response(typed_request, debug=self.config.debug)
-        stream_state = await handler.handle_stream(event_stream, content)
+        response = await handler.handle_stream(event_stream)
 
-        # Update conversation state from stream state
-        if stream_state:
-            self.conversation.update_stream_state(stream_state)
-
-        # StreamState is a typed dataclass with a final_response attribute
-        if stream_state and stream_state.final_response:
-            response = stream_state.final_response
-            # Extract and add the assistant's response using type guards
-            # Response is a typed Pydantic model with guaranteed output attribute
-            if response.output:
-                assistant_added = False
-                for item in response.output:
-                    # Use type guard for proper message identification
-                    if is_message_item(item):
-                        # Type guard ensures item is ResponseOutputMessage
-                        if item.content:
-                            # Extract text from content
-                            assistant_text = ""
-                            for content_part in item.content:
-                                text = self._extract_text_from_content_item(content_part)
-                                if text:
-                                    assistant_text += text
-
-                            if assistant_text:
-                                self.conversation.add_assistant_message(assistant_text)
-                                assistant_added = True
-                                if self.config.debug:
-                                    print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
-                                break  # Only add the first assistant message
-
-                if self.config.debug and not assistant_added:
-                    print("DEBUG: No assistant message found in response output")
-                    # Response.output is guaranteed to exist as a list
+        # Update conversation state from response (includes adding assistant message)
+        if response:
+            self.conversation.update_from_response(response)
+            if self.config.debug:
+                assistant_text = response.output_text
+                if assistant_text:
+                    print(f"DEBUG: Added assistant message: {assistant_text[:100]}...")
+                else:
+                    print("DEBUG: No assistant message text found in response")
                     print(
                         f"DEBUG: Response output items: {[getattr(item, 'type', 'unknown') for item in response.output]}"
                     )
 
-            # Update conversation metadata
-            # Response.model is a guaranteed attribute (ResponsesModel type)
-            if response.model:
-                self.conversation.model = response.model
-
         # Reset display mode to default after chat message
         self.display.mode = "default"
-
-    def _extract_text_from_content_item(self, content_item: Any) -> str | None:
-        """Extracts text from a single content item.
-
-        A content item can be a string, a dictionary (e.g., `{"type": "text", "text": "..."}`),
-        or a typed content part object (e.g., `ContentPart`).
-
-        Args:
-            content_item: The content item to extract text from.
-
-        Returns:
-            The extracted text as a string, or None if no text is found.
-        """
-        if isinstance(content_item, str):
-            return content_item
-
-        # Use type guards for proper type checking
-        if is_output_text(content_item):
-            return content_item.text
-
-        # Check dict types
-        if is_dict_with_type(content_item, "output_text"):
-            return content_item.get("text", "")
-        if is_dict_with_type(content_item, "text"):
-            return content_item.get("text", "")
-
-        # Use generic get_content_text helper
-        return get_content_text(content_item)
-
-    def extract_text_from_message(self, message_item: dict[str, Any]) -> str | None:
-        """Extracts the primary text content from a message dictionary.
-
-        A message item (typically from an API response) can have its content
-        represented in various ways (string, list of content parts). This method
-        iterates through possible structures to find the textual content.
-
-        Args:
-            message_item: A dictionary representing a message, usually part of
-                an API response.
-
-        Returns:
-            The extracted text content as a string, or None if not found.
-        """
-        content = message_item.get("content", [])
-
-        if isinstance(content, str):
-            return content
-
-        if isinstance(content, list):
-            for item_part in content:
-                text = self._extract_text_from_content_item(item_part)
-                if text:
-                    return text
-        return None
-
-    def extract_text_from_typed_response(self, response: "Response") -> str | None:
-        """Extracts the primary text content from a typed API `Response` object.
-
-        This method navigates the structure of a `Response` object (which might
-        contain multiple output items like messages or tool calls) to find and
-        return the first piece of textual assistant content.
-
-        Args:
-            response: The typed `Response` object from the API.
-
-        Returns:
-            The extracted text content from the assistant's message, or None
-            if not found.
-        """
-
-        # Response is a typed Pydantic model with guaranteed output attribute
-        if response.output:
-            for item in response.output:
-                # Use type guard for proper message identification
-                if is_message_item(item):
-                    # Type guard ensures item is ResponseOutputMessage
-                    if item.content:
-                        for content_part in item.content:
-                            text = self._extract_text_from_content_item(content_part)
-                            if text:
-                                return text
-                elif isinstance(item, dict) and is_dict_with_type(item, "message"):
-                    # If it's a dict-like message, use the refactored extract_text_from_message
-                    text = self.extract_text_from_message(item)
-                    if text:
-                        return text
-        return None

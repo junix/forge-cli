@@ -20,7 +20,6 @@ from ..response.type_guards import (
 if TYPE_CHECKING:
     from ..config import SearchConfig
     from ..response._types import Request, Response
-    from ..stream.handler_typed import StreamState
 
 # Type aliases for clarity
 type MessageRole = Literal["user", "system", "developer"]
@@ -370,18 +369,6 @@ class ConversationState:
             self.add_assistant_message(assistant_text)
             # Increment turn count when we successfully add an assistant message
             self.increment_turn_count()
-
-    def update_stream_state(self, state: "StreamState") -> None:
-        """Update conversation state from stream state.
-
-        DEPRECATED: Use update_from_response() instead.
-        This method is kept for backward compatibility.
-
-        Args:
-            state: StreamState object from stream processing
-        """
-        if state.response:
-            self.update_from_response(state.response)
 
     def _extract_accessed_files_from_response(self, response: "Response") -> list[str]:
         """Extract accessed files from Response object using type guards."""

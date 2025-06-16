@@ -99,7 +99,7 @@ async def process_search(config: SearchConfig, question: str) -> dict[str, str |
 
     # Stream and process with typed API
     event_stream = astream_typed_response(request, debug=config.debug)
-    response = await handler.handle_stream(event_stream, question, config.vec_ids)
+    response = await handler.handle_stream(event_stream)
 
     # Return response information
     return {
@@ -157,7 +157,7 @@ async def start_chat_mode(
 
         # Stream the response
         event_stream = astream_typed_response(request, debug=config.debug)
-        response = await handler.handle_stream(event_stream, content, config.vec_ids)
+        response = await handler.handle_stream(event_stream)
 
         # Update conversation state from response (includes adding assistant message)
         if response:
