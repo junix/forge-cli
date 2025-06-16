@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Union
 
 if TYPE_CHECKING:
     from ..response._types.annotations import Annotation
@@ -43,12 +43,12 @@ class ToolState:
     tool_type: str = ""
     query: str = ""
     queries: list[str] = field(default_factory=list)
-    results_count: int | None = None
+    results_count: Union[int, None] = None
     status: ToolStatus = ToolStatus.IDLE
-    query_time: float | None = None
-    retrieval_time: float | None = None
+    query_time: Union[float, None] = None
+    retrieval_time: Union[float, None] = None
 
-    def to_display_info(self) -> dict[str, str | int | float]:
+    def to_display_info(self) -> dict[str, Union[str, int, float]]:
         """Convert to display information dictionary."""
         info = {"tool_type": self.tool_type}
 
@@ -85,15 +85,15 @@ class StreamState:
     current_reasoning: str = ""
 
     # Usage statistics using typed API
-    usage: ResponseUsage | None = None
+    usage: Union[ResponseUsage, None] = None
 
     # Event counters
     event_count: int = 0
     response_event_count: int = 0
 
     # Response metadata
-    response_id: str | None = None
-    model: str | None = None
+    response_id: Union[str, None] = None
+    model: Union[str, None] = None
 
     # Vector store IDs used in this session
     vector_store_ids: set[str] = field(default_factory=set)
@@ -231,9 +231,9 @@ class StreamState:
 
         return self.tool_states[base_tool_type]
 
-    def get_completed_tools(self) -> list[dict[str, str | int | float]]:
+    def get_completed_tools(self) -> list[dict[str, Union[str, int, float]]]:
         """Get display info for all completed tools."""
-        completed: list[dict[str, str | int | float]] = []
+        completed: list[dict[str, Union[str, int, float]]] = []
 
         for tool_state in self.tool_states.values():
             if tool_state.status == ToolStatus.COMPLETED:
@@ -241,7 +241,7 @@ class StreamState:
 
         return completed
 
-    def _convert_single_output_item(self, item: dict[str, Any]) -> "ResponseOutputItem" | None:
+    def _convert_single_output_item(self, item: dict[str, Any]) -> Union["ResponseOutputItem", None]:
         """Convert dict to typed output item if possible.
         
         Args:
