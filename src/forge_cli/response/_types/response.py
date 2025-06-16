@@ -1239,8 +1239,9 @@ class Response(BaseModel):
                 }
 
                 # Add result count for specific tool types
-                if hasattr(item, "results") and item.results:
-                    brief_item["results"] = f"[{len(item.results)} results]"
+                results = getattr(item, "results", None)
+                if results:
+                    brief_item["results"] = f"[{len(results)} results]"
                 elif hasattr(item, "name"):
                     brief_item["name"] = item.name
 

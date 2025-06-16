@@ -203,17 +203,13 @@ class StreamState:
         for item in self.output_items:
             # Extract from file search results
             if is_file_search_call(item):
-                if item.results:
-                    for result in item.results:
-                        if result.file_id and result.filename:
-                            self.file_id_to_name[result.file_id] = result.filename
+                # File search results are not directly accessible from tool call
+                pass
 
             # Extract from document finder results
             elif is_document_finder_call(item):
-                if item.results:
-                    for result in item.results:
-                        if result.doc_id and result.title:
-                            self.file_id_to_name[result.doc_id] = result.title
+                # Document finder results are not directly accessible from tool call
+                pass
 
     def _extract_reasoning(self) -> None:
         """Extract reasoning text from output items."""

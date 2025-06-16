@@ -241,8 +241,9 @@ class JsonRenderer(BaseRenderer):
             if getattr(item, "queries", None):
                 item_dict["queries"] = item.queries
 
-            if getattr(item, "results", None):
-                item_dict["results"] = item.results
+            results = getattr(item, "results", None)
+            if results:
+                item_dict["results"] = results
 
         elif item.type == "reasoning":
             if getattr(item, "summary", None):
