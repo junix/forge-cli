@@ -168,7 +168,15 @@ class RichRenderer(BaseRenderer):
             ]:
                 # Get tool-specific icon and format the tool call in a single beautiful line
                 tool_icon = self._get_tool_icon(item.type)
-                tool_name = item.type.replace("_call", "").replace("_", " ").title()
+                short_name = {
+                    "web_search_call": "Web",
+                    "file_search_call": "Search",
+                    "document_finder_call": "Finder",
+                    "file_reader_call": "Reader",
+                    "code_interpreter_call": "Interpreter",
+                    "function_call": "Tool",
+                }
+                tool_name = short_name.get(item.type, item.type.replace("_call", "").replace("_", " ").title())
 
                 # Get status icon
                 status_icon = STATUS_ICONS.get(item.status, STATUS_ICONS["default"])
@@ -178,10 +186,10 @@ class RichRenderer(BaseRenderer):
 
                 # Format: Tool Icon + Bold Name + Status Icon + Status + Result
                 # Example: 󱁴 **File Search** ✓ _completed_ → "query" found 5 results
-                tool_line = f"{tool_icon}**{tool_name}** {status_icon}_{item.status}_"
+                tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{item.status}_"
 
                 if result_summary:
-                    tool_line += f" {ICONS['arrow']} {result_summary}"
+                    tool_line += f" {ICONS['bullet']} {result_summary}"
 
                 md_parts.append(tool_line)
             elif is_reasoning_item(item):
@@ -337,26 +345,13 @@ class RichRenderer(BaseRenderer):
             if tool_item.queries:
                 # Use pack_queries for beautiful multi-query display
                 shortened_queries = [q[:30] + "..." if len(q) > 30 else q for q in tool_item.queries]
-                packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
+                packed = pack_queries(*[f"{q}" for q in shortened_queries])
                 query_parts.append(packed)
 
-            # Add results information
-            if getattr(tool_item, "results", None):
-                result_count = len(tool_item.results)
-                # Note: vector_store_ids might be added dynamically
-                vector_store_ids = getattr(tool_item, "vector_store_ids", None)
-                if vector_store_ids:
-                    stores = len(vector_store_ids)
-                    query_parts.append(
-                        f"{ICONS['check']}{result_count} results from {stores} store{'s' if stores > 1 else ''}"
-                    )
-                else:
-                    query_parts.append(f"{ICONS['check']}{result_count} result{'s' if result_count != 1 else ''}")
-
             if query_parts:
-                return f" {ICONS['arrow']} ".join(query_parts)
+                return f" {ICONS['bullet']} ".join(query_parts)
             elif tool_item.status == "searching":
-                return f"{ICONS['searching']}initializing search..."
+                return f"{ICONS['searching']} init"
             return "preparing file search"
 
         elif is_web_search_call(tool_item):
@@ -365,32 +360,12 @@ class RichRenderer(BaseRenderer):
             if tool_item.queries:
                 # Use pack_queries for beautiful display
                 shortened_queries = [q[:30] + "..." if len(q) > 30 else q for q in tool_item.queries]
-                packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
+                packed = pack_queries(*[f"{q}" for q in shortened_queries])
                 parts.append(packed)
 
-                if getattr(tool_item, "results", None):
-                    result_count = len(tool_item.results)
-                    # Show top domains if available
-                    domains = []
-                    for r in tool_item.results[:3]:
-                        if r.url:
-                            try:
-                                from urllib.parse import urlparse
-
-                                domain = urlparse(r.url).netloc
-                                if domain and domain not in domains:
-                                    domains.append(domain.replace("www.", ""))
-                            except:
-                                pass
-
-                    if domains:
-                        parts.append(f"{ICONS['check']}{result_count} results ({', '.join(domains[:2])}...)")
-                    else:
-                        parts.append(f"{ICONS['check']}{result_count} results")
-
             if parts:
-                return f" {ICONS['arrow']} ".join(parts)
-            return f"{ICONS['searching']}initializing web search..."
+                return f" {ICONS['bullet']} ".join(parts)
+            return f"{ICONS['searching']} init"
 
         elif is_document_finder_call(tool_item):
             # Show document search with magnifying glass
@@ -398,28 +373,12 @@ class RichRenderer(BaseRenderer):
             if tool_item.queries:
                 # Use pack_queries for consistent display
                 shortened_queries = [q[:25] + "..." if len(q) > 25 else q for q in tool_item.queries]
-                packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
+                packed = pack_queries(*[f"{q}" for q in shortened_queries])
                 parts.append(packed)
 
-            if getattr(tool_item, "results", None):
-                doc_count = len(tool_item.results)
-                # Show document types if available
-                doc_types = set()
-                for r in tool_item.results:
-                    if getattr(r, "file_name", None):
-                        ext = r.file_name.split(".")[-1].lower() if "." in r.file_name else None
-                        if ext:
-                            doc_types.add(ext)
-
-                if doc_types:
-                    types_str = ", ".join(list(doc_types)[:3])
-                    parts.append(f"{ICONS['check']}{doc_count} document{'s' if doc_count != 1 else ''} ({types_str})")
-                else:
-                    parts.append(f"{ICONS['check']}{doc_count} document{'s' if doc_count != 1 else ''}")
-
             if parts:
-                return f" {ICONS['arrow']} ".join(parts)
-            return f"{ICONS['searching']}initializing document search..."
+                return f" {ICONS['bullet']} ".join(parts)
+            return f"{ICONS['searching']} init"
 
         elif is_file_reader_call(tool_item):
             # Show file reading with book icon and detailed info
@@ -435,33 +394,8 @@ class RichRenderer(BaseRenderer):
             elif tool_item.doc_ids and len(tool_item.doc_ids) > 0:
                 parts.append(f"{ICONS['file_reader']}file:{tool_item.doc_ids[0][:12]}...")
 
-            # Content information
-            content = getattr(tool_item, "content", None)
-            if content:
-                content_len = len(content)
-                # Format size nicely
-                if content_len > 1024 * 1024:
-                    size_str = f"{content_len / (1024 * 1024):.1f}MB"
-                elif content_len > 1024:
-                    size_str = f"{content_len / 1024:.1f}KB"
-                else:
-                    size_str = f"{content_len} chars"
-
-                # Show preview of content type
-                content_preview = content[:100].strip()
-                if content_preview.startswith("{") or content_preview.startswith("["):
-                    parts.append(f"{ICONS['check']}loaded {size_str} (JSON)")
-                elif content_preview.startswith("<?xml"):
-                    parts.append(f"{ICONS['check']}loaded {size_str} (XML)")
-                elif content_preview.startswith("<!DOCTYPE") or content_preview.startswith("<html"):
-                    parts.append(f"{ICONS['check']}loaded {size_str} (HTML)")
-                else:
-                    parts.append(f"{ICONS['check']}loaded {size_str}")
-            elif getattr(tool_item, "results", None):
-                parts.append(f"{ICONS['completed']}loaded successfully")
-
             if parts:
-                return f" {ICONS['arrow']} ".join(parts)
+                return f" {ICONS['bullet']} ".join(parts)
             return f"{ICONS['processing']}loading file..."
 
         elif is_code_interpreter_call(tool_item):
@@ -498,7 +432,7 @@ class RichRenderer(BaseRenderer):
                 parts.append(f"{ICONS['output_tokens']}output: {output_preview}")
 
             if parts:
-                return f" {ICONS['arrow']} ".join(parts)
+                return f" {ICONS['bullet']} ".join(parts)
             return f"{ICONS['processing']}executing code..."
 
         elif is_function_call(tool_item):
@@ -532,7 +466,7 @@ class RichRenderer(BaseRenderer):
                 parts.append(f"{ICONS['check']}{output_str}")
 
             if parts:
-                return f" {ICONS['arrow']} ".join(parts)
+                return f" {ICONS['bullet']} ".join(parts)
             return f"{ICONS['processing']}calling function..."
 
         # Default fallback

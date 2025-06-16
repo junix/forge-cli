@@ -9,6 +9,11 @@ from ..display.v3.base import Display
 
 # Note: Registry system removed - all processing now done in v3 renderers
 from ..response._types import Response
+from ..response.type_guards import (
+    get_tool_results,
+    is_file_search_call,
+    is_reasoning_item,
+)
 
 # Removed MigrationHelper - using typed Response directly
 
@@ -94,25 +99,29 @@ class StreamState:
             self.model = snapshot.model
 
     def _extract_file_mappings_typed(self, response: Response) -> None:
-        """Extract file mappings from typed Response."""
+        """Extract file mappings from typed Response using type guards."""
         for item in response.output:
-            if hasattr(item, "type") and "search_call" in item.type:
-                if hasattr(item, "results") and item.results:
-                    for result in item.results:
-                        if hasattr(result, "file_id") and hasattr(result, "filename"):
-                            self.file_id_to_name[result.file_id] = result.filename
+            if is_file_search_call(item):
+                # After type guard, we know item is ResponseFileSearchToolCall
+                results = get_tool_results(item)
+                for result in results:
+                    # File search results should have file_id and filename
+                    # Use getattr with defaults for safer access
+                    file_id = getattr(result, "file_id", None)
+                    filename = getattr(result, "filename", None)
+                    if file_id and filename:
+                        self.file_id_to_name[file_id] = filename
 
     def _extract_reasoning_typed(self, response: Response) -> None:
-        """Extract reasoning from typed Response."""
+        """Extract reasoning from typed Response using type guards."""
         for item in response.output:
-            if hasattr(item, "type") and item.type == "reasoning":
-                if hasattr(item, "summary"):
-                    # Extract text from summary items
-                    texts = []
-                    for summary_item in item.summary:
-                        if hasattr(summary_item, "text"):
-                            texts.append(summary_item.text)
-                    self.current_reasoning = " ".join(texts)
+            if is_reasoning_item(item):
+                # After type guard, we can safely access summary
+                texts = []
+                for summary_item in item.summary:
+                    # Summary items are typed, so we can access text directly
+                    texts.append(summary_item.text)
+                self.current_reasoning = " ".join(texts)
 
 
 class TypedStreamHandler:
@@ -183,8 +192,13 @@ class TypedStreamHandler:
             elif event_type == "error":
                 # Stream error
                 error_msg = "Stream error occurred"
-                if event_data and hasattr(event_data, "message"):
-                    error_msg = event_data.message
+                if event_data:
+                    # Use type guard to safely extract error message
+                    from ..response.type_guards import get_error_message
+
+                    extracted_msg = get_error_message(event_data)
+                    if extracted_msg:
+                        error_msg = extracted_msg
                 self.display.show_error(error_msg)
                 break
 
