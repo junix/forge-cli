@@ -114,6 +114,21 @@ class CommandRegistry:
                 description="Disable file search tool",
                 aliases=["dfs"],
             ),
+            # Page Reader Toggle Commands
+            ToggleToolCommand(
+                tool_name="page-reader",
+                action="enable",
+                command_name="enable-page-reader",
+                description="Enable page reader tool",
+                aliases=["epr"],
+            ),
+            ToggleToolCommand(
+                tool_name="page-reader",
+                action="disable",
+                command_name="disable-page-reader",
+                description="Disable page reader tool",
+                aliases=["dpr"],
+            ),
         ]
 
         for cmd in default_commands:

@@ -26,6 +26,7 @@ class Vectorstore(BaseModel):
     created_at: datetime
     bytes: int | None = None
     file_counts: FileCounts
+
     class Config:
         populate_by_name = True
         allow_population_by_field_name = True

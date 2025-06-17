@@ -21,10 +21,6 @@ from .annotations import (
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 from .computer_tool import ComputerTool as ComputerTool
 from .computer_tool_param import ComputerToolParam as ComputerToolParam
-from .list_documents_tool import ListDocumentsTool as ListDocumentsTool
-from .list_documents_tool_param import (
-    ListDocumentsToolParam as ListDocumentsToolParam,
-)
 from .easy_input_message import EasyInputMessage as EasyInputMessage
 from .easy_input_message_param import EasyInputMessageParam as EasyInputMessageParam
 from .file_search_tool import FileSearchTool as FileSearchTool
@@ -37,6 +33,12 @@ from .input_image_content import InputImageContent
 from .input_item_list_params import InputItemListParams as InputItemListParams
 from .input_message import InputMessage
 from .input_text_content import InputTextContent
+from .list_documents_tool import ListDocumentsTool as ListDocumentsTool
+from .list_documents_tool_param import (
+    ListDocumentsToolParam as ListDocumentsToolParam,
+)
+from .page_reader_tool import PageReaderTool as PageReaderTool
+from .page_reader_tool_param import PageReaderToolParam as PageReaderToolParam
 from .parsed_response import (
     ParsedContent as ParsedContent,
 )
@@ -109,9 +111,6 @@ from .response_content_part_done_event import (
 )
 from .response_create_params import ResponseCreateParams as ResponseCreateParams
 from .response_created_event import ResponseCreatedEvent as ResponseCreatedEvent
-from .response_list_documents_tool_call import (
-    ResponseListDocumentsToolCall as ResponseListDocumentsToolCall,
-)
 from .response_error import ResponseError as ResponseError
 from .response_error_event import ResponseErrorEvent as ResponseErrorEvent
 from .response_failed_event import ResponseFailedEvent as ResponseFailedEvent
@@ -151,6 +150,9 @@ from .response_function_call_arguments_done_event import (
 )
 from .response_function_file_reader import (
     ResponseFunctionFileReader as ResponseFunctionFileReader,
+)
+from .response_function_page_reader import (
+    ResponseFunctionPageReader as ResponseFunctionPageReader,
 )
 from .response_function_tool_call import (
     ResponseFunctionToolCall as ResponseFunctionToolCall,
@@ -202,6 +204,9 @@ from .response_input_text import ResponseInputText as ResponseInputText
 from .response_input_text_param import ResponseInputTextParam as ResponseInputTextParam
 from .response_item import ResponseItem as ResponseItem
 from .response_item_list import ResponseItemList as ResponseItemList
+from .response_list_documents_tool_call import (
+    ResponseListDocumentsToolCall as ResponseListDocumentsToolCall,
+)
 from .response_output_item import ResponseOutputItem as ResponseOutputItem
 from .response_output_item_added_event import (
     ResponseOutputItemAddedEvent as ResponseOutputItemAddedEvent,

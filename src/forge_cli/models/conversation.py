@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 # Type aliases for clarity
 type MessageRole = Literal["user", "system", "developer"]
 type ToolType = Literal[
-    "file_search", "web_search", "function", "computer_use_preview", "list_documents", "file_reader"
+    "file_search", "web_search", "function", "computer_use_preview", "list_documents", "file_reader", "page_reader"
 ]
 
 # Domain-specific types
@@ -70,6 +70,7 @@ class ConversationState(BaseModel):
     # Conversation-specific tool settings that can be changed during chat
     web_search_enabled: bool = Field(default=False)
     file_search_enabled: bool = Field(default=False)
+    page_reader_enabled: bool = Field(default=False)
     current_vector_store_ids: list[str] = Field(default_factory=list)
 
     # Pydantic configuration
@@ -255,6 +256,7 @@ class ConversationState(BaseModel):
             model=config.model,
             web_search_enabled="web-search" in config.enabled_tools,
             file_search_enabled="file-search" in config.enabled_tools,
+            page_reader_enabled="page-reader" in config.enabled_tools,
             current_vector_store_ids=config.vec_ids.copy() if config.vec_ids else [],
             metadata={
                 "effort": config.effort,
@@ -388,7 +390,7 @@ class ConversationState(BaseModel):
         Returns:
             A typed Request object ready for the API
         """
-        from ..response._types import FileSearchTool, InputMessage, Request, WebSearchTool
+        from ..response._types import FileSearchTool, InputMessage, PageReaderTool, Request, WebSearchTool
         from ..response._types.web_search_tool import UserLocation
 
         # Add the new user message to conversation history first
@@ -424,6 +426,12 @@ class ConversationState(BaseModel):
                 )
                 tool_params["user_location"] = user_location
             tools.append(WebSearchTool(**tool_params))
+
+        # Page reader tool - use conversation state if available, otherwise fall back to config
+        page_reader_enabled = self.page_reader_enabled or "page-reader" in config.enabled_tools
+
+        if page_reader_enabled:
+            tools.append(PageReaderTool(type="page_reader"))
 
         # Build input messages from current conversation history (including the new message)
         input_messages = []

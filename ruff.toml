@@ -1,7 +1,7 @@
 line-length = 120
 target-version = "py312"
 
-exclude = ["knowledge_forge/response/_types"]
+exclude = ["src/forge_cli/response/_types"]
 
 [lint]
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"

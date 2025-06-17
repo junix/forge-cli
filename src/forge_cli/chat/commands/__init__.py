@@ -13,7 +13,7 @@ __all__ = [
     "CommandRegistry",
     # Session commands
     "ExitCommand",
-    "ClearCommand", 
+    "ClearCommand",
     "HelpCommand",
     "NewCommand",
     # Conversation commands
@@ -23,7 +23,7 @@ __all__ = [
     "HistoryCommand",
     # Configuration commands
     "ModelCommand",
-    "ToolsCommand", 
+    "ToolsCommand",
     "VectorStoreCommand",
     # Information commands
     "InspectCommand",

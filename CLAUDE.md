@@ -227,6 +227,9 @@ These classes specify what tools are available and how to configure them:
 6. **FileReaderTool** - Direct document reading configuration
    - `type: "file_reader"`
 
+7. **PageReaderTool** - Page-specific document reading configuration
+   - `type: "page_reader" | "page_reader_preview"`
+
 #### Tool Call Result Classes (Execution State & Results)
 
 These classes represent execution state and results after tools are invoked:
@@ -275,6 +278,17 @@ These classes represent execution state and results after tools are invoked:
    - `execution_trace: str | None` (inherited from TraceableToolCall)
    - Results are accessed through separate mechanisms
 
+7. **ResponseFunctionPageReader** - Page reader execution results (extends TraceableToolCall)
+   - `type: "page_reader_call"`
+   - `id: str`
+   - `status: "in_progress" | "searching" | "completed" | "incomplete"`
+   - `document_id: str`
+   - `start_page: int`
+   - `end_page: int | None`
+   - `progress: float | None` (inherited from TraceableToolCall)
+   - `execution_trace: str | None` (inherited from TraceableToolCall)
+   - Results are accessed through separate mechanisms
+
 7. **ResponseCodeInterpreterToolCall** - Code execution results
    - `type: "code_interpreter_call"`
    - `id: str`
@@ -296,7 +310,7 @@ These classes represent execution state and results after tools are invoked:
 # Tool definitions union
 Tool: TypeAlias = Annotated[
     FileSearchTool | FunctionTool | WebSearchTool | ComputerTool |
-    ListDocumentsTool | FileReaderTool,
+    ListDocumentsTool | FileReaderTool | PageReaderTool,
     PropertyInfo(discriminator="type"),
 ]
 
@@ -304,7 +318,7 @@ Tool: TypeAlias = Annotated[
 ResponseOutputItem: TypeAlias = Annotated[
     ResponseOutputMessage | ResponseFileSearchToolCall | ResponseFunctionToolCall |
     ResponseFunctionWebSearch | ResponseListDocumentsToolCall |
-    ResponseFunctionFileReader | ResponseComputerToolCall | ResponseReasoningItem,
+    ResponseFunctionFileReader | ResponseFunctionPageReader | ResponseComputerToolCall | ResponseReasoningItem,
     PropertyInfo(discriminator="type"),
 ]
 ```
@@ -829,7 +843,8 @@ forge-cli --chat -t file-search --vec-id vs_123 -q "Hello"
 
 # Available chat commands:
 # /help, /save, /load, /tools, /model, /clear, /info, /config
-# /enable-web, /disable-web, /enable-files, /disable-files
+# /enable-web-search, /disable-web-search, /enable-file-search, /disable-file-search
+# /enable-page-reader, /disable-page-reader
 ```
 
 #### Chat Features
@@ -853,10 +868,12 @@ forge-cli --chat -t file-search --vec-id vs_123 -q "Hello"
 | `/clear` | Clear conversation | `/clear` |
 | `/info` | Show session info | `/info` |
 | `/config` | Show configuration | `/config` |
-| `/enable-web` | Enable web search | `/enable-web` |
-| `/disable-web` | Disable web search | `/disable-web` |
-| `/enable-files` | Enable file search | `/enable-files` |
-| `/disable-files` | Disable file search | `/disable-files` |
+| `/enable-web-search` | Enable web search | `/enable-web-search` |
+| `/disable-web-search` | Disable web search | `/disable-web-search` |
+| `/enable-file-search` | Enable file search | `/enable-file-search` |
+| `/disable-file-search` | Disable file search | `/disable-file-search` |
+| `/enable-page-reader` | Enable page reader | `/enable-page-reader` |
+| `/disable-page-reader` | Disable page reader | `/disable-page-reader` |
 
 ## Development
 

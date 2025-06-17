@@ -60,7 +60,6 @@ class InspectCommand(ChatCommand):
         model_info = f"Model: {controller.conversation.model}"
         table.add_row("🤖 Model", model_info)
 
-
         # Display the table in a panel
         panel = Panel(
             Align.center(table),

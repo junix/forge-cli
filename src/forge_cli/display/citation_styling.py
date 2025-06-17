@@ -482,9 +482,8 @@ def style_citations(
         return styled_text
 
 
-
-
 LONG_PATTERN = re.compile(r"⟦⟦(\d+)⟧⟧")
+
 
 def long2circled(text: str) -> str:
     """
@@ -496,10 +495,11 @@ def long2circled(text: str) -> str:
 
     Returns:
         A copy of *text* where every ⟦⟦n⟧⟧ has been replaced with
-        the corresponding character from ``CIRCLED_DIGITS``.  
+        the corresponding character from ``CIRCLED_DIGITS``.
         If *n* is not present in the lookup table, the original marker
         is left unchanged.
     """
+
     def _replace(match: re.Match[str]) -> str:
         n = int(match.group(1))
         return CIRCLED_DIGITS.get(n, match.group(0))

@@ -70,6 +70,8 @@ class ToggleToolCommand(ChatCommand):
                 controller.conversation.enable_web_search()
             elif self.tool_name == "file-search":
                 controller.conversation.enable_file_search()
+            elif self.tool_name == "page-reader":
+                controller.conversation.page_reader_enabled = True
 
         elif self.action == "disable":
             if self.tool_name in enabled_tools:
@@ -83,6 +85,8 @@ class ToggleToolCommand(ChatCommand):
                 controller.conversation.disable_web_search()
             elif self.tool_name == "file-search":
                 controller.conversation.disable_file_search()
+            elif self.tool_name == "page-reader":
+                controller.conversation.page_reader_enabled = False
 
         else:
             # Should not happen if constructor is used correctly
