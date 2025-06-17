@@ -202,6 +202,10 @@ async def astream_typed_response(
                                     "response.file_search_call.completed",
                                     "response.web_search_call.completed",
                                     "response.function_call.completed",
+                                    "response.list_documents_call.completed",
+                                    "response.file_reader_call.completed",
+                                    "response.page_reader_call.completed",
+                                    "response.code_interpreter_call.completed",
                                 }
 
                                 response_obj = None

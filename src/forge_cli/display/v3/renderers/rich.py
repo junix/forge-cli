@@ -399,9 +399,9 @@ class RichRenderer(BaseRenderer):
                 # Show file extension
                 ext = file_name.split(".")[-1].lower() if "." in file_name else "file"
                 name_short = file_name[:30] + "..." if len(file_name) > 30 else file_name
-                parts.append(f'{ICONS["file_reader"]}"{name_short}" [{ext.upper()}]')
+                parts.append(f'{ICONS["file_reader_call"]}"{name_short}" [{ext.upper()}]')
             elif tool_item.doc_ids and len(tool_item.doc_ids) > 0:
-                parts.append(f"{ICONS['file_reader']}file:{tool_item.doc_ids[0][:12]}...")
+                parts.append(f"{ICONS['file_reader_call']}file:{tool_item.doc_ids[0][:12]}...")
 
             if parts:
                 return f" {ICONS['bullet']} ".join(parts)
