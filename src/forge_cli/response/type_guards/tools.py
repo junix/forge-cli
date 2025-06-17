@@ -7,6 +7,7 @@ from .._types.file_reader_tool import FileReaderTool
 from .._types.file_search_tool import FileSearchTool
 from .._types.function_tool import FunctionTool
 from .._types.list_documents_tool import ListDocumentsTool
+from .._types.page_reader_tool import PageReaderTool
 from .._types.tool import Tool
 from .._types.web_search_tool import WebSearchTool
 
@@ -81,3 +82,15 @@ def is_file_reader_tool(tool: Tool) -> TypeGuard[FileReaderTool]:
         True if the tool is a FileReaderTool, False otherwise.
     """
     return tool.type == "file_reader"
+
+
+def is_page_reader_tool(tool: Tool) -> TypeGuard[PageReaderTool]:
+    """Check if the given Tool object is a PageReaderTool.
+
+    Args:
+        tool: The Tool object to check.
+
+    Returns:
+        True if the tool is a PageReaderTool, False otherwise.
+    """
+    return tool.type == "page_reader"

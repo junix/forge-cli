@@ -8,8 +8,13 @@ __all__ = ["PageReaderTool"]
 
 
 class PageReaderTool(BaseModel):
-    type: Literal["page_reader"]
-    """The type of the page reader tool.
+    """Page reader tool definition.
 
-    One of `page_reader` or `page_reader_preview`.
+    This class represents a page reader tool configuration that can be
+    used in requests to enable page reading capabilities from documents.
+
+    Attributes:
+        type (str): The type of the tool, always "page_reader"
     """
+
+    type: Literal["page_reader"] = "page_reader"

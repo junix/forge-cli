@@ -19,12 +19,12 @@ class ResponseFunctionPageReader(TraceableToolCall):
         document_id (str): Document ID to read pages from
         start_page (int): Starting page number (0-indexed)
         end_page (Optional[int]): Ending page number (0-indexed, defaults to start_page)
-        _results (Optional[List[Chunk]]): The results of the page reading operation
-        _native_tool_call (Optional[ResponseFunctionToolCall]): The native tool call
 
     Inherited from TraceableToolCall:
         progress (Optional[float]): Reading progress from 0.0 to 1.0
         execution_trace (Optional[str]): Execution history as newline-separated log entries
+
+    Note: Results are accessed through separate mechanisms, not directly from this object.
     """
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))

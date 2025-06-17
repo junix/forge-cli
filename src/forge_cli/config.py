@@ -15,7 +15,7 @@ EffortLevel = Literal["low", "medium", "high"]
 
 # Valid tool types
 ToolType = Literal[
-    "file-search", "web-search", "code-analyzer", "function", "computer", "list-documents", "file-reader"
+    "file-search", "web-search", "code-analyzer", "function", "computer", "list-documents", "file-reader", "page-reader"
 ]
 
 

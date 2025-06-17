@@ -69,7 +69,7 @@ class CLIParser:
             "--tool",
             "-t",
             action="append",
-            choices=["file-search", "web-search"],
+            choices=["file-search", "web-search", "page-reader"],
             help="Enable specific tools (can specify multiple)",
         )
 

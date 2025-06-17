@@ -11,6 +11,7 @@ ICONS = {
     "web_search_call": " 󰖟 ",  # matches rich.py:303
     "code_analyzer_call": "🔧",  # matches rich.py:307
     "file_reader_call": " 󰈈 ",  # matches rich.py:305
+    "page_reader_call": " 󰗚 ",  # page reader icon
     "list_documents_call": "  ",  # matches rich.py:304
     "code_interpreter_call": " 󱄕 ",  # matches rich.py:306
     "function_call": "  ",  # matches rich.py:307

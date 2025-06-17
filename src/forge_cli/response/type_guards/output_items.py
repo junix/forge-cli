@@ -6,6 +6,7 @@ from .._types.response_code_interpreter_tool_call import ResponseCodeInterpreter
 from .._types.response_computer_tool_call import ResponseComputerToolCall
 from .._types.response_file_search_tool_call import ResponseFileSearchToolCall
 from .._types.response_function_file_reader import ResponseFunctionFileReader
+from .._types.response_function_page_reader import ResponseFunctionPageReader
 from .._types.response_function_tool_call import ResponseFunctionToolCall
 from .._types.response_function_web_search import ResponseFunctionWebSearch
 from .._types.response_list_documents_tool_call import ResponseListDocumentsToolCall
@@ -84,6 +85,18 @@ def is_file_reader_call(item: ResponseOutputItem) -> TypeGuard[ResponseFunctionF
         True if the item is a ResponseFunctionFileReader, False otherwise.
     """
     return item.type == "file_reader_call"
+
+
+def is_page_reader_call(item: ResponseOutputItem) -> TypeGuard[ResponseFunctionPageReader]:
+    """Check if the given ResponseOutputItem is a ResponseFunctionPageReader.
+
+    Args:
+        item: The ResponseOutputItem to check.
+
+    Returns:
+        True if the item is a ResponseFunctionPageReader, False otherwise.
+    """
+    return item.type == "page_reader_call"
 
 
 def is_computer_tool_call(item: ResponseOutputItem) -> TypeGuard[ResponseComputerToolCall]:

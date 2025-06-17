@@ -18,6 +18,7 @@ from forge_cli.response.type_guards import (
     is_function_call,
     is_list_documents_call,
     is_message_item,
+    is_page_reader_call,
     is_reasoning_item,
     is_web_search_call,
 )
@@ -403,6 +404,31 @@ class RichRenderer(BaseRenderer):
             if parts:
                 return f" {ICONS['bullet']} ".join(parts)
             return f"{ICONS['processing']}loading file..."
+
+        elif is_page_reader_call(tool_item):
+            # Show page reading with page icon and detailed info
+            parts = []
+
+            # Document identification
+            document_id = getattr(tool_item, "document_id", None)
+            start_page = getattr(tool_item, "start_page", None)
+            end_page = getattr(tool_item, "end_page", None)
+
+            if document_id:
+                # Show document with page range
+                doc_short = document_id[:12] + "..." if len(document_id) > 12 else document_id
+                if start_page is not None:
+                    if end_page is not None and end_page != start_page:
+                        page_info = f"p.{start_page}-{end_page}"
+                    else:
+                        page_info = f"p.{start_page}"
+                    parts.append(f'{ICONS["page_reader_call"]}doc:{doc_short} [{page_info}]')
+                else:
+                    parts.append(f'{ICONS["page_reader_call"]}doc:{doc_short}')
+
+            if parts:
+                return f" {ICONS['bullet']} ".join(parts)
+            return f"{ICONS['processing']}loading pages..."
 
         elif is_code_interpreter_call(tool_item):
             # Show code execution with computer icon

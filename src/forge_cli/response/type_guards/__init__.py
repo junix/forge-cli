@@ -67,6 +67,7 @@ from .output_items import (
     is_function_call,
     is_list_documents_call,
     is_message_item,
+    is_page_reader_call,
     is_reasoning_item,
     is_web_search_call,
 )
@@ -83,6 +84,7 @@ from .tools import (
     is_file_search_tool,
     is_function_tool,
     is_list_documents_tool,
+    is_page_reader_tool,
     is_web_search_tool,
 )
 from .utilities import (
@@ -183,6 +185,7 @@ __all__ = [
     "is_file_search_call",
     "is_function_call",
     "is_message_item",
+    "is_page_reader_call",
     "is_reasoning_item",
     "is_web_search_call",
     # Status
@@ -197,6 +200,7 @@ __all__ = [
     "is_file_reader_tool",
     "is_file_search_tool",
     "is_function_tool",
+    "is_page_reader_tool",
     "is_web_search_tool",
     # Utilities
     "get_error_code",
