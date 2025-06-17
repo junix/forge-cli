@@ -2,7 +2,7 @@
 
 ## Overview
 
-The models module defines core internal data structures for the Forge CLI system, focusing on conversation management and stream state tracking. API response and request types are centralized in `response/_types/` for consistency with the OpenAPI-generated type system.
+The models module defines core internal data structures for the Forge CLI system, focusing on conversation management and stream state tracking. API response and request types are centralized in `response/_types/` for consistency with the OpenAPI-generated type system. All models use Pydantic v2 for comprehensive validation and type safety.
 
 ## Directory Structure
 
@@ -92,14 +92,21 @@ When working with this module:
    ```python
    from forge_cli.response._types import ResponseFileSearchToolCall, Annotation
    
-   # Work with file search results from API responses
-   if isinstance(item, ResponseFileSearchToolCall):
+   # Work with file search results from API responses using TypeGuards
+   from forge_cli.response.type_guards.output_items import is_file_search_call
+
+   if is_file_search_call(item):
+       # Type checker knows item is ResponseFileSearchToolCall
+       print(f"File search queries: {item.queries}")
        # Results are accessed through response methods
        # results = response.get_file_search_results(item.id)
-   
-   # Handle annotations in responses
-   if isinstance(annotation, Annotation):
-       print(f"Citation: {annotation.text}")
+
+   # Handle annotations in responses using TypeGuards
+   from forge_cli.response.type_guards.annotations import is_file_citation
+
+   if is_file_citation(annotation):
+       # Type checker knows annotation has file_citation
+       print(f"Citation: {annotation.file_citation.quote}")
    ```
 
 3. **Handle optional fields**: Many fields have sensible defaults

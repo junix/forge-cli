@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `response` module implements the Response API, providing OpenAI-compatible types and structures while adding advanced features for RAG systems, tool calling, citations, and streaming events. It serves as the type foundation for all response handling in Knowledge Forge.
+The `response` module implements the Response API, providing OpenAI-compatible types and structures while adding advanced features for RAG systems, tool calling, citations, and streaming events. It serves as the type foundation for all response handling in Knowledge Forge, with comprehensive TypeGuard functions for type-safe access to response data.
 
 ## Module Structure
 
@@ -23,6 +23,11 @@ response/
 │   │   ├── response.py               # Response structure with citation methods
 │   │   ├── response_status.py        # Status enumeration
 │   │   └── response_usage.py         # Token usage tracking
+├── Type Guards (type_guards/)
+│   ├── __init__.py                   # Type guard exports
+│   ├── output_items.py               # Output item type guards
+│   ├── annotations.py                # Annotation type guards
+│   └── events.py                     # Event type guards
 │   ├── Tool Types
 │   │   ├── file_search_tool*.py      # File search tool definitions
 │   │   ├── web_search_tool*.py       # Web search tool definitions
@@ -136,6 +141,60 @@ The response contains all output data and chunk compression capabilities:
 3. External tools marked for user execution
 4. Results included in response
 5. Citations generated from results
+
+### TypeGuard Functions
+
+The response module provides comprehensive TypeGuard functions for type-safe access to response data:
+
+#### Output Item TypeGuards
+
+```python
+from forge_cli.response.type_guards.output_items import (
+    is_file_search_call, is_message_item, is_reasoning_item,
+    is_web_search_call, is_function_call
+)
+
+# Type-safe access to output items
+for item in response.output:
+    if is_file_search_call(item):
+        # Type checker knows item is ResponseFileSearchToolCall
+        print(f"File search queries: {item.queries}")
+        print(f"Status: {item.status}")
+    elif is_message_item(item):
+        # Type checker knows item is ResponseOutputMessage
+        for content in item.content:
+            if hasattr(content, 'text'):
+                print(content.text)
+```
+
+#### Annotation TypeGuards
+
+```python
+from forge_cli.response.type_guards.annotations import (
+    is_file_citation, is_url_citation, is_file_path
+)
+
+# Type-safe annotation processing
+for annotation in message.annotations:
+    if is_file_citation(annotation):
+        print(f"File: {annotation.file_citation.file_id}")
+    elif is_url_citation(annotation):
+        print(f"URL: {annotation.url_citation.url}")
+```
+
+#### Event TypeGuards
+
+```python
+from forge_cli.response.type_guards.events import (
+    is_text_delta_event, is_response_completed_event
+)
+
+# Type-safe event handling
+if is_text_delta_event(event):
+    print(event.text, end="")
+elif is_response_completed_event(event):
+    print("Response completed!")
+```
 
 ### Event System
 
@@ -334,14 +393,29 @@ async for event in event_stream:
 
 ## Common Patterns
 
-### Tool Result Processing
+### Tool Result Processing with TypeGuards
 
 ```python
-# Process tool results
+from forge_cli.response.type_guards.output_items import (
+    is_file_search_call, is_web_search_call, is_message_item
+)
+
+# Type-safe tool result processing
 for item in response.output:
-    if isinstance(item, ResponseFileSearchToolCall):
+    if is_file_search_call(item):
+        # Type checker knows item is ResponseFileSearchToolCall
+        print(f"File search completed: {len(item.queries)} queries")
+        print(f"Status: {item.status}")
         # File search results are accessed through response methods
         # results = response.get_file_search_results(item.id)
+    elif is_web_search_call(item):
+        # Type checker knows item is ResponseFunctionWebSearch
+        print(f"Web search completed: {item.queries}")
+    elif is_message_item(item):
+        # Type checker knows item is ResponseOutputMessage
+        for content in item.content:
+            if hasattr(content, 'text'):
+                print(f"Message: {content.text}")
 ```
 
 ### Event Emission

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The SDK module provides a comprehensive Python client library for interacting with the Knowledge Forge API. It offers both legacy dict-based and modern typed APIs for file management, vector store operations, response generation, and streaming capabilities. The SDK is designed with type safety, async/await patterns, and comprehensive error handling.
+The SDK module provides a comprehensive Python client library for interacting with the Knowledge Forge API. It offers a fully typed API for file management, vector store operations, response generation, and streaming capabilities. The SDK is designed with type safety, async/await patterns, Pydantic validation, and comprehensive error handling.
 
 ## Directory Structure
 
@@ -14,8 +14,8 @@ sdk/
 ├── files.py                       # File upload, management, and task operations
 ├── file_types.py                  # File-related type definitions
 ├── http_client.py                 # HTTP client utilities and helpers
-├── response.py                    # Legacy dict-based response API
-├── typed_api.py                   # Modern typed response API (recommended)
+├── response.py                    # Response utilities and legacy compatibility
+├── typed_api.py                   # Typed response API (current standard)
 ├── types.py                       # Core type definitions
 ├── task_types.py                  # Task management type definitions
 ├── utils.py                       # Utility functions for response processing
@@ -35,12 +35,12 @@ sdk/
 2. **Async/Await**: Full async support for non-blocking operations
 3. **Error Handling**: Robust error handling with detailed logging
 4. **Streaming Support**: Real-time streaming for response generation
-5. **Backward Compatibility**: Support for both legacy and modern APIs
+5. **Pydantic Integration**: Full validation and serialization support
 6. **Modular Design**: Separate modules for different API domains
 
 ### Typed API Architecture
 
-The SDK now exclusively uses typed APIs for type safety and better developer experience:
+The SDK uses a fully typed architecture with Pydantic models for type safety and excellent developer experience:
 
 #### Typed API (typed_api.py) - Current Standard
 

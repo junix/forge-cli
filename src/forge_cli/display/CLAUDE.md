@@ -5,9 +5,10 @@
 The display module implements the Strategy pattern to provide multiple output formatting options for the Forge CLI. It separates presentation logic from business logic, allowing users to choose between rich terminal UI, plain text, or JSON output while maintaining consistent functionality across all formats.
 
 The module has evolved through multiple versions:
+
 - **v1**: Original display implementations (legacy, removed)
-- **v2**: Enhanced architecture with pluggable renderers (legacy, removed)  
-- **v3**: Current architecture with improved renderer capabilities and event processing
+- **v2**: Event-based display architecture (legacy, deprecated)
+- **v3**: Current snapshot-based architecture with simplified renderer design
 
 ## Directory Structure
 
@@ -15,23 +16,23 @@ The module has evolved through multiple versions:
 display/
 ├── __init__.py          # Module exports
 ├── registry.py          # Display registry for strategy selection/registration
-├── v2/                  # Legacy v2 display architecture (for migration support)
+├── v2/                  # Legacy v2 event-based display architecture (deprecated)
 │   ├── __init__.py
 │   ├── base.py          # v2 base display and renderer classes
 │   ├── events.py        # Event type definitions
-│   └── renderers/       # Pluggable renderers
+│   └── renderers/       # Legacy pluggable renderers
 │       ├── __init__.py
 │       ├── plain.py     # Plain text renderer
 │       ├── rich.py      # Rich UI renderer
 │       └── json.py      # JSON renderer
-└── v3/                  # Current display architecture
+└── v3/                  # Current snapshot-based display architecture
     ├── __init__.py
-    ├── base.py          # v3 base display and renderer classes  
-    ├── example.py       # Usage examples
-    └── renderers/       # v3 Pluggable renderers
+    ├── base.py          # v3 display coordinator and renderer protocol
+    ├── example.py       # Usage examples and demos
+    └── renderers/       # Current pluggable renderers
         ├── __init__.py
         ├── plain.py     # Plain text renderer
-        ├── rich.py      # Rich UI renderer
+        ├── rich.py      # Rich UI renderer with live updates
         ├── json.py      # JSON renderer
         └── json_example.py # JSON usage examples
 ```
@@ -41,10 +42,10 @@ display/
 ### Design Patterns
 
 1. **Strategy Pattern**: Core pattern - different display strategies for same content
-2. **Adapter Pattern**: V1ToV2Adapter connects legacy code to new rendering system
+2. **Protocol Pattern**: V3 uses Protocol classes for renderer interfaces
 3. **Registry Pattern**: DisplayRegistry manages available displays and selection logic
-4. **Observer Pattern**: Displays react to processor events
-5. **Facade Pattern**: Unified interface for complex display operations
+4. **Snapshot Pattern**: V3 uses response snapshots instead of event streaming
+5. **Facade Pattern**: Display coordinator provides unified interface
 
 ### Display Registry & Factory System
 
@@ -241,22 +242,36 @@ display_v1_compatible.handle_text_delta("Hello world")
 
 ## Development Guidelines
 
-### Adding New Display Strategies
+### Adding New V3 Renderers (Recommended)
 
-1. **Create a v2 renderer**:
+1. **Create a V3 renderer**:
 
 ```python
-from forge_cli.display.v2.base import BaseRenderer
+from forge_cli.display.v3.base import BaseRenderer
+from forge_cli.response._types.response import Response
 
 class NewRenderer(BaseRenderer):
     """New renderer description."""
-    
-    def render_stream_event(self, event_type: str, data: dict):
-        # Implement rendering logic
+
+    def render_response(self, response: Response) -> None:
+        # Extract what you need from response
+        text = response.output_text
+        status = response.status
+        citations = self._extract_citations(response)
+
+        # Implement your custom rendering logic
+        self._render_content(text, status, citations)
+
+    def finalize(self) -> None:
+        # Cleanup if needed
         pass
-    
-    def finalize(self):
-        # Cleanup and finalization
+
+    def _extract_citations(self, response: Response) -> list:
+        # Helper method to extract citations
+        return []
+
+    def _render_content(self, text: str, status: str, citations: list) -> None:
+        # Your custom rendering implementation
         pass
 ```
 
@@ -264,35 +279,43 @@ class NewRenderer(BaseRenderer):
 
 ```python
 from forge_cli.display.registry import DisplayRegistry
-from forge_cli.display.v2.adapter import V1ToV2Adapter
-from forge_cli.display.v2.base import Display
+from forge_cli.display.v3.base import Display
 
 def create_new_display(**kwargs):
     renderer = NewRenderer()
-    display_v2 = Display(renderer)
-    return V1ToV2Adapter(display_v2)
+    return Display(renderer)
 
 DisplayRegistry.register_display(
     "new_display",
-    V1ToV2Adapter,  # Class type for registry
+    Display,  # V3 Display class
     factory=create_new_display,
     condition=lambda config: getattr(config, "use_new_display", False) is True,
 )
 ```
 
-### Best Practices
+### Best Practices for V3 Development
 
-1. **State Management**:
-   - Keep rendering state in the renderer
-   - Use the Display class to coordinate events
-   - Separate formatting from business logic
+1. **Snapshot-Based Design**:
+   - Work with complete Response objects, not individual events
+   - Extract all needed information from the response in `render_response()`
+   - Avoid maintaining state between render calls
 
-2. **Error Handling**:
-   - Provide error rendering in all renderers
-   - Gracefully handle unexpected event types
+2. **Type Safety**:
+   - Use TypeGuards to safely access response content
+   - Import types from `forge_cli.response._types`
+   - Leverage IDE autocomplete with proper type annotations
+
+3. **Error Handling**:
+   - Handle missing or malformed response data gracefully
+   - Provide meaningful error messages for debugging
    - Support finalization even after errors
 
-3. **Testing**:
-   - Test renderers independently
-   - Create mock events for testing rendering logic
-   - Validate backward compatibility with v1 interfaces
+4. **Testing**:
+   - Test renderers with mock Response objects
+   - Create comprehensive test cases for different response types
+   - Validate output format consistency
+
+5. **Performance**:
+   - Minimize processing in `render_response()` for real-time updates
+   - Cache expensive computations when possible
+   - Use efficient string formatting techniques

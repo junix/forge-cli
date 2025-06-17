@@ -2,7 +2,7 @@
 
 ## Overview
 
-The chat module implements a sophisticated interactive chat mode for the Forge CLI, enabling multi-turn conversations with context preservation, command system, and session management. It provides a rich, terminal-based chat experience similar to modern chat applications while maintaining the power and flexibility of command-line tools.
+The chat module implements a sophisticated interactive chat mode for the Forge CLI, enabling multi-turn conversations with context preservation, command system, and session management. It provides a rich, terminal-based chat experience similar to modern chat applications while maintaining the power and flexibility of command-line tools. The module integrates seamlessly with the V3 snapshot-based display architecture for optimal rendering performance.
 
 ## Directory Structure
 
@@ -135,17 +135,18 @@ async def _process_message(self, message: str):
         **self._get_api_params()
     )
     
-    # Process stream
+    # Process stream with V3 display integration
     self.display.handle_chat_start()
     state = await self.stream_handler.handle_stream(stream, message)
-    
+
     # Save assistant response
     self.conversation.add_message(Message(
         role="assistant",
         content=state.get_complete_text(),
         metadata=state.to_dict()
     ))
-    
+
+    # V3 display automatically handles completion
     self.display.handle_chat_complete()
 ```
 

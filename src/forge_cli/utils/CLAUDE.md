@@ -2,7 +2,7 @@
 
 ## Overview
 
-The utils module is designed to house shared utility functions, helper classes, and common tools used throughout the Forge CLI codebase. While currently empty (containing only `__init__.py`), this module is reserved for future cross-cutting concerns that don't belong to any specific module but are used by multiple components.
+The utils module is designed to house shared utility functions, helper classes, and common tools used throughout the Forge CLI codebase. While currently minimal (containing only `__init__.py`), this module is reserved for future cross-cutting concerns that don't belong to any specific module but are used by multiple components. All utilities follow the project's type-safety principles using Pydantic models and comprehensive type annotations.
 
 ## Directory Structure
 
@@ -26,11 +26,11 @@ utils/
 
 ### Design Principles
 
-1. **Pure Functions**: Utilities should be stateless when possible
-2. **No Dependencies**: Minimal external dependencies
-3. **Well-Tested**: High test coverage for reliability
-4. **Type-Safe**: Complete type annotations
-5. **Documented**: Clear docstrings with examples
+1. **Type Safety First**: Complete type annotations with Pydantic models where appropriate
+2. **Pure Functions**: Utilities should be stateless when possible
+3. **Minimal Dependencies**: Leverage existing project dependencies (Pydantic, typing)
+4. **Well-Tested**: High test coverage for reliability with type validation
+5. **Documented**: Clear docstrings with examples and type information
 
 ## Planned Utilities
 
@@ -197,11 +197,26 @@ def parse_url_components(url: str) -> dict:
 ```python
 import re
 from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, Field, field_validator
+
+class EmailValidator(BaseModel):
+    """Pydantic model for email validation."""
+    email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
+    @field_validator('email')
+    @classmethod
+    def validate_email_format(cls, v: str) -> str:
+        if not v or '@' not in v:
+            raise ValueError('Invalid email format')
+        return v.lower()
 
 def validate_email(email: str) -> bool:
-    """Validate email address format."""
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return bool(re.match(pattern, email))
+    """Validate email address format using Pydantic."""
+    try:
+        EmailValidator(email=email)
+        return True
+    except Exception:
+        return False
 
 def validate_json_schema(data: dict, schema: dict) -> List[str]:
     """Validate data against JSON schema.

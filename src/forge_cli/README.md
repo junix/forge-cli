@@ -39,26 +39,31 @@ hello_file_search_refactored/
 ## Key Improvements
 
 ### 1. **Modularity**
+
 - Each module has a single, clear responsibility
 - Components are loosely coupled through interfaces
 - Easy to extend with new tool types or display formats
 
 ### 2. **Type Safety**
+
 - Strong typing throughout with TypedDict definitions
 - Clear interfaces with type hints
 - Better IDE support and error catching
 
 ### 3. **Maintainability**
+
 - Smaller, focused files (average ~200 lines vs 1882)
 - Clear separation of concerns
 - Easy to understand and modify
 
 ### 4. **Testability**
+
 - Each component can be tested in isolation
 - Mock-friendly interfaces
 - Clear dependencies
 
 ### 5. **Performance**
+
 - No performance overhead from refactoring
 - More efficient state management
 - Better memory usage patterns
@@ -66,6 +71,7 @@ hello_file_search_refactored/
 ## Design Patterns Used
 
 ### 1. **Registry Pattern**
+
 The processor registry allows dynamic registration of output processors:
 
 ```python
@@ -75,6 +81,7 @@ registry.register("file_search_call", FileSearchProcessor())
 ```
 
 ### 2. **Strategy Pattern**
+
 Display implementations follow a common interface, allowing runtime selection:
 
 ```python
@@ -82,6 +89,7 @@ display = create_display(config)  # Returns appropriate display type
 ```
 
 ### 3. **Template Method Pattern**
+
 Base tool processor provides common functionality with hooks for specialization:
 
 ```python
@@ -92,6 +100,7 @@ class BaseToolCallProcessor(OutputProcessor):
 ```
 
 ### 4. **Factory Pattern**
+
 Display and processor creation is handled through factory functions.
 
 ## Usage

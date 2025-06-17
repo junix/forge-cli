@@ -65,11 +65,25 @@ forge-cli/
 │   │       ├── file_reader.py  # File reader tool processor
 │   │   │   ├── code_analyzer.py # Code analyzer tool processor
 │   │       └── list_documents.py # List documents processor
+│   ├── response/               # Response handling and type definitions
+│   │   ├── __init__.py         # Response module exports
+│   │   ├── _types/             # OpenAPI-generated types (do not edit manually)
+│   │   │   ├── __init__.py     # Type exports
+│   │   │   ├── response.py     # Response model definitions
+│   │   │   ├── request.py      # Request model definitions
+│   │   │   └── ...             # Additional generated types
+│   │   ├── type_guards/        # Type guard functions for safe type narrowing
+│   │   │   ├── __init__.py     # Type guard exports
+│   │   │   ├── output_items.py # Output item type guards
+│   │   │   ├── annotations.py  # Annotation type guards
+│   │   │   └── events.py       # Event type guards
+│   │   ├── utils.py            # Response utility functions
+│   │   └── processor.py        # Response processing logic
 │   ├── display/                # Display strategies (use relative imports)
-│   │   ├── registry.py         # Display factory with v2 architecture
-│   │   └── v2/                 # V2 event-based display architecture
+│   │   ├── registry.py         # Display factory with v3 architecture
+│   │   ├── v2/                 # V2 legacy event-based display (deprecated)
+│   │   └── v3/                 # V3 snapshot-based display architecture (current)
 │   │       ├── base.py         # Base display interface
-│   │       ├── events.py       # Display event definitions
 │   │       └── renderers/      # Pluggable renderers
 │   │           ├── rich.py     # Rich terminal UI
 │   │           ├── plain.py    # Plain text output
@@ -784,13 +798,14 @@ Each output type has a dedicated processor:
 - `CodeAnalyzerProcessor`: Handles code analysis tool calls
 - `MessageProcessor`: Manages final responses with citations
 
-#### Display Strategies
+#### Display Strategies (V3 Architecture)
 
-Multiple output formats are supported:
+The V3 display system uses snapshot-based rendering with pluggable renderers:
 
-- `RichDisplay`: Rich terminal UI with live updates
-- `PlainDisplay`: Simple text output
-- `JsonDisplay`: Machine-readable JSON format
+- `RichRenderer`: Rich terminal UI with live updates and beautiful formatting
+- `PlainRenderer`: Simple text output for basic terminals
+- `JsonRenderer`: Machine-readable JSON format for automation
+- `Display`: Coordinator that manages renderer lifecycle and response routing
 
 ## Example Scripts
 
@@ -935,9 +950,9 @@ The project includes comprehensive ADRs documenting design decisions:
 - **[ADR-003](docs/adr/ADR-003-file-search-annotation-display.md)**: File search citation display architecture
 - **[ADR-004](docs/adr/ADR-004-snapshot-based-streaming-design.md)**: Snapshot-based streaming approach
 - **[ADR-005](docs/adr/ADR-005-interactive-chat-mode.md)**: Interactive chat mode implementation
-- **[ADR-006](docs/adr/ADR-006-v2-event-based-display-architecture.md)**: V2 event-based display architecture
+- **[ADR-006](docs/adr/ADR-006-v2-event-based-display-architecture.md)**: V2 event-based display architecture (legacy)
 - **[ADR-007](docs/adr/ADR-007-typed-only-architecture-migration.md)**: Migration to typed-only architecture
-- **[ADR-008](docs/adr/ADR-008-v3-response-snapshot-display-architecture.md)**: V3 response-snapshot display architecture
+- **[ADR-008](docs/adr/ADR-008-v3-response-snapshot-display-architecture.md)**: V3 response-snapshot display architecture (current)
 - **[ADR-009](docs/adr/ADR-009-code-analyzer-tool.md)**: Code Analyzer tool design and integration
 - **[ADR-010](docs/adr/ADR-010-response-type-guards.md)**: TypeGuard functions for Response types
 - **[ADR-011](docs/adr/ADR-011-tool-call-architecture.md)**: Tool call architecture design

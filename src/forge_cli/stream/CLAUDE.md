@@ -2,7 +2,7 @@
 
 ## Overview
 
-The stream module is the central nervous system of the Forge CLI, responsible for handling real-time event streams from the Knowledge Forge API. It orchestrates the flow of events from the API through processors to display strategies, maintaining state and ensuring smooth user experience during streaming operations.
+The stream module is the central nervous system of the Forge CLI, responsible for handling real-time event streams from the Knowledge Forge API. It orchestrates the flow of events from the API through processors to display strategies, maintaining state and ensuring smooth user experience during streaming operations. The module integrates seamlessly with the V3 snapshot-based display architecture.
 
 ## Directory Structure
 
@@ -482,12 +482,19 @@ processor = self.processor_registry.get_processor(item_type)
 processor.process(item, self.state, self.display)
 ```
 
-### With Display
+### With Display (V3 Architecture)
 
-Updates display throughout streaming:
+Updates display throughout streaming using the V3 snapshot-based architecture:
 
 ```python
-# Handler notifies display of all events
+# V3 Display integration - response snapshots
+from forge_cli.display.v3.base import Display
+
+# Handler works with V3 displays
+self.display.handle_response(response_snapshot)
+self.display.complete()
+
+# Legacy V2 event-based display (deprecated)
 self.display.handle_stream_start()
 self.display.handle_text_delta(text)
 self.display.handle_tool_start(...)
