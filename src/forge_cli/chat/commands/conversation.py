@@ -221,8 +221,27 @@ class HistoryCommand(ChatCommand):
         lines = [f"📜 Last {len(messages)} messages:"]
         for i, msg in enumerate(messages, 1):
             prefix = "You" if msg.role == "user" else "Assistant"
+
+            # Extract text content from ResponseInputMessageContentList
+            content_parts = []
+            for content_item in msg.content:
+                # Use type guards to safely extract text content
+                from ...response.type_guards import is_input_text
+
+                if is_input_text(content_item):
+                    content_parts.append(content_item.text)
+                elif hasattr(content_item, "type"):
+                    # Handle other content types (images, files, etc.)
+                    if content_item.type == "input_image":
+                        content_parts.append("[Image]")
+                    elif content_item.type == "input_file":
+                        content_parts.append("[File]")
+                    else:
+                        content_parts.append(f"[{content_item.type}]")
+
+            content = " ".join(content_parts) if content_parts else "[No text content]"
+
             # Truncate long messages
-            content = msg.content
             if len(content) > 200:
                 content = content[:197] + "..."
             lines.append(f"\n[{i}] {prefix}: {content}")
