@@ -33,9 +33,30 @@ class TypedStreamHandler:
         # Process events
         async for event_type, event_data in stream:
             if self.debug:
-                # Simple debug logging - detailed JSON output is handled by JsonRenderer
+                # Detailed debug logging - show full response data
                 if event_data is not None and isinstance(event_data, Response):
                     print(f"[DEBUG] {event_type}: Response snapshot (id: {event_data.id})")
+
+                    # Show full response details in debug mode
+                    import json
+
+                    try:
+                        # Convert to dict and pretty print
+                        response_dict = event_data.model_dump(exclude_none=True)
+                        print("[DEBUG] Full Response Data:")
+                        print(json.dumps(response_dict, indent=2, ensure_ascii=False))
+                    except Exception as e:
+                        print(f"[DEBUG] Error serializing response: {e}")
+                        # Fallback to showing key fields
+                        print("[DEBUG] Response fields:")
+                        print(f"  - id: {event_data.id}")
+                        print(f"  - status: {getattr(event_data, 'status', 'N/A')}")
+                        print(f"  - model: {getattr(event_data, 'model', 'N/A')}")
+                        print(f"  - output items: {len(getattr(event_data, 'output', []))}")
+                        if hasattr(event_data, "reasoning") and event_data.reasoning:
+                            print(f"  - reasoning: {event_data.reasoning}")
+                        if hasattr(event_data, "usage") and event_data.usage:
+                            print(f"  - usage: {event_data.usage}")
                 else:
                     print(f"[DEBUG] {event_type}: {type(event_data)}")
 
@@ -50,7 +71,7 @@ class TypedStreamHandler:
             elif event_type == "done":
                 # Stream completed
                 # In chat mode, don't finalize the display as it will be reused
-                if getattr(self.display, '_mode', 'default') != 'chat':
+                if getattr(self.display, "_mode", "default") != "chat":
                     self.display.complete()
                 break
 

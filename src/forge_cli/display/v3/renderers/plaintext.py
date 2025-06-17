@@ -354,6 +354,27 @@ class PlaintextRenderer(BaseRenderer):
                     parts.append(f"{ICONS['page_reader_call']}doc:{doc_short} [{page_info}]")
                 else:
                     parts.append(f"{ICONS['page_reader_call']}doc:{doc_short}")
+
+            # Show progress if available (inherited from TraceableToolCall)
+            progress = getattr(tool_item, "progress", None)
+            if progress is not None:
+                progress_percent = int(progress * 100)
+                parts.append(f"{ICONS['processing']}{progress_percent}%")
+
+            # Show execution trace preview if available
+            execution_trace = getattr(tool_item, "execution_trace", None)
+            if execution_trace and tool_item.status == "completed":
+                # Show last trace line as a preview
+                trace_lines = execution_trace.strip().split("\n")
+                if trace_lines:
+                    last_line = trace_lines[-1]
+                    # Extract just the message part (remove timestamp and step name)
+                    if "] " in last_line:
+                        message = last_line.split("] ")[-1][:30]
+                        if len(message) > 27:
+                            message = message[:27] + "..."
+                        parts.append(f"{ICONS['check']}{message}")
+
             return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
         else:

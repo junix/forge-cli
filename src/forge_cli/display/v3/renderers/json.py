@@ -323,6 +323,8 @@ class JsonRenderer(BaseRenderer):
                 item_dict["end_page"] = item.end_page
             if hasattr(item, "progress") and item.progress is not None:
                 item_dict["progress"] = item.progress
+            if hasattr(item, "execution_trace") and item.execution_trace is not None:
+                item_dict["execution_trace"] = item.execution_trace
             return item_dict
 
         # Handle function tool calls

@@ -3,10 +3,10 @@ from typing import Literal
 
 from pydantic import Field
 
-from .traceable_tool import TraceableToolCall
+from ._models import BaseModel
 
 
-class ResponseFunctionPageReader(TraceableToolCall):
+class ResponseFunctionPageReader(BaseModel):
     """Response function for page reader tool calls.
 
     This class represents a page reader tool call in the LLM response.

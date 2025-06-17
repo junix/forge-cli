@@ -56,7 +56,15 @@ async def main():
     display = DisplayFactory.create_display(config)
     # Create and start chat session
     session_manager = ChatSessionManager(config, display)
-    await session_manager.start_session(initial_question=None, resume_conversation_id=getattr(args, "resume", None))
+
+    # Use the question from config if provided and not the default
+    initial_question = None
+    if config.question and config.question != "What information can you find in the documents?":
+        initial_question = config.question
+
+    await session_manager.start_session(
+        initial_question=initial_question, resume_conversation_id=getattr(args, "resume", None)
+    )
 
 
 def run_main_async():

@@ -19,7 +19,6 @@ from .files import (
     async_upload_file,
     async_wait_for_task_completion,
 )
-
 from .response import (
     async_fetch_response,  # Fetch existing responses by ID - returns typed Response
 )
@@ -31,7 +30,6 @@ from .typed_api import (
     create_web_search_tool,
 )
 from .utils import (
-    example_response_usage,
     has_tool_calls,
     has_uncompleted_tool_calls,
     print_file_results,
@@ -67,7 +65,7 @@ __all__ = [
     "create_typed_request",
     "create_file_search_tool",
     "create_web_search_tool",
-    # Response fetch operation  
+    # Response fetch operation
     "async_fetch_response",  # Fetch existing responses by ID
     # Utility functions
     "print_file_results",

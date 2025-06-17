@@ -167,6 +167,7 @@ class RichRenderer(BaseRenderer):
                 "web_search_call",
                 "list_documents_call",
                 "file_reader_call",
+                "page_reader_call",
                 "code_interpreter_call",
                 "function_call",
             ]:
@@ -177,6 +178,7 @@ class RichRenderer(BaseRenderer):
                     "file_search_call": "Search",
                     "list_documents_call": "List",
                     "file_reader_call": "Reader",
+                    "page_reader_call": "Page",
                     "code_interpreter_call": "Interpreter",
                     "function_call": "Tool",
                 }
@@ -410,9 +412,9 @@ class RichRenderer(BaseRenderer):
             parts = []
 
             # Document identification
-            document_id = getattr(tool_item, "document_id", None)
-            start_page = getattr(tool_item, "start_page", None)
-            end_page = getattr(tool_item, "end_page", None)
+            document_id = tool_item.document_id
+            start_page = tool_item.start_page
+            end_page = tool_item.end_page
 
             if document_id:
                 # Show document with page range
@@ -422,9 +424,29 @@ class RichRenderer(BaseRenderer):
                         page_info = f"p.{start_page}-{end_page}"
                     else:
                         page_info = f"p.{start_page}"
-                    parts.append(f'{ICONS["page_reader_call"]}doc:{doc_short} [{page_info}]')
+                    parts.append(f"{ICONS['page_reader_call']}doc:{doc_short} [{page_info}]")
                 else:
-                    parts.append(f'{ICONS["page_reader_call"]}doc:{doc_short}')
+                    parts.append(f"{ICONS['page_reader_call']}doc:{doc_short}")
+
+            # Show progress if available (inherited from TraceableToolCall)
+            progress = getattr(tool_item, "progress", None)
+            if progress is not None:
+                progress_percent = int(progress * 100)
+                parts.append(f"{ICONS['processing']}{progress_percent}%")
+
+            # Show execution trace preview if available
+            execution_trace = getattr(tool_item, "execution_trace", None)
+            if execution_trace and tool_item.status == "completed":
+                # Show last trace line as a preview
+                trace_lines = execution_trace.strip().split("\n")
+                if trace_lines:
+                    last_line = trace_lines[-1]
+                    # Extract just the message part (remove timestamp and step name)
+                    if "] " in last_line:
+                        message = last_line.split("] ")[-1][:40]
+                        if len(message) > 37:
+                            message = message[:37] + "..."
+                        parts.append(f"{ICONS['check']}{message}")
 
             if parts:
                 return f" {ICONS['bullet']} ".join(parts)
