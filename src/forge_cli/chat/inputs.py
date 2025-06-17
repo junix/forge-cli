@@ -85,20 +85,20 @@ class InputHandler:
         # Add tool indicators with colors
         tools_enabled = []
         if self.conversation.web_search_enabled:
-            tools_enabled.append(("class:tool_web", ICONS["web_search_call"]))
+            tools_enabled.append(("class:tool_web", ICONS["web_search_call"].strip()))
         if self.conversation.file_search_enabled:
-            tools_enabled.append(("class:tool_file", ICONS["file_search_call"]))
+            tools_enabled.append(("class:tool_file", ICONS["file_search_call"].strip()))
 
         # Build prompt with styled icons
         if tools_enabled:
-            prompt_parts.append(("class:tool_bracket", "["))
+            # prompt_parts.append(("class:tool_bracket", "["))
             for i, (style_class, icon) in enumerate(tools_enabled):
                 if i > 0:
                     prompt_parts.append(("class:tool_bracket", " "))
                 prompt_parts.append((style_class, icon))
-            prompt_parts.append(("class:tool_bracket", "] "))
+            # prompt_parts.append(("class:tool_bracket", "] "))
 
-        prompt_parts.append(("class:prompt", ">> "))
+        prompt_parts.append(("class:prompt", "  "))
 
         # Use prompt_toolkit with auto-completion
         loop = asyncio.get_event_loop()
