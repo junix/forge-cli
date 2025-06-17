@@ -17,4 +17,4 @@ class PageReaderTool(BaseModel):
         type (str): The type of the tool, always "page_reader"
     """
 
-    type: Literal["page_reader"] = "page_reader"
+    type: Literal["page_reader", "page_reader_preview"] = "page_reader"

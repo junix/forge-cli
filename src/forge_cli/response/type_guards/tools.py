@@ -93,4 +93,4 @@ def is_page_reader_tool(tool: Tool) -> TypeGuard[PageReaderTool]:
     Returns:
         True if the tool is a PageReaderTool, False otherwise.
     """
-    return tool.type == "page_reader"
+    return tool.type in ["page_reader", "page_reader_preview"]

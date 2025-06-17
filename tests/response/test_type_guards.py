@@ -62,6 +62,15 @@ class TestToolCallTypeGuards:
         mock_item.type = "file_search_call"
         assert not type_guards.is_file_reader_call(mock_item)
 
+    def test_is_page_reader_call(self):
+        """Test page reader call type guard."""
+        mock_item = Mock()
+        mock_item.type = "page_reader_call"
+        assert type_guards.is_page_reader_call(mock_item)
+
+        mock_item.type = "file_reader_call"
+        assert not type_guards.is_page_reader_call(mock_item)
+
     def test_is_computer_tool_call(self):
         """Test computer tool call type guard."""
         mock_item = Mock()

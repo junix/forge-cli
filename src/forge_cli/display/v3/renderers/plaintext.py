@@ -14,6 +14,7 @@ from forge_cli.response.type_guards import (
     is_file_search_call,
     is_list_documents_call,
     is_message_item,
+    is_page_reader_call,
     is_reasoning_item,
     is_web_search_call,
 )
@@ -207,7 +208,14 @@ class PlaintextRenderer(BaseRenderer):
                     text.append("\n")
 
             elif (
-                item.type in ["file_search_call", "web_search_call", "list_documents_call", "file_reader_call"]
+                item.type
+                in [
+                    "file_search_call",
+                    "web_search_call",
+                    "list_documents_call",
+                    "file_reader_call",
+                    "page_reader_call",
+                ]
                 and self._config.show_tool_details
             ):
                 # Handle tool calls with colorful display
@@ -326,6 +334,26 @@ class PlaintextRenderer(BaseRenderer):
             elif tool_item.doc_ids and len(tool_item.doc_ids) > 0:
                 # Use first doc_id as fallback
                 parts.append(f"{ICONS['file_reader']}{tool_item.doc_ids[0]}")
+            return f" {ICONS['bullet']} ".join(parts) if parts else ""
+
+        elif is_page_reader_call(tool_item):
+            # Show page reading with document info
+            parts = []
+            document_id = getattr(tool_item, "document_id", None)
+            if document_id:
+                # Shorten document ID for display
+                doc_short = document_id[:8] if len(document_id) > 8 else document_id
+                start_page = getattr(tool_item, "start_page", None)
+                end_page = getattr(tool_item, "end_page", None)
+
+                if start_page is not None:
+                    if end_page is not None and end_page != start_page:
+                        page_info = f"p.{start_page}-{end_page}"
+                    else:
+                        page_info = f"p.{start_page}"
+                    parts.append(f"{ICONS['page_reader_call']}doc:{doc_short} [{page_info}]")
+                else:
+                    parts.append(f"{ICONS['page_reader_call']}doc:{doc_short}")
             return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
         else:

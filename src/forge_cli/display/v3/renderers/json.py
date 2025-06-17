@@ -29,6 +29,7 @@ from forge_cli.response.type_guards.output_items import (
     is_function_call,
     is_list_documents_call,
     is_message_item,
+    is_page_reader_call,
     is_reasoning_item,
     is_web_search_call,
 )
@@ -303,6 +304,23 @@ class JsonRenderer(BaseRenderer):
                 item_dict["doc_ids"] = item.doc_ids
             if item.query:
                 item_dict["query"] = item.query
+            if hasattr(item, "progress") and item.progress is not None:
+                item_dict["progress"] = item.progress
+            return item_dict
+
+        # Handle page reader tool calls
+        elif is_page_reader_call(item):
+            item_dict = {
+                "type": "page_reader_call",
+                "id": item.id,
+                "status": item.status,
+            }
+            if item.document_id:
+                item_dict["document_id"] = item.document_id
+            if hasattr(item, "start_page") and item.start_page is not None:
+                item_dict["start_page"] = item.start_page
+            if hasattr(item, "end_page") and item.end_page is not None:
+                item_dict["end_page"] = item.end_page
             if hasattr(item, "progress") and item.progress is not None:
                 item_dict["progress"] = item.progress
             return item_dict
