@@ -19,8 +19,8 @@ class ResponseInputMessageItem(BaseModel):
     types.
     """
 
-    role: Literal["user", "system", "developer"]
-    """The role of the message input. One of `user`, `system`, or `developer`."""
+    role: Literal["user", "system", "developer", "assistant"]
+    """The role of the message input. One of `user`, `system`, `developer`, or `assistant`."""
 
     status: Literal["in_progress", "completed", "incomplete"] | None = None
     """The status of item.

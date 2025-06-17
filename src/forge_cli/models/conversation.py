@@ -133,14 +133,11 @@ class ConversationState(BaseModel):
 
     def add_assistant_message(self, content: str, assistant_id: str | None = None) -> ResponseInputMessageItem:
         """Add an assistant message using proper typed API."""
-        # Note: Assistant messages need proper handling since they don't fit the input message format
-        # This might need adjustment based on how assistant messages are actually handled
-        # For now, creating a compatible structure using system role
         from ..response._types.response_input_text import ResponseInputText
 
         message = ResponseInputMessageItem(
             id=assistant_id or f"assistant_{uuid.uuid4().hex[:8]}",
-            role="system",  # Using system role as assistant isn't in the enum
+            role="assistant",  # Now using correct assistant role
             content=[ResponseInputText(type="input_text", text=content)],
         )
         self.add_message(message)

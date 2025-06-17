@@ -1,6 +1,6 @@
 """Request parameters for generating a response."""
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     pass  # All message types previously here were removed
@@ -267,3 +267,71 @@ class Request(BaseModel):
         response_data.update(overrides)
 
         return Response(**response_data)
+    
+    def as_openai_chat_request(self) -> dict[str, Any]:
+        """Convert Request to OpenAI Chat Completion format.
+        
+        This method converts the Knowledge Forge Request format to an OpenAI-compatible
+        chat completion request format for API communication.
+        
+        Returns:
+            dict: OpenAI Chat Completion request payload
+        """
+        
+        # Convert input to messages format
+        messages = []
+        
+        if isinstance(self.input, str):
+            # Simple string input becomes a user message
+            messages.append({"role": "user", "content": self.input})
+        elif isinstance(self.input, list):
+            # Convert list of message objects to OpenAI format
+            for msg in self.input:
+                if hasattr(msg, 'role') and hasattr(msg, 'content'):
+                    # Extract text content from message content items
+                    if isinstance(msg.content, list):
+                        content_parts = []
+                        for content_item in msg.content:
+                            if hasattr(content_item, 'text'):
+                                content_parts.append(content_item.text)
+                        content_str = " ".join(content_parts) if content_parts else ""
+                    else:
+                        content_str = str(msg.content)
+                    
+                    messages.append({
+                        "role": msg.role,
+                        "content": content_str
+                    })
+        
+        # Build OpenAI-compatible request payload
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+        }
+        
+        # Add optional parameters if present
+        if self.temperature is not None:
+            payload["temperature"] = self.temperature
+        if self.top_p is not None:
+            payload["top_p"] = self.top_p
+        if self.max_output_tokens is not None:
+            payload["max_tokens"] = self.max_output_tokens
+        if self.user is not None:
+            payload["user"] = self.user
+        
+        # Convert tools to OpenAI format if present
+        if self.tools:
+            openai_tools = []
+            for tool in self.tools:
+                if hasattr(tool, 'model_dump'):
+                    tool_dict = tool.model_dump()
+                    # Convert to OpenAI tool format as needed
+                    openai_tools.append(tool_dict)
+            if openai_tools:
+                payload["tools"] = openai_tools
+        
+        # Handle tool_choice
+        if self.tool_choice and self.tool_choice != "auto":
+            payload["tool_choice"] = self.tool_choice
+        
+        return payload
