@@ -2,11 +2,11 @@
 
 import asyncio
 import sys
-from typing import Optional
 
+from ..display.v3.style import ICONS
+from ..models.conversation import ConversationState
 from .command_completer import CommandCompleter
 from .commands import CommandRegistry
-from ..models.conversation import ConversationState
 
 
 class InputHandler:
@@ -14,7 +14,7 @@ class InputHandler:
 
     def __init__(self, commands: CommandRegistry, conversation: ConversationState):
         """Initialize input handler with command registry for completion.
-        
+
         Args:
             commands: Command registry for auto-completion
             conversation: Conversation state to check enabled tools
@@ -24,7 +24,7 @@ class InputHandler:
         self.input_history = None
         self.history_file = None
 
-    async def get_user_input(self) -> Optional[str]:
+    async def get_user_input(self) -> str | None:
         """Gets input from the user.
 
         This method attempts to use `prompt_toolkit` for a richer input
@@ -54,17 +54,20 @@ class InputHandler:
         # Initialize input history if not already done
         if self.input_history is None:
             import os
+
             self.history_file = os.path.expanduser("~/.forge_cli_history")
             self.input_history = FileHistory(self.history_file)
 
         # Create style with tool colors
-        style = Style.from_dict({
-            "prompt": "bold cyan",
-            "tool_web": "bold green",
-            "tool_file": "bold yellow",
-            "tool_bracket": "bold white",
-            "": "#ffffff",  # Default text color
-        })
+        style = Style.from_dict(
+            {
+                "prompt": "bold cyan",
+                "tool_web": "bold green",
+                "tool_file": "bold yellow",
+                "tool_bracket": "bold white",
+                "": "#ffffff",  # Default text color
+            }
+        )
 
         # Create prompt session with custom completer and history
         session = PromptSession(
@@ -78,14 +81,14 @@ class InputHandler:
 
         # Build dynamic prompt with tool icons
         prompt_parts = []
-        
+
         # Add tool indicators with colors
         tools_enabled = []
         if self.conversation.web_search_enabled:
-            tools_enabled.append(("class:tool_web", "🌐"))
+            tools_enabled.append(("class:tool_web", ICONS["web_search_call"]))
         if self.conversation.file_search_enabled:
-            tools_enabled.append(("class:tool_file", "📁"))
-        
+            tools_enabled.append(("class:tool_file", ICONS["file_search_call"]))
+
         # Build prompt with styled icons
         if tools_enabled:
             prompt_parts.append(("class:tool_bracket", "["))
@@ -94,15 +97,12 @@ class InputHandler:
                     prompt_parts.append(("class:tool_bracket", " "))
                 prompt_parts.append((style_class, icon))
             prompt_parts.append(("class:tool_bracket", "] "))
-        
+
         prompt_parts.append(("class:prompt", ">> "))
-        
+
         # Use prompt_toolkit with auto-completion
         loop = asyncio.get_event_loop()
-        future = loop.run_in_executor(
-            None, 
-            lambda: session.prompt(FormattedText(prompt_parts))
-        )
+        future = loop.run_in_executor(None, lambda: session.prompt(FormattedText(prompt_parts)))
         user_input: str = await future
         return user_input.strip()
 
