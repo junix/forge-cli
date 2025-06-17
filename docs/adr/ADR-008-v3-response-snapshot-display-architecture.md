@@ -1,10 +1,11 @@
 # ADR-008: V3 Response Snapshot Display Architecture
 
-**Status**: Accepted  
-**Date**: 2025-06-15  
-**Decision Makers**: Development Team  
-**Supersedes**: ADR-006 (V2 Event-Based Display Architecture)  
+**Status**: Accepted (Updated 2025-06-17)
+**Date**: 2025-06-15 (Updated 2025-06-17)
+**Decision Makers**: Development Team
+**Supersedes**: ADR-006 (V2 Event-Based Display Architecture)
 **Complements**: ADR-004 (Snapshot-based Streaming), ADR-007 (Typed-Only Architecture)
+**Updates**: Display factory pattern, AppConfig integration, chat-first renderer configuration
 
 ## Context
 
@@ -171,25 +172,106 @@ class Display:
         self._renderer.finalize()
 ```
 
-### Configuration-Based Renderer Selection
+### Display Factory Pattern (2025-06-17 Update)
+
+The V3 architecture now uses a sophisticated `DisplayFactory` with `AppConfig` integration:
 
 ```python
-def create_display(config: SearchConfig) -> Display:
-    if config.json_output:
-        renderer = JsonRenderer(JsonDisplayConfig(
-            show_panel=not config.quiet,
-            syntax_theme="monokai", 
-            line_numbers=not config.chat_mode
-        ))
-    elif not config.use_rich:
-        renderer = PlaintextRenderer(PlaintextDisplayConfig())
-    else:
-        renderer = RichRenderer(RichDisplayConfig(
-            show_reasoning=config.show_reasoning,
-            in_chat_mode=config.chat_mode
-        ))
-    
-    return Display(renderer, mode="chat" if config.chat_mode else "default")
+class DisplayFactory:
+    """Factory for creating display instances based on configuration."""
+
+    @staticmethod
+    def create_display(config: AppConfig) -> Display:
+        """Create appropriate display based on configuration using v3 architecture."""
+        from forge_cli.display.v3.base import Display
+
+        # Chat mode is now the default - determine mode intelligently
+        in_chat_mode = True  # Chat-first architecture
+        mode = "chat" if in_chat_mode else "default"
+
+        # Choose renderer based on configuration
+        if config.render_format == "json":
+            # JSON output with Rich live updates
+            from forge_cli.display.v3.renderers.json import JsonDisplayConfig, JsonRenderer
+
+            json_config = JsonDisplayConfig(
+                pretty_print=True,
+                include_metadata=config.debug,
+                include_usage=not config.quiet,
+                show_panel=not config.quiet,
+                panel_title="🔍 Knowledge Forge JSON Response" if in_chat_mode else "📋 JSON Response",
+                syntax_theme="monokai",
+                line_numbers=not in_chat_mode and not config.quiet,
+            )
+            renderer = JsonRenderer(config=json_config)
+
+        elif config.render_format == "plaintext":
+            # Plain text output
+            from forge_cli.display.v3.renderers.plaintext import PlaintextDisplayConfig, PlaintextRenderer
+
+            plain_config = PlaintextDisplayConfig(
+                show_reasoning=config.show_reasoning,
+                show_citations=True,
+                show_usage=not config.quiet,
+                show_metadata=config.debug,
+            )
+            renderer = PlaintextRenderer(config=plain_config)
+
+        else:
+            # Rich terminal UI (default)
+            from forge_cli.display.v3.renderers.rich import RichDisplayConfig, RichRenderer
+
+            display_config = RichDisplayConfig(
+                show_reasoning=config.show_reasoning,
+                show_citations=True,
+                show_tool_details=True,
+                show_usage=not config.quiet,
+                show_metadata=config.debug,
+            )
+            renderer = RichRenderer(config=display_config, in_chat_mode=in_chat_mode)
+
+        # Create v3 display
+        return Display(renderer, mode=mode)
+```
+
+## Renderer Configuration System (2025-06-17 Update)
+
+Each renderer now uses Pydantic configuration models for type-safe setup:
+
+### Rich Renderer Configuration
+```python
+class RichDisplayConfig(BaseModel):
+    show_reasoning: bool = Field(True, description="Whether to show reasoning/thinking content")
+    show_citations: bool = Field(True, description="Whether to show citation details")
+    show_tool_details: bool = Field(True, description="Whether to show detailed tool information")
+    show_usage: bool = Field(True, description="Whether to show token usage statistics")
+    show_metadata: bool = Field(False, description="Whether to show response metadata")
+    max_text_preview: int = Field(100, description="Maximum characters for text previews")
+    refresh_rate: int = Field(10, description="Live update refresh rate (per second)")
+```
+
+### JSON Renderer Configuration
+```python
+class JsonDisplayConfig(BaseModel):
+    pretty_print: bool = Field(True, description="Whether to format JSON with indentation")
+    indent: int = Field(2, description="Number of spaces for indentation")
+    include_metadata: bool = Field(False, description="Whether to include response metadata")
+    include_usage: bool = Field(True, description="Whether to include token usage")
+    show_panel: bool = Field(True, description="Whether to show Rich panel around JSON")
+    panel_title: str = Field("JSON Response", description="Title for the panel")
+    syntax_theme: str = Field("monokai", description="Syntax highlighting theme")
+    line_numbers: bool = Field(True, description="Whether to show line numbers")
+```
+
+### Plaintext Renderer Configuration
+```python
+class PlaintextDisplayConfig(BaseModel):
+    show_reasoning: bool = Field(True, description="Whether to show reasoning content")
+    show_citations: bool = Field(True, description="Whether to show citations")
+    show_usage: bool = Field(True, description="Whether to show token usage")
+    show_metadata: bool = Field(False, description="Whether to show metadata")
+    use_colors: bool = Field(True, description="Whether to use ANSI colors")
+    max_width: int = Field(80, description="Maximum line width for text wrapping")
 ```
 
 ## Response Object Richness
@@ -350,12 +432,16 @@ Each requires implementing just one method: `render_response(response: Response)
 5. **Rich JSON**: Beautiful syntax-highlighted JSON with live updates
 6. **Testing**: Much simpler unit tests with mock Response objects
 7. **Maintenance**: Far fewer moving parts to maintain
+8. **Type Safety**: Pydantic configuration models with validation (2025-06-17)
+9. **Factory Pattern**: Clean separation of renderer creation logic (2025-06-17)
+10. **Chat Integration**: Seamless integration with chat-first architecture (2025-06-17)
 
 ### ⚠️ Considerations
 
 1. **Breaking Change**: V2 renderers must be rewritten for V3
 2. **Response Completeness**: Relies on Response objects containing all needed data
 3. **Memory Usage**: Complete snapshots use more memory than deltas (negligible in practice)
+4. **Configuration Complexity**: More sophisticated configuration system (2025-06-17)
 
 ### 🔄 Migration Required
 
@@ -368,10 +454,23 @@ class CustomRenderer:
     # def handle_text_delta(self, text): ...
     # def handle_tool_start(self, data): ...
     # def handle_citation_added(self, citation): ...
-    
+
     # Replace with single V3 method:
     def render_response(self, response: Response):
         # Extract everything from response and render
+        pass
+
+# 2025-06-17 Update: Add Pydantic configuration
+class CustomDisplayConfig(BaseModel):
+    show_details: bool = Field(True, description="Show detailed information")
+    theme: str = Field("default", description="Display theme")
+
+class CustomRenderer(BaseRenderer):
+    def __init__(self, config: CustomDisplayConfig):
+        self.config = config
+
+    def render_response(self, response: Response):
+        # Use self.config for rendering options
         pass
 ```
 
@@ -380,7 +479,11 @@ class CustomRenderer:
 - **ADR-004**: Snapshot-based Streaming Design (foundation for V3)
 - **ADR-007**: Typed-Only Architecture Migration (enables V3 simplification)
 - **ADR-006**: V2 Event-Based Display Architecture (superseded)
+- **ADR-012**: Chat-First Architecture Migration (influences display factory design)
+- **ADR-014**: Configuration System Refactoring (enables Pydantic renderer configs)
 
 ---
 
 **Key Insight**: V3 embraces the snapshot-based streaming design (ADR-004), making everything simpler, more reliable, and easier to extend. The complexity moves from the display layer (where it was hard to manage) to the Response object design (where it belongs).
+
+**2025-06-17 Update**: The V3 architecture has matured with sophisticated configuration management, factory patterns, and seamless integration with the chat-first architecture, providing a robust foundation for all display scenarios.

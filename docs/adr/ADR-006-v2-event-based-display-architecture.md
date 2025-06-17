@@ -2,7 +2,7 @@
 
 ## Status
 
-~~Accepted~~ - **Superseded by V3 Architecture (ADR-007)**
+~~Accepted~~ - **Superseded by V3 Architecture (ADR-008)**
 
 ## Date
 
