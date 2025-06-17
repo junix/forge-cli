@@ -65,8 +65,6 @@ class ConversationState(BaseModel):
     # Use proper ResponseUsage instead of manual tracking
     usage: ResponseUsage | None = Field(default=None)
     used_vector_store_ids: set[str] = Field(default_factory=set)
-    # Track files accessed during the session
-    accessed_files: set[str] = Field(default_factory=set)
     # Track conversation turns
     turn_count: int = Field(default=0, ge=0)
 
@@ -147,7 +145,6 @@ class ConversationState(BaseModel):
         self.add_message(message)
         return message
 
-
     def clear(self) -> None:
         """Clear conversation history but keep configuration."""
         self.messages.clear()
@@ -180,19 +177,7 @@ class ConversationState(BaseModel):
         return self.usage
 
 
-    def add_accessed_file(self, file_path: str) -> None:
-        """Add a file to the accessed files set."""
-        if file_path:
-            self.accessed_files.add(file_path)
 
-    def add_accessed_files(self, file_paths: list[str]) -> None:
-        """Add multiple files to the accessed files set."""
-        for file_path in file_paths:
-            self.add_accessed_file(file_path)
-
-    def get_accessed_files(self) -> list[str]:
-        """Get sorted list of accessed files."""
-        return sorted(self.accessed_files)
 
     def increment_turn_count(self) -> None:
         """Increment the conversation turn counter."""
@@ -231,7 +216,6 @@ class ConversationState(BaseModel):
             List of current vector store IDs
         """
         return self.current_vector_store_ids.copy()
-
 
     def is_file_search_enabled(self) -> bool:
         """Check if file search is enabled for this conversation."""
@@ -368,10 +352,6 @@ class ConversationState(BaseModel):
         if response.usage:
             self.add_token_usage(response.usage)
 
-        # Handle accessed files - extract from response
-        accessed_files = self._extract_accessed_files_from_response(response)
-        if accessed_files:
-            self.add_accessed_files(accessed_files)
 
         # Handle vector store IDs - extract from response instead of config
         vector_store_ids = self._extract_vector_store_ids_from_response(response)
@@ -391,21 +371,6 @@ class ConversationState(BaseModel):
             # Increment turn count when we successfully add an assistant message
             self.increment_turn_count()
 
-    def _extract_accessed_files_from_response(self, response: "Response") -> list[str]:
-        """Extract accessed files from Response object using type guards."""
-        from ..response.type_guards import get_tool_results, is_file_search_call
-
-        file_mapping = {}
-        for item in response.output:
-            if is_file_search_call(item):
-                results = get_tool_results(item)
-                for result in results:
-                    file_id = getattr(result, "file_id", None)
-                    filename = getattr(result, "filename", None)
-                    if file_id and filename:
-                        file_mapping[file_id] = filename
-
-        return list(file_mapping.values())
 
     def _extract_vector_store_ids_from_response(self, response: "Response") -> list[str]:
         """Extract vector store IDs from Response object by looking at file search tool calls."""
@@ -434,61 +399,8 @@ class ConversationState(BaseModel):
         """Load conversation from a JSON file using Pydantic validation."""
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
-
-        # Handle backward compatibility for old formats
-        data = cls._migrate_legacy_data(data)
-
-        try:
-            # Use Pydantic's model_validate for automatic validation and type conversion
-            return cls.model_validate(data)
-        except Exception as e:
-            # If validation fails, provide helpful error message
-            raise ValueError(f"Failed to load conversation from {path}: {e}") from e
-
-    @classmethod
-    def _migrate_legacy_data(cls, data: dict[str, Any]) -> dict[str, Any]:
-        """Migrate legacy data formats to current schema."""
-        # Handle backward compatibility with old token fields
-        if "usage" not in data and any(
-            key in data for key in ["total_input_tokens", "total_output_tokens", "total_tokens"]
-        ):
-            # Convert old format to new ResponseUsage
-            data["usage"] = {
-                "input_tokens": data.get("total_input_tokens", 0),
-                "output_tokens": data.get("total_output_tokens", 0),
-                "total_tokens": data.get("total_tokens", 0),
-                "input_tokens_details": {"cached_tokens": 0},
-                "output_tokens_details": {"reasoning_tokens": 0},
-            }
-
-        # Handle conversation_id (new field) with backward compatibility
-        if "conversation_id" not in data and "session_id" in data:
-            session_id = data["session_id"]
-            if session_id.startswith("session_"):
-                data["conversation_id"] = f"conv_{session_id[8:]}"
-            else:
-                data["conversation_id"] = f"conv_{session_id}"
-
-        # Handle old message formats
-        if "messages" in data:
-            migrated_messages = []
-            for msg_data in data["messages"]:
-                if "role" in msg_data and "content" in msg_data and isinstance(msg_data["content"], str):
-                    # Old format - convert to new format
-                    migrated_msg = {
-                        "id": msg_data.get("id", f"{msg_data['role']}_{uuid.uuid4().hex[:8]}"),
-                        "role": msg_data["role"] if msg_data["role"] in ["user", "system", "developer"] else "user",
-                        "content": [{"type": "input_text", "text": msg_data["content"]}],
-                    }
-                    migrated_messages.append(migrated_msg)
-                else:
-                    # New format - keep as is
-                    migrated_messages.append(msg_data)
-            data["messages"] = migrated_messages
-
-        return data
-
-
+        # Use Pydantic's model_validate for automatic validation and type conversion
+        return cls.model_validate(data)
 
     def new_request(self, content: str, config: "AppConfig") -> "Request":
         """Create a new typed request with conversation history and current content.

@@ -555,13 +555,6 @@ class InspectCommand(ChatCommand):
         model_info = f"Model: {controller.conversation.model}"
         table.add_row("🤖 Model", model_info)
 
-        # 5. File Usage Tracking
-        accessed_files = controller.conversation.get_accessed_files()
-        if accessed_files:
-            file_info = "\n".join([f"• {file}" for file in accessed_files])
-        else:
-            file_info = "No files accessed in this session"
-        table.add_row("📁 Files Accessed", file_info)
 
         # Display the table in a panel
         panel = Panel(
@@ -588,12 +581,6 @@ class InspectCommand(ChatCommand):
                 for line in vs_lines:
                     controller.display.show_status(f"  {line}")
             controller.display.show_status(f"🤖 Model: {model_info}")
-            if accessed_files:
-                controller.display.show_status(
-                    f"📁 Files: {', '.join(accessed_files[:3])}{'...' if len(accessed_files) > 3 else ''}"
-                )
-            else:
-                controller.display.show_status("📁 Files: No files accessed")
 
         return True
 
