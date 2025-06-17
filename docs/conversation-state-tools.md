@@ -149,7 +149,6 @@ When generating requests, the system:
 ### Backward Compatibility
 
 - Old conversation files without new fields load with default values (disabled tools, empty vector store IDs)
-- If `used_vector_store_ids` exists but `current_vector_store_ids` is empty, the system initializes `current_vector_store_ids` from `used_vector_store_ids`
 
 ## Persistence
 

@@ -64,7 +64,6 @@ class ConversationState(BaseModel):
     metadata: dict[str, str | int | float | bool] = Field(default_factory=dict)
     # Use proper ResponseUsage instead of manual tracking
     usage: ResponseUsage | None = Field(default=None)
-    used_vector_store_ids: set[str] = Field(default_factory=set)
     # Track conversation turns
     turn_count: int = Field(default=0, ge=0)
 
@@ -101,18 +100,19 @@ class ConversationState(BaseModel):
         return v.strip()
 
     def model_post_init(self, __context: Any) -> None:
-        """Initialize used_vector_store_ids from tools if not set."""
-        if not self.used_vector_store_ids and self.tools:
+        """Initialize current_vector_store_ids from tools if not set."""
+        # Initialize current_vector_store_ids from tools if empty
+        if not self.current_vector_store_ids and self.tools:
             # Extract vector store IDs from file search and list documents tools
+            vector_store_ids = set()
             for tool in self.tools:
                 if is_file_search_tool(tool):
-                    self.used_vector_store_ids.update(tool.vector_store_ids)
+                    vector_store_ids.update(tool.vector_store_ids)
                 elif is_list_documents_tool(tool):
-                    self.used_vector_store_ids.update(tool.vector_store_ids)
+                    vector_store_ids.update(tool.vector_store_ids)
 
-        # Initialize current_vector_store_ids from used_vector_store_ids if empty
-        if not self.current_vector_store_ids and self.used_vector_store_ids:
-            self.current_vector_store_ids = list(self.used_vector_store_ids)
+            if vector_store_ids:
+                self.current_vector_store_ids = list(vector_store_ids)
 
     def add_message(self, message: ResponseInputMessageItem) -> None:
         """Add a message to the conversation."""
@@ -176,9 +176,6 @@ class ConversationState(BaseModel):
         """Get current token usage."""
         return self.usage
 
-
-
-
     def increment_turn_count(self) -> None:
         """Increment the conversation turn counter."""
         self.turn_count += 1
@@ -206,8 +203,6 @@ class ConversationState(BaseModel):
             vector_store_ids: List of vector store IDs to use for file search
         """
         self.current_vector_store_ids = vector_store_ids.copy()
-        # Also update the used_vector_store_ids set
-        self.used_vector_store_ids.update(vector_store_ids)
 
     def get_current_vector_store_ids(self) -> list[str]:
         """Get the current vector store IDs for this conversation.
@@ -341,8 +336,6 @@ class ConversationState(BaseModel):
         This method transfers relevant information from a Response object
         to the ConversationState, including:
         - Token usage statistics
-        - Accessed files
-        - Vector store IDs
         - Model information
 
         Args:
@@ -351,12 +344,6 @@ class ConversationState(BaseModel):
         # Handle usage information from response
         if response.usage:
             self.add_token_usage(response.usage)
-
-
-        # Handle vector store IDs - extract from response instead of config
-        vector_store_ids = self._extract_vector_store_ids_from_response(response)
-        if vector_store_ids:
-            self.used_vector_store_ids.update(vector_store_ids)
 
         # Handle model information from response
         if response.model:
@@ -370,21 +357,6 @@ class ConversationState(BaseModel):
             self.add_assistant_message(assistant_text)
             # Increment turn count when we successfully add an assistant message
             self.increment_turn_count()
-
-
-    def _extract_vector_store_ids_from_response(self, response: "Response") -> list[str]:
-        """Extract vector store IDs from Response object by looking at file search tool calls."""
-        from ..response.type_guards import is_file_search_call
-
-        vector_store_ids = set()
-        for item in response.output:
-            if is_file_search_call(item):
-                # Extract vector store IDs from the tool call if available
-                vs_ids = getattr(item, "vector_store_ids", None)
-                if vs_ids:
-                    vector_store_ids.update(vs_ids)
-
-        return list(vector_store_ids)
 
     def save(self, path: Path) -> None:
         """Save conversation to a JSON file using Pydantic serialization."""
