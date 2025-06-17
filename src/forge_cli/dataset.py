@@ -15,14 +15,14 @@ class FileEntry(BaseModel):
     questions: list[str] = Field(default_factory=list)
 
 
-class TestDataset(BaseModel):
+class Dataset(BaseModel):
     """Represents the test dataset configuration."""
 
     files: list[FileEntry] = Field(default_factory=list)
     vectorstore_id: str = ""
 
     @classmethod
-    def from_json(cls, json_path: str) -> "TestDataset":
+    def from_json(cls, json_path: str) -> "Dataset":
         """Load TestDataset from a JSON file.
 
         Args:
@@ -104,7 +104,7 @@ class TestDataset(BaseModel):
         return False
 
 
-def load_test_dataset(json_path: str = "test-dataset.json") -> TestDataset:
+def load_test_dataset(json_path: str = "test-dataset.json") -> Dataset:
     """Convenience function to load test dataset from default or specified path.
 
     Args:
@@ -113,7 +113,7 @@ def load_test_dataset(json_path: str = "test-dataset.json") -> TestDataset:
     Returns:
         TestDataset instance.
     """
-    return TestDataset.from_json(json_path)
+    return Dataset.from_json(json_path)
 
 
 # Example usage

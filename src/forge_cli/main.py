@@ -7,7 +7,7 @@ import sys
 from forge_cli.chat.session import ChatSessionManager
 from forge_cli.cli.parser import CLIParser
 from forge_cli.config import AppConfig
-from forge_cli.dataset import TestDataset
+from forge_cli.dataset import Dataset
 from forge_cli.display.factory import DisplayFactory
 
 
@@ -26,7 +26,7 @@ def create_config_from_args(args) -> AppConfig:
     # Handle dataset configuration if provided
     dataset = None
     if getattr(args, "dataset", None):
-        dataset = TestDataset.from_json(args.dataset)
+        dataset = Dataset.from_json(args.dataset)
         if not config.quiet:
             print(f"Loaded dataset from {args.dataset}")
             print(f"  Vector Store ID: {dataset.vectorstore_id}")
