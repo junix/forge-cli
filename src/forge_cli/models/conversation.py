@@ -35,8 +35,6 @@ MessageId = NewType("MessageId", str)
 
 # Constants
 DEFAULT_MODEL: Final[str] = "qwen-max-latest"
-TOKENS_PER_CHAR: Final[int] = 4  # Heuristic for token estimation
-MIN_MESSAGES_TO_KEEP: Final[int] = 2
 
 
 class ConversationPersistence(Protocol):
@@ -149,27 +147,6 @@ class ConversationState(BaseModel):
         self.add_message(message)
         return message
 
-    def to_api_format(self) -> list[dict[str, str]]:
-        """Convert messages to API format (dict with role and content)."""
-        api_messages = []
-        for msg in self.messages:
-            # Extract text content from ResponseInputText objects
-            content_parts = []
-            for content_item in msg.content:
-                if is_input_text(content_item):
-                    # Type guard ensures content_item is ResponseInputText
-                    content_parts.append(content_item.text)
-
-            content_str = " ".join(content_parts)
-
-            api_messages.append(
-                {
-                    "role": msg.role,
-                    "content": content_str,
-                }
-            )
-
-        return api_messages
 
     def clear(self) -> None:
         """Clear conversation history but keep configuration."""
@@ -202,9 +179,6 @@ class ConversationState(BaseModel):
         """Get current token usage."""
         return self.usage
 
-    def reset_token_usage(self) -> None:
-        """Reset token usage."""
-        self.usage = None
 
     def add_accessed_file(self, file_path: str) -> None:
         """Add a file to the accessed files set."""
@@ -258,9 +232,6 @@ class ConversationState(BaseModel):
         """
         return self.current_vector_store_ids.copy()
 
-    def is_web_search_enabled(self) -> bool:
-        """Check if web search is enabled for this conversation."""
-        return self.web_search_enabled
 
     def is_file_search_enabled(self) -> bool:
         """Check if file search is enabled for this conversation."""
@@ -517,51 +488,7 @@ class ConversationState(BaseModel):
 
         return data
 
-    def truncate_to_token_limit(self, max_tokens: int = 100000) -> None:
-        """
-        Truncate conversation to fit within token limit.
-        This is a simple implementation that removes oldest messages.
-        """
 
-        # Simple heuristic: assume ~TOKENS_PER_CHAR chars per token
-        # Extract text content from the new message format
-        def get_text_content(msg: ResponseInputMessageItem) -> str:
-            text_parts = []
-            for content_item in msg.content:
-                if is_input_text(content_item):
-                    text_parts.append(content_item.text)
-            return " ".join(text_parts)
-
-        estimated_tokens = sum(len(get_text_content(msg)) // TOKENS_PER_CHAR for msg in self.messages)
-
-        while estimated_tokens > max_tokens and len(self.messages) > MIN_MESSAGES_TO_KEEP:
-            # Keep at least the last MIN_MESSAGES_TO_KEEP messages
-            removed = self.messages.pop(0)
-            estimated_tokens -= len(get_text_content(removed)) // TOKENS_PER_CHAR
-
-    def to_display_format(self) -> str:
-        """Format conversation for display."""
-        lines = []
-        for msg in self.messages:
-            # Extract text content from the new message format
-            text_content = self._extract_text_content(msg)
-            content_str = " ".join(text_content)
-
-            if msg.role == "user":
-                lines.append(f"\n**You**: {content_str}")
-            elif msg.role == "system":
-                lines.append(f"\n**Assistant**: {content_str}")  # Treat system as assistant for display
-            elif msg.role == "developer":
-                lines.append(f"\n**Developer**: {content_str}")
-        return "\n".join(lines)
-
-    def _extract_text_content(self, msg: ResponseInputMessageItem) -> list[str]:
-        """Extract text content from a message using type guards."""
-        text_content = []
-        for content_item in msg.content:
-            if is_input_text(content_item):
-                text_content.append(content_item.text)
-        return text_content
 
     def new_request(self, content: str, config: "AppConfig") -> "Request":
         """Create a new typed request with conversation history and current content.
