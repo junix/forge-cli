@@ -6,18 +6,21 @@ from typing import Optional
 
 from .command_completer import CommandCompleter
 from .commands import CommandRegistry
+from ..models.conversation import ConversationState
 
 
 class InputHandler:
     """Handles user input for chat sessions with prompt_toolkit integration."""
 
-    def __init__(self, commands: CommandRegistry):
+    def __init__(self, commands: CommandRegistry, conversation: ConversationState):
         """Initialize input handler with command registry for completion.
         
         Args:
             commands: Command registry for auto-completion
+            conversation: Conversation state to check enabled tools
         """
         self.commands = commands
+        self.conversation = conversation
         self.input_history = None
         self.history_file = None
 
@@ -54,9 +57,12 @@ class InputHandler:
             self.history_file = os.path.expanduser("~/.forge_cli_history")
             self.input_history = FileHistory(self.history_file)
 
-        # Create style
+        # Create style with tool colors
         style = Style.from_dict({
             "prompt": "bold cyan",
+            "tool_web": "bold green",
+            "tool_file": "bold yellow",
+            "tool_bracket": "bold white",
             "": "#ffffff",  # Default text color
         })
 
@@ -70,11 +76,32 @@ class InputHandler:
             history=self.input_history,  # Enable up/down arrow history navigation
         )
 
+        # Build dynamic prompt with tool icons
+        prompt_parts = []
+        
+        # Add tool indicators with colors
+        tools_enabled = []
+        if self.conversation.web_search_enabled:
+            tools_enabled.append(("class:tool_web", "🌐"))
+        if self.conversation.file_search_enabled:
+            tools_enabled.append(("class:tool_file", "📁"))
+        
+        # Build prompt with styled icons
+        if tools_enabled:
+            prompt_parts.append(("class:tool_bracket", "["))
+            for i, (style_class, icon) in enumerate(tools_enabled):
+                if i > 0:
+                    prompt_parts.append(("class:tool_bracket", " "))
+                prompt_parts.append((style_class, icon))
+            prompt_parts.append(("class:tool_bracket", "] "))
+        
+        prompt_parts.append(("class:prompt", ">> "))
+        
         # Use prompt_toolkit with auto-completion
         loop = asyncio.get_event_loop()
         future = loop.run_in_executor(
             None, 
-            lambda: session.prompt(FormattedText([("class:prompt", ">> ")]))
+            lambda: session.prompt(FormattedText(prompt_parts))
         )
         user_input: str = await future
         return user_input.strip()

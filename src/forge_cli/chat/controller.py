@@ -42,7 +42,7 @@ class ChatController:
         self.conversation = ConversationState.from_config(config)
         self.commands = CommandRegistry()
         self.running = False  # Actual loop is in main.py for v3
-        self.input_handler = InputHandler(self.commands)
+        self.input_handler = InputHandler(self.commands, self.conversation)
 
     async def start_chat_loop(self) -> None:
         """Starts the interactive chat loop.
