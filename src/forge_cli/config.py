@@ -11,7 +11,7 @@ DEFAULT_VEC_IDS = [
 ]
 
 # Valid effort levels
-EffortLevel = Literal["low", "medium", "high"]
+EffortLevel = Literal["low", "medium", "high", "dev"]
 
 # Valid tool types
 ToolType = Literal[
