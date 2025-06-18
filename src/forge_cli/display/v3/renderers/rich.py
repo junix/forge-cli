@@ -345,6 +345,34 @@ class RichRenderer(BaseRenderer):
         }
         return status_styles.get(status, "white")
 
+    def _get_trace_preview(self, tool_item: Any, max_length: int = 35) -> str | None:
+        """Extract the last trace message from a traceable tool for display.
+
+        Args:
+            tool_item: The tool item to extract trace from
+            max_length: Maximum length of the trace message to display
+
+        Returns:
+            Formatted trace message or None if no trace available
+        """
+        execution_trace = getattr(tool_item, "execution_trace", None)
+        if not execution_trace:
+            return None
+
+        # Show last trace line as a preview
+        trace_lines = execution_trace.strip().split("\n")
+        if not trace_lines:
+            return None
+
+        last_line = trace_lines[-1]
+        # Extract just the message part (remove timestamp and step name)
+        if "] " in last_line:
+            message = last_line.split("] ")[-1][:max_length]
+            if len(message) > max_length - 3:
+                message = message[: max_length - 3] + "..."
+            return f"{ICONS['check']}{message}"
+        return None
+
     def _get_tool_result_summary(self, tool_item: Any) -> str:
         """Create a concise, beautiful summary of tool results."""
         if is_file_search_call(tool_item):
@@ -403,6 +431,17 @@ class RichRenderer(BaseRenderer):
             elif tool_item.doc_ids and len(tool_item.doc_ids) > 0:
                 parts.append(f"{ICONS['file_reader_call']}file:{tool_item.doc_ids[0][:12]}...")
 
+            # Show progress if available (inherited from TraceableToolCall)
+            progress = getattr(tool_item, "progress", None)
+            if progress is not None:
+                progress_percent = int(progress * 100)
+                parts.append(f"{ICONS['processing']}{progress_percent}%")
+
+            # Show execution trace preview if available (for traceable tools)
+            trace_preview = self._get_trace_preview(tool_item)
+            if trace_preview:
+                parts.append(trace_preview)
+
             if parts:
                 return f" {ICONS['bullet']} ".join(parts)
             return f"{ICONS['processing']}loading file..."
@@ -434,19 +473,10 @@ class RichRenderer(BaseRenderer):
                 progress_percent = int(progress * 100)
                 parts.append(f"{ICONS['processing']}{progress_percent}%")
 
-            # # Show execution trace preview if available
-            # execution_trace = getattr(tool_item, "execution_trace", None)
-            # if execution_trace and tool_item.status == "completed":
-            #     # Show last trace line as a preview
-            #     trace_lines = execution_trace.strip().split("\n")
-            #     if trace_lines:
-            #         last_line = trace_lines[-1]
-            #         # Extract just the message part (remove timestamp and step name)
-            #         if "] " in last_line:
-            #             message = last_line.split("] ")[-1][:40]
-            #             if len(message) > 37:
-            #                 message = message[:37] + "..."
-            #             parts.append(f"{ICONS['check']}{message}")
+            # Show execution trace preview if available (for traceable tools)
+            trace_preview = self._get_trace_preview(tool_item)
+            if trace_preview:
+                parts.append(trace_preview)
 
             if parts:
                 return f" {ICONS['bullet']} ".join(parts)
@@ -544,9 +574,13 @@ class RichRenderer(BaseRenderer):
 
         # ASCII art logo
         ascii_art = """
-╔═══════════════════════════════════════╗
-║        Knowledge Forge                ║
-╚═══════════════════════════════════════╝
+  ____            _            _     _____             _
+ / ___|___  _ __ | |_ _____  _| |_  | ____|_ __   __ _(_)_ __   ___
+| |   / _ \\| '_ \\| __/ _ \\ \\/ / __| |  _| | '_ \\ / _` | | '_ \\ / _ \\
+| |__| (_) | | | | ||  __/>  <| |_  | |___| | | | (_| | | | | |  __/
+ \\____\\___/|_| |_|\\__\\___/_/\\_\\__| |_____|_| |_|\\__, |_|_| |_|\\___|
+                                                 |___/
+
 """
         welcome_text.append(ascii_art, style="cyan")
         welcome_text.append("\nWelcome to ", style="bold")

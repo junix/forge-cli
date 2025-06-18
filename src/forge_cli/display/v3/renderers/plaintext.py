@@ -330,10 +330,31 @@ class PlaintextRenderer(BaseRenderer):
             # Note: file_name might be added dynamically, not in the base model
             file_name = getattr(tool_item, "file_name", None)
             if file_name:
-                parts.append(f"{ICONS['file_reader']}{file_name}")
+                parts.append(f"{ICONS['file_reader_call']}{file_name}")
             elif tool_item.doc_ids and len(tool_item.doc_ids) > 0:
                 # Use first doc_id as fallback
-                parts.append(f"{ICONS['file_reader']}{tool_item.doc_ids[0]}")
+                parts.append(f"{ICONS['file_reader_call']}{tool_item.doc_ids[0]}")
+
+            # Show progress if available (inherited from TraceableToolCall)
+            progress = getattr(tool_item, "progress", None)
+            if progress is not None:
+                progress_percent = int(progress * 100)
+                parts.append(f"{ICONS['processing']}{progress_percent}%")
+
+            # Show execution trace preview if available (for traceable tools)
+            execution_trace = getattr(tool_item, "execution_trace", None)
+            if execution_trace:
+                # Show last trace line as a preview
+                trace_lines = execution_trace.strip().split("\n")
+                if trace_lines:
+                    last_line = trace_lines[-1]
+                    # Extract just the message part (remove timestamp and step name)
+                    if "] " in last_line:
+                        message = last_line.split("] ")[-1][:30]
+                        if len(message) > 27:
+                            message = message[:27] + "..."
+                        parts.append(f"{ICONS['check']}{message}")
+
             return f" {ICONS['bullet']} ".join(parts) if parts else ""
 
         elif is_page_reader_call(tool_item):
@@ -361,9 +382,9 @@ class PlaintextRenderer(BaseRenderer):
                 progress_percent = int(progress * 100)
                 parts.append(f"{ICONS['processing']}{progress_percent}%")
 
-            # Show execution trace preview if available
+            # Show execution trace preview if available (for traceable tools)
             execution_trace = getattr(tool_item, "execution_trace", None)
-            if execution_trace and tool_item.status == "completed":
+            if execution_trace:
                 # Show last trace line as a preview
                 trace_lines = execution_trace.strip().split("\n")
                 if trace_lines:
