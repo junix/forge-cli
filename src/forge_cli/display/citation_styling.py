@@ -1,6 +1,5 @@
-from typing import Literal
 import re
-from typing import Dict
+from typing import Literal
 
 CIRCLED_DIGITS = {
     0: "⓿",
@@ -502,6 +501,6 @@ def long2circled(text: str) -> str:
 
     def _replace(match: re.Match[str]) -> str:
         n = int(match.group(1))
-        return CIRCLED_DIGITS.get(n, match.group(0))
+        return "[" + CIRCLED_DIGITS.get(n, match.group(0)) + "]() "
 
     return LONG_PATTERN.sub(_replace, text)
