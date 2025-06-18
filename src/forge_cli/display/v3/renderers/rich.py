@@ -171,7 +171,7 @@ class RichRenderer(BaseRenderer):
                 "code_interpreter_call",
                 "function_call",
             ]:
-                # Get tool-specific icon and format the tool call in a single beautiful line
+                # Get tool-specific icon and format the tool call
                 tool_icon = self._get_tool_icon(item.type)
                 short_name = {
                     "web_search_call": "Web",
@@ -197,7 +197,15 @@ class RichRenderer(BaseRenderer):
                 if result_summary:
                     tool_line += f" {ICONS['bullet']} {result_summary}"
 
-                md_parts.append(tool_line)
+                # Check if this tool is traceable and has execution trace
+                trace_block = self._get_trace_block(item)
+                if trace_block:
+                    # For traceable tools, show tool line + trace block
+                    md_parts.append(tool_line)
+                    md_parts.append("\n".join(trace_block))
+                else:
+                    # For non-traceable tools, show just the tool line
+                    md_parts.append(tool_line)
             elif is_reasoning_item(item):
                 if item.summary:
                     # Combine all reasoning lines into a single continuous Markdown
@@ -373,6 +381,38 @@ class RichRenderer(BaseRenderer):
             return f"{ICONS['check']}{message}"
         return None
 
+    def _get_trace_block(self, tool_item: Any) -> list[str] | None:
+        """Extract the last 3 trace lines from a traceable tool for multi-line display.
+
+        Args:
+            tool_item: The tool item to extract trace from
+
+        Returns:
+            List of formatted trace lines or None if no trace available
+        """
+        execution_trace = getattr(tool_item, "execution_trace", None)
+        if not execution_trace:
+            return None
+
+        # Get last 3 trace lines
+        trace_lines = execution_trace.strip().split("\n")
+        if not trace_lines:
+            return None
+
+        # Take the last 3 lines (or fewer if less than 3 available)
+        last_lines = trace_lines[-3:]
+
+        formatted_lines = []
+        for line in last_lines:
+            # Extract just the message part (remove timestamp and step name)
+            if "] " in line:
+                message = line.split("] ")[-1]
+                formatted_lines.append(f"> {message}")
+            else:
+                formatted_lines.append(f"> {line}")
+
+        return formatted_lines
+
     def _get_tool_result_summary(self, tool_item: Any) -> str:
         """Create a concise, beautiful summary of tool results."""
         if is_file_search_call(tool_item):
@@ -437,10 +477,7 @@ class RichRenderer(BaseRenderer):
                 progress_percent = int(progress * 100)
                 parts.append(f"{ICONS['processing']}{progress_percent}%")
 
-            # Show execution trace preview if available (for traceable tools)
-            trace_preview = self._get_trace_preview(tool_item)
-            if trace_preview:
-                parts.append(trace_preview)
+            # Note: execution trace is now handled separately in trace block
 
             if parts:
                 return f" {ICONS['bullet']} ".join(parts)
@@ -473,10 +510,7 @@ class RichRenderer(BaseRenderer):
                 progress_percent = int(progress * 100)
                 parts.append(f"{ICONS['processing']}{progress_percent}%")
 
-            # Show execution trace preview if available (for traceable tools)
-            trace_preview = self._get_trace_preview(tool_item)
-            if trace_preview:
-                parts.append(trace_preview)
+            # Note: execution trace is now handled separately in trace block
 
             if parts:
                 return f" {ICONS['bullet']} ".join(parts)

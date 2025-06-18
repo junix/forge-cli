@@ -139,8 +139,8 @@ class CLIParser:
 
     @staticmethod
     def should_show_help() -> bool:
-        """Check if help should be shown (no arguments provided)."""
-        return len(sys.argv) == 1 and not any(arg in sys.argv for arg in ["-h", "--help"])
+        """Check if help should be shown (only when explicitly requested)."""
+        return any(arg in sys.argv for arg in ["-h", "--help"])
 
     @staticmethod
     def show_help_and_examples(parser: argparse.ArgumentParser) -> None:
