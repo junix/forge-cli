@@ -402,14 +402,10 @@ class RichRenderer(BaseRenderer):
         # Take the last 3 lines (or fewer if less than 3 available)
         last_lines = trace_lines[-3:]
 
-        formatted_lines = []
+        formatted_lines = ["```text"]
         for line in last_lines:
-            # Extract just the message part (remove timestamp and step name)
-            if "] " in line:
-                message = line.split("] ")[-1]
-                formatted_lines.append(f"> {message}")
-            else:
-                formatted_lines.append(f"> {line}")
+            formatted_lines.append(line)
+        formatted_lines.append("```")
 
         return formatted_lines
 
