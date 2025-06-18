@@ -606,3 +606,7 @@ class RichRenderer(BaseRenderer):
             padding=(1, 2),
         )
         self._console.print(panel)
+
+    def show_status_rich(self, content: Any) -> None:
+        """Show Rich content (tables, panels, etc) directly."""
+        self._console.print(content)

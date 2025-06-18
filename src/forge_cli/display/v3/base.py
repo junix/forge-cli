@@ -164,6 +164,17 @@ class Display:
             # Fallback for rich renderers
             self._renderer._console.print(f"[yellow]Status:[/yellow] {message}")
 
+    def show_status_rich(self, content: Any) -> None:
+        """Show Rich content (tables, panels, etc) directly."""
+        if hasattr(self._renderer, "show_status_rich"):
+            self._renderer.show_status_rich(content)
+        elif hasattr(self._renderer, "_console"):
+            # Fallback for rich renderers - print content directly
+            self._renderer._console.print(content)
+        else:
+            # Final fallback - convert to string
+            self.show_status(str(content))
+
     @property
     def event_count(self) -> int:
         """Get total number of events handled."""
