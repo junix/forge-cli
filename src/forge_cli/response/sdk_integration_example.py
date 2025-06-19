@@ -33,7 +33,7 @@ class TypedForgeSDK:
     async def create_response(self, request: Request, stream: bool = False) -> Response:
         """Create a response using typed Request object."""
         # Convert to OpenAI format for API call
-        api_payload = request.as_openai_chat_request()
+        request.as_openai_chat_request()
 
         # Make API call (placeholder)
         # response_data = await self._api_call("/v1/chat/completions", api_payload)

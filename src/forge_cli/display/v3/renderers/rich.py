@@ -3,7 +3,7 @@
 import time
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
@@ -39,8 +39,9 @@ class RichDisplayConfig(BaseModel):
     max_text_preview: int = Field(100, description="Maximum characters for text previews")
     refresh_rate: int = Field(10, description="Live display refresh rate per second")
 
-    @validator("refresh_rate")
-    def validate_refresh_rate(cls, v):  # noqa: N805
+    @field_validator("refresh_rate")
+    @classmethod
+    def validate_refresh_rate(cls, v):
         if v < 1 or v > 30:
             raise ValueError("Refresh rate must be between 1 and 30")
         return v
@@ -76,7 +77,7 @@ class RichRenderer(BaseRenderer):
         else:
             # If overrides supplied, update the provided config Pydantic model
             if config_overrides:
-                self._config = config.copy(update=config_overrides)
+                self._config = config.model_copy(update=config_overrides)
             else:
                 self._config = config
 
@@ -535,7 +536,7 @@ class RichRenderer(BaseRenderer):
                     parts.append(f"{ICONS['code']}{lang}: `{code_preview}`")
 
                     # Show line count for longer code
-                    total_lines = len([l for l in code.split("\n") if l.strip()])
+                    total_lines = len([line for line in code.split("\n") if line.strip()])
                     if total_lines > 5:
                         parts.append(f"{ICONS['code']}{total_lines} lines")
 
@@ -570,7 +571,7 @@ class RichRenderer(BaseRenderer):
                             if len(args) > 2:
                                 arg_preview += f", +{len(args) - 2} more"
                             parts.append(f"{ICONS['code']}({arg_preview})")
-                    except:
+                    except Exception:
                         parts.append(f"{ICONS['code']}(with arguments)")
 
             # Show result preview if available
@@ -604,12 +605,12 @@ class RichRenderer(BaseRenderer):
 
         # ASCII art logo
         ascii_art = r"""
-  ____            _            _      _____             _            
- / ___|___  _ __ | |_ _____  _| |_   | ____|_ __   __ _(_)_ __   ___ 
+  ____            _            _      _____             _
+ / ___|___  _ __ | |_ _____  _| |_   | ____|_ __   __ _(_)_ __   ___
 | |   / _ \| '_ \| __/ _ \ \/ / __|  |  _| | '_ \ / _` | | '_ \ / _ \
 | |__| (_) | | | | ||  __/>  <| |_   | |___| | | | (_| | | | | |  __/
  \____\___/|_| |_|\__\___/_/\_\\__|  |_____|_| |_|\__, |_|_| |_|\___|
-                                                  |___/              
+                                                  |___/
 
 """
         welcome_text.append(ascii_art, style="cyan")

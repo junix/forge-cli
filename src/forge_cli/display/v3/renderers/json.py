@@ -5,7 +5,7 @@ import sys
 from typing import Any, TextIO
 
 from loguru import logger
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
@@ -52,7 +52,8 @@ class JsonDisplayConfig(BaseModel):
     syntax_theme: str = Field("monokai", description="Syntax highlighting theme")
     line_numbers: bool = Field(True, description="Whether to show line numbers")
 
-    @validator("indent")
+    @field_validator("indent")
+    @classmethod
     def validate_indent(cls, v):
         if v < 0 or v > 8:
             raise ValueError("Indent must be between 0 and 8")

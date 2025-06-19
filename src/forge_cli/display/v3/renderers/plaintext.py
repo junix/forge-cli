@@ -3,7 +3,7 @@
 import time
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from rich.console import Console
 from rich.live import Live
 from rich.text import Text
@@ -38,13 +38,15 @@ class PlaintextDisplayConfig(BaseModel):
     separator_char: str = Field("─", description="Character for separators")
     separator_length: int = Field(60, description="Length of separator lines")
 
-    @validator("refresh_rate")
+    @field_validator("refresh_rate")
+    @classmethod
     def validate_refresh_rate(cls, v):
         if v < 1 or v > 30:
             raise ValueError("Refresh rate must be between 1 and 30")
         return v
 
-    @validator("indent_size")
+    @field_validator("indent_size")
+    @classmethod
     def validate_indent_size(cls, v):
         if v < 0 or v > 8:
             raise ValueError("Indent size must be between 0 and 8")
@@ -558,7 +560,7 @@ class PlaintextRenderer(BaseRenderer):
                         if domain.startswith("www."):
                             domain = domain[4:]
                         text.append(f"{i}. {title} ({domain})\n", style=self._styles["citation_source"])
-                    except:
+                    except Exception:
                         text.append(f"{i}. {title}\n", style=self._styles["citation_source"])
                 else:
                     text.append(f"{i}. {title}\n", style=self._styles["citation_source"])

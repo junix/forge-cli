@@ -21,7 +21,7 @@ def create_sample_response() -> Response:
 Knowledge retrieval systems are designed to find and extract relevant information from large document collections. These systems typically use:
 
 1. **Vector Embeddings**: Convert text to numerical representations
-2. **Semantic Search**: Find documents based on meaning, not just keywords  
+2. **Semantic Search**: Find documents based on meaning, not just keywords
 3. **Ranking Algorithms**: Order results by relevance
 
 The integration of Large Language Models (LLMs) has revolutionized this field by enabling more sophisticated understanding of queries and context.

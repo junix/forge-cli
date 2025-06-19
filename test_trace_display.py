@@ -69,7 +69,7 @@ def test_response_rendering():
     print("\nRendering response with traceable tool...")
     try:
         # This will create the rich content but not display it
-        content = renderer._create_response_content(response)
+        renderer._create_response_content(response)
         print("✓ Response rendering successful")
         return True
     except Exception as e:

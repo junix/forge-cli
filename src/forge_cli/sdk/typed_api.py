@@ -296,7 +296,7 @@ def create_typed_request(
     processed_tools = []
     if tools:
         for tool in tools:
-            if isinstance(tool, (FileSearchTool, WebSearchTool)):
+            if isinstance(tool, FileSearchTool | WebSearchTool):
                 processed_tools.append(tool)
             elif isinstance(tool, dict):
                 # This assumes the dict can be parsed into one of the tool types.

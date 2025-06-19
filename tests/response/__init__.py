@@ -1,1 +1,1 @@
-"""Response module tests.""" 
+"""Response module tests."""

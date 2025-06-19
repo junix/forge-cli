@@ -133,7 +133,6 @@ async def test_async_query_vectorstore_success(mock_http_client):
     assert result.data[0].id == "chunk_abc"
     assert result.data[0].score == 0.95
 
-    expected_url = f"{BASE_URL}/v1/vector_stores/{vs_id}/search"
     mock_http_client.assert_called_once()
     call_args = mock_http_client.call_args
     assert call_args[1]["json_payload"]["query"] == query_text
@@ -190,7 +189,6 @@ async def test_async_join_files_to_vectorstore_success(mock_http_client):
     assert "file_x" in result.file_ids
     assert "file_y" in result.file_ids
 
-    expected_url = f"{BASE_URL}/v1/vector_stores/{vs_id}"
     mock_http_client.assert_called_once()
     call_args = mock_http_client.call_args
     assert call_args[1]["json_payload"]["join_file_ids"] == files_to_join
@@ -216,7 +214,6 @@ async def test_async_get_vectorstore_summary_success(mock_http_client):
     assert result.summary_text == "This is a summary of the vector store."
     assert result.model_used == "qwen-max"
 
-    expected_url = f"{BASE_URL}/v1/vector_stores/{vs_id}/summary"
     mock_http_client.assert_called_once()
     call_args = mock_http_client.call_args
     assert call_args[1]["params"]["model"] == "qwen-max"  # Check default model
