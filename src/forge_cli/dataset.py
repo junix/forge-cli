@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 """Common utilities and data structures for Knowledge Forge commands."""
 
 import json
@@ -22,7 +24,7 @@ class Dataset(BaseModel):
     vectorstore_id: str = ""
 
     @classmethod
-    def from_json(cls, json_path: str) -> "Dataset":
+    def from_json(cls, json_path: str) -> Dataset:
         """Load TestDataset from a JSON file.
 
         Args:

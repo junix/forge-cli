@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """DocumentContent core data model for Knowledge Forge CLI.
 
 This module defines the DocumentContent class for detailed document content.

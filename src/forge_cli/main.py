@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Main entry point - refactored for better organization and type safety."""
 
 import asyncio

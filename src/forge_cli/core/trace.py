@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Task tracking core data models for Knowledge Forge CLI.
 
 This module defines the core data structures for tracking background tasks

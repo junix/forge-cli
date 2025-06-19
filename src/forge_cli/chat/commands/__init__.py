@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 """Chat commands module."""
 
 from .base import ChatCommand, CommandRegistry
-from .session import ExitCommand, ClearCommand, HelpCommand, NewCommand
-from .conversation import SaveCommand, LoadCommand, ListConversationsCommand, HistoryCommand
 from .config import ModelCommand, ToolsCommand, VectorStoreCommand
+from .conversation import HistoryCommand, ListConversationsCommand, LoadCommand, SaveCommand
 from .info import InspectCommand
+from .session import ClearCommand, ExitCommand, HelpCommand, NewCommand
 from .tool import ToggleToolCommand
 
 __all__ = [

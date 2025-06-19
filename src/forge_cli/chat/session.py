@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Chat session management for interactive conversations."""
 
 from typing import TYPE_CHECKING
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
 class ChatSessionManager:
     """Manages chat sessions including conversation flow and message processing."""
 
-    def __init__(self, config: AppConfig, display: "Display"):
+    def __init__(self, config: AppConfig, display: Display):
         """Initialize chat session manager.
 
         Args:

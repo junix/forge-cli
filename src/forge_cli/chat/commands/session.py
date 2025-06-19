@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Session management commands for chat mode."""
 
 from typing import TYPE_CHECKING
@@ -18,7 +20,7 @@ class ExitCommand(ChatCommand):
     description = "Exit the chat"
     aliases = ["quit", "bye", "q"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the exit command.
 
         Args:
@@ -43,7 +45,7 @@ class ClearCommand(ChatCommand):
     description = "Clear conversation history"
     aliases = ["cls", "reset"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the clear command.
 
         Args:
@@ -68,7 +70,7 @@ class HelpCommand(ChatCommand):
     description = "Show this help message"
     aliases = ["h", "?"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the help command.
 
         Args:
@@ -115,7 +117,7 @@ class NewCommand(ChatCommand):
     description = "Start a new conversation"
     aliases = ["n"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the new command.
 
         Args:

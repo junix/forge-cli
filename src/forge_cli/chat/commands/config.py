@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Configuration management commands for chat mode."""
 
 from typing import TYPE_CHECKING
@@ -19,7 +21,7 @@ class ModelCommand(ChatCommand):
     description = "Show or change the model"
     aliases = ["m"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the model command.
 
         Args:
@@ -57,7 +59,7 @@ class ToolsCommand(ChatCommand):
     description = "Show or manage tools"
     aliases = ["t"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the tools command.
 
         Args:
@@ -127,7 +129,7 @@ class VectorStoreCommand(ChatCommand):
     description = "Manage vector store IDs for file search"
     aliases = ["vs", "vec"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Execute vector store management command.
 
         Args:

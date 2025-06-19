@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .common_types import DeleteResponse  # New import
 from .file_types import File
 from .task_types import TaskStatus

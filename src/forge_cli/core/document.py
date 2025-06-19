@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Document core data model for Knowledge Forge CLI.
 
 This module defines the Document class for representing processed documents.

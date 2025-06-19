@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Input handling functionality for chat sessions."""
 
 import asyncio

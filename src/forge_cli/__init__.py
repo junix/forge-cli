@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Refactored multi-tool search module for Knowledge Forge SDK.
 

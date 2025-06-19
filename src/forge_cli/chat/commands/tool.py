@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Tool management commands for chat mode."""
 
 from typing import TYPE_CHECKING
@@ -46,7 +48,7 @@ class ToggleToolCommand(ChatCommand):
         # For more descriptive messages, create a display-friendly name
         self.tool_display_name = tool_name.replace("-", " ").capitalize()
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Enables or disables the specified tool based on the `action`.
 
         Args:

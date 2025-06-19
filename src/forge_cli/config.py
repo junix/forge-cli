@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Configuration and constants for the refactored file search module."""
 
 import os
@@ -78,7 +80,7 @@ class AppConfig(BaseModel):
         return v.rstrip("/")
 
     @model_validator(mode="after")
-    def validate_config_consistency(self) -> "AppConfig":
+    def validate_config_consistency(self) -> AppConfig:
         """Validate configuration consistency."""
         # If file search tools are enabled, ensure vec_ids are provided
         if any(tool in ["file-search", "list-documents"] for tool in self.enabled_tools):
@@ -88,7 +90,7 @@ class AppConfig(BaseModel):
         return self
 
     @classmethod
-    def from_args(cls, args) -> "AppConfig":
+    def from_args(cls, args) -> AppConfig:
         """Create config from command line arguments using Pydantic validation."""
         # Convert args namespace to dict and filter out None values
         args_dict = {k: v for k, v in vars(args).items() if v is not None}
@@ -96,7 +98,7 @@ class AppConfig(BaseModel):
         # Create config with validation - Pydantic handles aliases automatically
         return cls.model_validate(args_dict)
 
-    def apply_dataset_config(self, dataset, args) -> "AppConfig":
+    def apply_dataset_config(self, dataset, args) -> AppConfig:
         """Apply dataset configuration with proper tool enablement logic.
 
         Args:

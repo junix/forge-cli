@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from forge_cli.response._types import Response
 
 # Import typed API functions for example_response_usage

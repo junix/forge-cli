@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Command system for chat mode."""
 
 from abc import ABC, abstractmethod
@@ -24,7 +26,7 @@ class ChatCommand(ABC):
     aliases: list[str] = []
 
     @abstractmethod
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the command.
 
         This method is called when the user issues the command. It receives the
@@ -51,7 +53,7 @@ class ExitCommand(ChatCommand):
     description = "Exit the chat"
     aliases = ["quit", "bye", "q"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the exit command.
 
         Args:
@@ -76,7 +78,7 @@ class ClearCommand(ChatCommand):
     description = "Clear conversation history"
     aliases = ["cls", "reset"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the clear command.
 
         Args:
@@ -101,7 +103,7 @@ class HelpCommand(ChatCommand):
     description = "Show this help message"
     aliases = ["h", "?"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the help command.
 
         Args:
@@ -148,7 +150,7 @@ class SaveCommand(ChatCommand):
     description = "Save conversation to file"
     aliases = ["s"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the save command.
 
         Args:
@@ -194,7 +196,7 @@ class LoadCommand(ChatCommand):
     description = "Load conversation from file"
     aliases = ["l"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the load command.
 
         Args:
@@ -253,7 +255,7 @@ class ListConversationsCommand(ChatCommand):
     description = "List all saved conversations"
     aliases = ["convs", "list"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the list conversations command.
 
         Args:
@@ -328,7 +330,7 @@ class HistoryCommand(ChatCommand):
     description = "Show conversation history"
     aliases = ["hist"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the history command.
 
         Args:
@@ -374,7 +376,7 @@ class ModelCommand(ChatCommand):
     description = "Show or change the model"
     aliases = ["m"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the model command.
 
         Args:
@@ -412,7 +414,7 @@ class ToolsCommand(ChatCommand):
     description = "Show or manage tools"
     aliases = ["t"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the tools command.
 
         Args:
@@ -478,7 +480,7 @@ class NewCommand(ChatCommand):
     description = "Start a new conversation"
     aliases = ["n"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the new command.
 
         Args:
@@ -513,7 +515,7 @@ class InspectCommand(ChatCommand):
     description = "Display comprehensive session state information"
     aliases = ["i", "status", "info"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the inspect command.
 
         Args:
@@ -583,7 +585,7 @@ class InspectCommand(ChatCommand):
 
         return True
 
-    async def _get_vector_store_info(self, controller: "ChatController") -> str:
+    async def _get_vector_store_info(self, controller: ChatController) -> str:
         """Get vector store information from configuration and API.
 
         Args:
@@ -660,7 +662,7 @@ class ToggleToolCommand(ChatCommand):
         # For more descriptive messages, create a display-friendly name
         self.tool_display_name = tool_name.replace("-", " ").capitalize()
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Enables or disables the specified tool based on the `action`.
 
         Args:
@@ -720,7 +722,7 @@ class VectorStoreCommand(ChatCommand):
     description = "Manage vector store IDs for file search"
     aliases = ["vs", "vec"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Execute vector store management command.
 
         Args:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Response module - Typed API only.
 

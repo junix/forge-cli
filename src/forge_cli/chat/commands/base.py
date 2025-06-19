@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Base classes for chat commands."""
 
 from abc import ABC, abstractmethod
@@ -24,7 +26,7 @@ class ChatCommand(ABC):
     aliases: list[str] = []
 
     @abstractmethod
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the command.
 
         This method is called when the user issues the command. It receives the
@@ -65,10 +67,10 @@ class CommandRegistry:
 
     def _register_default_commands(self):
         """Registers all predefined default chat commands."""
-        from .session import ExitCommand, ClearCommand, HelpCommand, NewCommand
-        from .conversation import SaveCommand, LoadCommand, ListConversationsCommand, HistoryCommand
         from .config import ModelCommand, ToolsCommand, VectorStoreCommand
+        from .conversation import HistoryCommand, ListConversationsCommand, LoadCommand, SaveCommand
         from .info import InspectCommand
+        from .session import ClearCommand, ExitCommand, HelpCommand, NewCommand
         from .tool import ToggleToolCommand
 
         default_commands = [

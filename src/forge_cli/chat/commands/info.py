@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Information and inspection commands for chat mode."""
 
 from typing import TYPE_CHECKING
@@ -18,7 +20,7 @@ class InspectCommand(ChatCommand):
     description = "Display comprehensive session state information"
     aliases = ["i", "status", "info"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the inspect command.
 
         Args:
@@ -88,7 +90,7 @@ class InspectCommand(ChatCommand):
 
         return True
 
-    async def _get_vector_store_info(self, controller: "ChatController") -> str:
+    async def _get_vector_store_info(self, controller: ChatController) -> str:
         """Get vector store information from configuration and API.
 
         Args:

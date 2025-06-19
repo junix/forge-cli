@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Command completion for chat interface using prompt_toolkit."""
 
 from collections.abc import Iterator

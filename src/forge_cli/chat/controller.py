@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Chat controller for managing interactive conversations."""
 
 from typing import Final

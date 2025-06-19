@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """FileResponse core data model for Knowledge Forge CLI.
 
 This module defines the FileResponse class for file upload responses.

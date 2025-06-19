@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """FileCountStats core data model for Knowledge Forge CLI.
 
 This module defines the FileCountStats class for tracking file processing statistics.

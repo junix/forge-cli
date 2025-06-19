@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Conversation management commands for chat mode."""
 
 from pathlib import Path
@@ -20,7 +22,7 @@ class SaveCommand(ChatCommand):
     description = "Save conversation to file"
     aliases = ["s"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the save command.
 
         Args:
@@ -64,7 +66,7 @@ class LoadCommand(ChatCommand):
     description = "Load conversation from file"
     aliases = ["l"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the load command.
 
         Args:
@@ -121,7 +123,7 @@ class ListConversationsCommand(ChatCommand):
     description = "List all saved conversations"
     aliases = ["convs", "list"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the list conversations command.
 
         Args:
@@ -196,7 +198,7 @@ class HistoryCommand(ChatCommand):
     description = "Show conversation history"
     aliases = ["hist"]
 
-    async def execute(self, args: str, controller: "ChatController") -> bool:
+    async def execute(self, args: str, controller: ChatController) -> bool:
         """Executes the history command.
 
         Args:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Chunk core data model for Knowledge Forge CLI.
 
 This module defines the Chunk class for representing text segments.

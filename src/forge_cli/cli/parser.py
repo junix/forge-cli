@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Command line argument parser for forge-cli."""
 
 import argparse

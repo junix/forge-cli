@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Allow the module to be run with python -m hello_file_search_refactored."""
 
 import asyncio

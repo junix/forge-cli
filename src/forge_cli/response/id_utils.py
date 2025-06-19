@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 def reason_id_of(old_chat_id: str) -> str:
     """
     Generates a reasoning item ID from a chat completion ID.

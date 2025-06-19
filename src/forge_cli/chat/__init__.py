@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Chat mode components for interactive multi-turn conversations."""
 
 from .commands import ChatCommand, CommandRegistry
