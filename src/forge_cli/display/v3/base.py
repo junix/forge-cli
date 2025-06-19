@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Base display interface for v3 - pure rendering without input handling."""
 
 from abc import ABC, abstractmethod

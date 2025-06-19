@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Type guards for Tool objects."""
 
 from typing import TypeGuard

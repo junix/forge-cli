@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Utility functions and complex type guards."""
 
 from typing import Any

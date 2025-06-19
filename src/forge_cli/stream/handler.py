@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Main stream handler implementation."""
 
 from collections.abc import AsyncIterator

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Display factory for creating appropriate display instances."""
 
 from typing import TYPE_CHECKING
@@ -12,7 +14,7 @@ class DisplayFactory:
     """Factory for creating display instances based on configuration."""
 
     @staticmethod
-    def create_display(config: AppConfig) -> "Display":
+    def create_display(config: AppConfig) -> Display:
         """Create appropriate display based on configuration using v3 architecture.
 
         Args:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Type guards for status and error types."""
 
 from typing import Any

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Type guards for ResponseOutputItem types."""
 
 from typing import TypeGuard

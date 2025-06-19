@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Display registry module for rendering implementations."""
 
 from collections.abc import Callable
