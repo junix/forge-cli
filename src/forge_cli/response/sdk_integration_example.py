@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Example of SDK integration with new type system.
 
 This demonstrates how to gradually adopt the new response types
