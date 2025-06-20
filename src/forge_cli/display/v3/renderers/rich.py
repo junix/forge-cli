@@ -22,6 +22,7 @@ from forge_cli.response.type_guards import (
     is_reasoning_item,
     is_web_search_call,
 )
+from forge_cli.style.markdowns import italicize_markdown
 
 from ...citation_styling import long2circled
 from ..base import BaseRenderer
@@ -209,24 +210,35 @@ class RichRenderer(BaseRenderer):
                     md_parts.append(tool_line)
             elif is_reasoning_item(item):
                 if item.summary:
-                    # Combine all reasoning lines into a single continuous Markdown
-                    # blockquote so that Rich renders it as one cohesive block instead
-                    # of multiple quote paragraphs.
-                    quoted_lines: list[str] = []
+                    # Collect all reasoning text and apply robust italic formatting
+                    reasoning_parts: list[str] = []
                     for summary in item.summary:
                         if summary.text:
-                            # summary = f"{ICONS['thinking']} thinking\n\n" + summary.text.strip()
                             summary_text = summary.text.strip()
-                            for line in summary_text.splitlines():
-                                # Prefix each line with '> '. If the line is empty we
-                                # still add a lone '>' to preserve paragraph spacing
-                                # inside the same quote block.
-                                if line.strip():
-                                    quoted_lines.append(f"> {line}")
-                                else:
-                                    quoted_lines.append(">")
-                    if quoted_lines:
-                        md_parts.append("\n".join(quoted_lines))
+                            if summary_text:
+                                reasoning_parts.append(summary_text)
+                    
+                    if reasoning_parts:
+                        # Combine all reasoning text into one block
+                        combined_reasoning = "\n\n".join(reasoning_parts)
+                        
+                        # Apply italic formatting using the simple approach which works reliably
+                        # The simple approach wraps text in asterisks for italic formatting
+                        italicized_reasoning = italicize_markdown(combined_reasoning, use_robust=False)
+                        
+                        # Now wrap the italicized text in blockquotes for visual distinction
+                        quoted_lines: list[str] = []
+                        for line in italicized_reasoning.splitlines():
+                            # Prefix each line with '> '. If the line is empty we
+                            # still add a lone '>' to preserve paragraph spacing
+                            # inside the same quote block.
+                            if line.strip():
+                                quoted_lines.append(f"> {line}")
+                            else:
+                                quoted_lines.append(">")
+                        
+                        if quoted_lines:
+                            md_parts.append("\n".join(quoted_lines))
 
         # References section - using type-based API
         citations = self._extract_all_citations(response)
