@@ -22,7 +22,6 @@ from forge_cli.response.type_guards import (
     is_reasoning_item,
     is_web_search_call,
 )
-from forge_cli.style.markdowns import italicize_markdown
 
 from ...citation_styling import long2circled
 from ..base import BaseRenderer
@@ -222,19 +221,14 @@ class RichRenderer(BaseRenderer):
                         # Combine all reasoning text into one block
                         combined_reasoning = "\n\n".join(reasoning_parts)
                         
-                        # Apply italic formatting using the simple approach which works reliably
-                        # The simple approach wraps text in asterisks for italic formatting
-                        italicized_reasoning = italicize_markdown(combined_reasoning, use_robust=False)
-                        
-                        # Now wrap the italicized text in blockquotes for visual distinction
+                        # Wrap each line in blockquotes for visual distinction
                         quoted_lines: list[str] = []
-                        for line in italicized_reasoning.splitlines():
-                            # Prefix each line with '> '. If the line is empty we
-                            # still add a lone '>' to preserve paragraph spacing
-                            # inside the same quote block.
+                        for line in combined_reasoning.splitlines():
                             if line.strip():
+                                # Just wrap in blockquote, no italic formatting
                                 quoted_lines.append(f"> {line}")
                             else:
+                                # Empty lines just get blockquote marker to preserve spacing
                                 quoted_lines.append(">")
                         
                         if quoted_lines:
