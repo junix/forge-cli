@@ -198,13 +198,13 @@ class RichRenderer(BaseRenderer):
                             for item_content in tool_content:
                                 if item_content:  # Skip empty items
                                     if isinstance(item_content, str):
-                                        renderables.append(Markdown(item_content))
+                                        renderables.append(Text(item_content))
                                     else:
                                         renderables.append(item_content)
                         else:
                             # Single item
                             if isinstance(tool_content, str):
-                                renderables.append(Markdown(tool_content))
+                                renderables.append(Text(tool_content))
                             else:
                                 renderables.append(tool_content)
             elif is_reasoning_item(item):
@@ -218,7 +218,7 @@ class RichRenderer(BaseRenderer):
             citations_content = render_citations(citations)
             if citations_content:
                 if isinstance(citations_content, str):
-                    renderables.append(Markdown(citations_content))
+                    renderables.append(Text(citations_content))
                 else:
                     renderables.append(citations_content)
 
@@ -226,7 +226,7 @@ class RichRenderer(BaseRenderer):
         if renderables:
             group_content = Group(*renderables)
         else:
-            group_content = Text("No content available")
+            group_content = Text("-")
 
         # Create the title format with usage information using specialized renderer
         panel_title = ""
