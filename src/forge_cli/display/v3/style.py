@@ -40,7 +40,12 @@ ICONS = {
     "arrow": " → ",  # matches rich.py tool summaries
     "check": " ✓ ",
     "cross": " ✗ ",
-    "separator": "  ",  # matches rich.py title format
+    "separator": "  ",  # matches rich.py title format
+    # Missing icons used by tools
+    "search": " 󰍉 ",
+    "info": " 󰍤 ",
+    "file": " 󰈙 ",
+    "pages": " 󰸗 ",
 }
 
 # Status icons dictionary for easy lookup

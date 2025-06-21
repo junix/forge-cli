@@ -41,7 +41,15 @@ class FileReaderToolRender(ToolRendable):
                 display_name = filename[:22] + "..."
             else:
                 display_name = filename
-            self._parts.append(f"{ICONS['file_reader_call']}{display_name}")
+            
+            # Extract file extension for type label
+            file_ext = ""
+            if "." in filename:
+                file_ext = filename.split(".")[-1].upper()
+            else:
+                file_ext = "FILE"
+            
+            self._parts.append(f'{ICONS["file_reader_call"]}"{display_name}" [{file_ext}]')
         return self
     
     def with_doc_ids(self, doc_ids: list[str]) -> "FileReaderToolRender":
@@ -57,9 +65,9 @@ class FileReaderToolRender(ToolRendable):
             self._doc_ids = doc_ids
             # Only show if no filename was already added
             if not any(ICONS['file_reader_call'] in part for part in self._parts):
-                # Use first doc_id as fallback, shortened
-                first_doc = doc_ids[0][:8] if len(doc_ids[0]) > 8 else doc_ids[0]
-                self._parts.append(f"{ICONS['file_reader_call']}{first_doc}")
+                # Use first doc_id as fallback with file: prefix, shortened to 12 chars (doc_12345678)
+                first_doc = doc_ids[0][:12] if len(doc_ids[0]) > 12 else doc_ids[0]
+                self._parts.append(f"{ICONS['file_reader_call']}file:{first_doc}")
         return self
     
     def with_progress(self, progress: float | None) -> "FileReaderToolRender":
@@ -98,25 +106,33 @@ class FileReaderToolRender(ToolRendable):
             Self for method chaining
         """
         if query:
-            # Truncate long queries
-            if len(query) > 20:
-                display_query = query[:17] + "..."
+            # Don't truncate short queries like "What is the main topic?" (25 chars)
+            # Only truncate really long queries (>50 chars)
+            if len(query) > 50:
+                display_query = query[:47] + "..."
             else:
                 display_query = query
-            self._parts.append(f"{ICONS['search']}'{display_query}'")
+            self._parts.append(f'{ICONS["search"]}query: "{display_query}"')
         return self
     
-    def with_file_size(self, file_size: str | None) -> "FileReaderToolRender":
+    def with_file_size(self, file_size: int | None) -> "FileReaderToolRender":
         """Add file size display to the render.
         
         Args:
-            file_size: Human-readable file size
+            file_size: File size in bytes
             
         Returns:
             Self for method chaining
         """
-        if file_size:
-            self._parts.append(f"{ICONS['info']}{file_size}")
+        if file_size is not None:
+            # Convert bytes to human-readable format
+            if file_size < 1024:
+                size_str = f"{file_size}B"
+            elif file_size < 1024 * 1024:
+                size_str = f"{file_size // 1024}KB"
+            else:
+                size_str = f"{file_size // (1024 * 1024)}MB"
+            self._parts.append(f"{ICONS['info']}{size_str}")
         return self
     
     def with_file_type(self, file_type: str | None) -> "FileReaderToolRender":
@@ -129,7 +145,12 @@ class FileReaderToolRender(ToolRendable):
             Self for method chaining
         """
         if file_type:
-            self._parts.append(f"{ICONS['file']}{file_type}")
+            # Extract main type from MIME type like "application/pdf" -> "application"
+            if "/" in file_type:
+                main_type = file_type.split("/")[0]
+            else:
+                main_type = file_type
+            self._parts.append(f"{ICONS['file']}type:{main_type}")
         return self
     
     def with_page_count(self, page_count: int | None) -> "FileReaderToolRender":
@@ -142,7 +163,8 @@ class FileReaderToolRender(ToolRendable):
             Self for method chaining
         """
         if page_count is not None:
-            self._parts.append(f"{ICONS['pages']}{page_count}p")
+            page_word = "page" if page_count == 1 else "pages"
+            self._parts.append(f"{ICONS['pages']}{page_count} {page_word}")
         return self
     
 
@@ -158,8 +180,8 @@ class FileReaderToolRender(ToolRendable):
         
         # Default fallback if no parts
         if self._doc_ids:
-            first_doc = self._doc_ids[0][:8] if len(self._doc_ids[0]) > 8 else self._doc_ids[0]
-            return f"{ICONS['file_reader_call']}{first_doc}"
+            first_doc = self._doc_ids[0][:12] if len(self._doc_ids[0]) > 12 else self._doc_ids[0]
+            return f"{ICONS['file_reader_call']}file:{first_doc}"
         
         return f"{ICONS['processing']}reading file..."
     
