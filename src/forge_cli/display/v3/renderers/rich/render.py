@@ -1,7 +1,7 @@
 """Rich renderer for v3 display - renders complete Response snapshots with beautiful terminal UI."""
 
 import time
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 from rich.console import Console
@@ -34,6 +34,9 @@ from .tools import FileReaderToolRender
 from .reason import render_reasoning_item
 from .output import render_message_content, render_citations
 from .welcome import render_welcome
+
+if TYPE_CHECKING:
+    from ....config import AppConfig
 
 
 class RichDisplayConfig(BaseModel):
@@ -133,7 +136,7 @@ class RichRenderer(BaseRenderer):
         else:
             self._console.print(error_panel)
 
-    def render_welcome(self, config: Any) -> None:
+    def render_welcome(self, config: "AppConfig") -> None:
         """Show welcome message for chat mode."""
         render_welcome(self._console, config)
 

@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import pytest
 from rich.panel import Panel
 
+from forge_cli.config import AppConfig
 from forge_cli.display.v3.renderers.rich.welcome import WelcomeRenderer
 
 
@@ -163,6 +164,50 @@ class TestWelcomeRenderer:
         assert result.border_style == "cyan"
         assert result.padding == (1, 2)
         assert "cyan" in result.title  # Title should have cyan styling
+
+    def test_from_config_with_real_appconfig(self):
+        """Test from_config with real AppConfig instance."""
+        # Create a real AppConfig instance
+        config = AppConfig(
+            model="deepseek-r1-distill-qwen-32b",
+            enabled_tools=["file-search", "web-search", "page-reader"],
+            effort="medium"
+        )
+        
+        renderer = WelcomeRenderer.from_config(config)
+        result = renderer.render()
+        
+        panel_content = str(result.renderable)
+        assert "deepseek-r1-distill-qwen-32b" in panel_content
+        assert "file-search, web-search, page-reader" in panel_content
+
+    def test_from_config_with_minimal_appconfig(self):
+        """Test from_config with minimal AppConfig instance."""
+        # Create AppConfig with minimal settings (uses defaults)
+        config = AppConfig()
+        
+        renderer = WelcomeRenderer.from_config(config)
+        result = renderer.render()
+        
+        panel_content = str(result.renderable)
+        # Should contain default model
+        assert "qwen-max-latest" in panel_content
+        # Should contain default tool
+        assert "file-search" in panel_content
+
+    def test_from_config_with_no_tools_appconfig(self):
+        """Test from_config with AppConfig that has no enabled tools."""
+        # Create AppConfig with empty tools list
+        config = AppConfig(enabled_tools=[])
+        
+        renderer = WelcomeRenderer.from_config(config)
+        result = renderer.render()
+        
+        panel_content = str(result.renderable)
+        # Should not show tools section when empty
+        assert "Tools:" not in panel_content
+        # Should still show model
+        assert "qwen-max-latest" in panel_content
 
 
 class TestWelcomeRendererIntegration:

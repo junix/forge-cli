@@ -1,40 +1,38 @@
-"""JSON renderer for v3 display - outputs Response snapshots as formatted JSON with rich live updates."""
+"""JSON renderer for the v3 display system."""
 
 import json
 import sys
-from typing import Any, TextIO
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, TextIO
 
-from loguru import logger
 from pydantic import BaseModel, Field, field_validator
 from rich.console import Console
-from rich.live import Live
+from rich.json import JSON
 from rich.panel import Panel
 from rich.syntax import Syntax
 
-from forge_cli.response._types.response import Response
-from forge_cli.response.type_guards.annotations import (
+from ..base import BaseRenderer
+from ....common.logger import logger
+from ....response.type_guards import (
+    is_code_interpreter_call,
+    is_computer_tool_call,
     is_file_citation,
     is_file_path,
-    is_url_citation,
-)
-from forge_cli.response.type_guards.content import (
-    is_output_refusal,
-    is_output_text,
-)
-from forge_cli.response.type_guards.output_items import (
-    is_code_interpreter_call,
-    is_computer_tool_call,  # Note: correct name
     is_file_reader_call,
     is_file_search_call,
     is_function_call,
     is_list_documents_call,
-    is_message_item,
+    is_output_refusal,
+    is_output_text,
     is_page_reader_call,
     is_reasoning_item,
+    is_url_citation,
     is_web_search_call,
 )
 
-from ..base import BaseRenderer
+if TYPE_CHECKING:
+    from ....config import AppConfig
+    from ....response._types import Response
 
 
 class JsonDisplayConfig(BaseModel):
@@ -95,7 +93,7 @@ class JsonRenderer(BaseRenderer):
                 # Fallback to stdout
                 self._console = Console(file=sys.stdout)
 
-    def render_response(self, response: Response) -> None:
+    def render_response(self, response: "Response") -> None:
         """Render a complete response snapshot as JSON using Rich live updates.
 
         This is the core v3 method - everything is available in the response object.
@@ -477,8 +475,6 @@ class JsonRenderer(BaseRenderer):
 
     def _get_current_timestamp(self) -> str:
         """Get current timestamp in ISO format."""
-        from datetime import datetime
-
         return datetime.now().isoformat()
 
     # Additional methods for compatibility with Display interface
@@ -494,7 +490,7 @@ class JsonRenderer(BaseRenderer):
         except Exception as e:
             logger.error(f"Failed to render error as JSON: {e}")
 
-    def render_welcome(self, config: Any) -> None:
+    def render_welcome(self, config: "AppConfig") -> None:
         """Render welcome message as JSON."""
         welcome_data = {
             "type": "welcome",

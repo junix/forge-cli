@@ -1,11 +1,14 @@
 """Welcome renderer for Rich display system."""
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from rich.panel import Panel
 from rich.text import Text
 
 from ..rendable import Rendable
+
+if TYPE_CHECKING:
+    from ....config import AppConfig
 
 
 class WelcomeRenderer(Rendable):
@@ -115,11 +118,11 @@ class WelcomeRenderer(Rendable):
         )
     
     @classmethod
-    def from_config(cls, config: Any) -> "WelcomeRenderer":
+    def from_config(cls, config: "AppConfig") -> "WelcomeRenderer":
         """Create a welcome renderer from a configuration object.
         
         Args:
-            config: Configuration object with model and tools info
+            config: AppConfig instance with model and tools info
             
         Returns:
             WelcomeRenderer instance configured with the config data
@@ -134,31 +137,24 @@ class WelcomeRenderer(Rendable):
                 renderer.with_model(model)
         
         # Extract tools information - ensure it's a real list
-        if hasattr(config, 'enabled_tools'):
+        if hasattr(config, 'enabled_tools') and config.enabled_tools:
             tools = getattr(config, 'enabled_tools', None)
-            if tools and not str(tools).startswith('<Mock'):
-                if isinstance(tools, (list, tuple)):
-                    # Filter out any Mock objects from the list
-                    real_tools = [t for t in tools if isinstance(t, str) and not str(t).startswith('<Mock')]
-                    if real_tools:
-                        renderer.with_tools(real_tools)
-                elif isinstance(tools, str):
-                    renderer.with_tools([tools])
+            # Check if it's a real list, not a Mock object
+            if tools and isinstance(tools, list) and all(isinstance(tool, str) for tool in tools):
+                renderer.with_tools(tools)
         
         return renderer
 
 
 # Legacy function for backward compatibility
-def render_welcome(console, config: Any) -> None:
-    """Legacy welcome renderer function.
+def render_welcome(console, config: "AppConfig") -> None:
+    """Legacy function for backward compatibility.
     
-    DEPRECATED: Use WelcomeRenderer class instead.
-    This function is kept for backward compatibility only.
+    Creates a welcome renderer and prints it to the console.
     
     Args:
         console: Rich console instance
-        config: Configuration object with model and tools info
+        config: AppConfig instance with model and tools info
     """
     renderer = WelcomeRenderer.from_config(config)
-    panel = renderer.render()
-    console.print(panel) 
+    console.print(renderer.render()) 

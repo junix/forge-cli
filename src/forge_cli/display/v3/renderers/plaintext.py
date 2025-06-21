@@ -1,7 +1,7 @@
-"""Plaintext renderer for v3 display - uses Rich Live and Text with custom colors."""
+"""Plaintext renderer for the v3 display system."""
 
 import time
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 from rich.console import Console
@@ -10,17 +10,23 @@ from rich.text import Text
 
 from forge_cli.response._types.response import Response
 from forge_cli.response.type_guards import (
+    is_code_interpreter_call,
+    is_computer_tool_call,
     is_file_reader_call,
     is_file_search_call,
+    is_function_call,
     is_list_documents_call,
-    is_message_item,
     is_page_reader_call,
     is_reasoning_item,
     is_web_search_call,
 )
 
 from ..base import BaseRenderer
-from ..style import ICONS, STATUS_ICONS, pack_queries
+from ....common.logger import logger
+from ....style.markdowns import ICONS, STATUS_ICONS
+
+if TYPE_CHECKING:
+    from ....config import AppConfig
 
 
 class PlaintextDisplayConfig(BaseModel):
@@ -675,7 +681,7 @@ class PlaintextRenderer(BaseRenderer):
         else:
             self._console.print(error_text)
 
-    def render_welcome(self, config: Any) -> None:
+    def render_welcome(self, config: "AppConfig") -> None:
         """Show welcome message for chat mode."""
         welcome_text = Text()
 
