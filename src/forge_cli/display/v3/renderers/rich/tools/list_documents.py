@@ -96,7 +96,7 @@ class ListDocumentsToolRender(Rendable):
         parts = []
         
         # Get tool icon and name
-        tool_icon = ICONS.get("list_documents_call", ICONS["list"])
+        tool_icon = ICONS.get("list_documents_call", ICONS["processing"])
         tool_name = "ListDocs"
         
         # Get status icon

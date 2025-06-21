@@ -12,25 +12,25 @@ ICONS = {
     "code_analyzer_call": "🔧",  # matches rich.py:307
     "file_reader_call": " 󰈈 ",  # matches rich.py:305
     "page_reader_call": " 󰗚 ",  # page reader icon
-    "list_documents_call": "  ",  # matches rich.py:304
+    "list_documents_call": "  ",  # matches rich.py:304
     "code_interpreter_call": " 󱄕 ",  # matches rich.py:306
-    "function_call": "  ",  # matches rich.py:307
+    "function_call": "  ",  # matches rich.py:307
     # Status icons (matching existing usage)
-    "thinking": "  ",  # matches rich.py reasoning section
+    "thinking": "  ",  # matches rich.py reasoning section
     "processing": " ⚡ ",
-    "completed": "  ",
-    "error": "  ",
-    "warning": "  ",
+    "completed": "  ",
+    "error": "  ",
+    "warning": "  ",
     "in_progress": " 󰑮 ",
-    "searching": "  ",
-    "failed": "  ",
-    "incomplete": "  ",
-    "query": "  ",
+    "searching": "  ",
+    "failed": "  ",
+    "incomplete": "  ",
+    "query": "  ",
     # Content type icons
     "message": " 󰍥 ",
-    "citation": "  ",  # matches rich.py:268
+    "citation": "  ",  # matches rich.py:268
     "code": " 󰌠 ",
-    "reasoning": "  ",
+    "reasoning": "  ",
     # Token usage icons (using existing directional arrows)
     "input_tokens": " ↑ ",  # matches rich.py:231
     "output_tokens": " ↓ ",  # matches rich.py:231
@@ -43,9 +43,11 @@ ICONS = {
     "separator": "  ",  # matches rich.py title format
     # Missing icons used by tools
     "search": " 󰍉 ",
+    "search_results": " 󰈞 ",  # search results icon
     "info": " 󰍤 ",
     "file": " 󰈙 ",
     "pages": " 󰸗 ",
+    "timer": " 󰔛 ",  # timer icon for execution time
 }
 
 # Status icons dictionary for easy lookup
