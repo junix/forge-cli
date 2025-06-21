@@ -1,6 +1,7 @@
 """Reasoning renderer for Rich display system."""
 
 from rich.markdown import Markdown
+from forge_cli.display.citation_styling import long2circled
 from ...builder import TextBuilder
 from ..rendable import Rendable
 
@@ -25,8 +26,10 @@ class ReasoningRenderer(Rendable):
         # Use the text property to get consolidated reasoning text
         reasoning_text = self.reasoning_item.text
         if reasoning_text:
+            # Convert long-style citation markers to circled digits
+            converted_text = long2circled(reasoning_text)
             # Format as blockquote markdown and return Markdown object
-            blockquote_text = TextBuilder.from_text(reasoning_text).with_block_quote().build()
+            blockquote_text = TextBuilder.from_text(converted_text).with_block_quote().build()
             return Markdown(blockquote_text)
         return None
 

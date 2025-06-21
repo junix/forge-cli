@@ -2,6 +2,7 @@
 
 from rich.text import Text
 
+from forge_cli.display.citation_styling import long2circled
 from forge_cli.display.v3.builder import TextBuilder
 from forge_cli.response._types.response_reasoning_item import ResponseReasoningItem
 from .config import PlaintextDisplayConfig
@@ -50,7 +51,9 @@ class PlaintextReasoningRenderer:
             if not text:
                 continue
 
-            text = TextBuilder.from_text(text).with_slide(max_lines=5, format_type="markdown").with_block_quote().build()
+            # Convert long-style citation markers to circled digits
+            converted_text = long2circled(text)
+            text = TextBuilder.from_text(converted_text).with_slide(max_lines=5, format_type="markdown").with_block_quote().build()
             acc.append(Markdown(text+"\n"))
         return acc
 
