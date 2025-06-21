@@ -50,7 +50,7 @@ class PlaintextReasoningRenderer:
             if not text:
                 continue
 
-            text = TextBuilder.from_text(text).with_slide(max_lines=5, format_type="text").with_block_quote().build()
+            text = TextBuilder.from_text(text).with_slide(max_lines=5, format_type="markdown").with_block_quote().build()
             acc.append(Markdown(text+"\n"))
         return acc
 

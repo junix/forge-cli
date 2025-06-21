@@ -3,6 +3,7 @@
 from typing import Any
 
 from rich.text import Text
+from rich.markdown import Markdown
 from forge_cli.response._types.response import Response
 from forge_cli.response.type_guards import is_message_item
 
@@ -37,53 +38,51 @@ class PlaintextCitationsRenderer(Rendable):
         self._citations = citations
         return self
     
-    def render(self) -> Text | None:
-        """Render citations list with proper formatting.
+    def render(self) -> Markdown | None:
+        """Render citations list with Markdown link formatting.
         
         Returns:
-            Rich Text object with formatted citations or None if no citations
+            Rich Text object with Markdown-formatted citations or None if no citations
         """
         if not self._citations or not self.config.show_citations:
             return None
         
-        text = Text()
+        text = []
         
-        # Use compact format for file citations
-        text.append("\nreferences:\n", style=self.styles.get_style("citation_ref"))
+        # Use Markdown format for citations
+        text.append("\n\n#### references:\n")
 
         for i, citation in enumerate(self._citations, 1):
             if citation.type == "file_citation":
-                # Compact format: 1. filename, P{index} - using typed properties
+                # Markdown format: 1. [filename, P{index}](file_id)
                 source = citation.filename or citation.file_id or "Unknown"
                 page = f", P{citation.index}" if citation.index is not None else ""
-                text.append(f"{i}. {source}{page}\n", style=self.styles.get_style("citation_source"))
+                link_text = f"{source}{page}"
+                link_url = citation.file_id or source
+                text.append(f"{i}. [{link_text}]({link_url})")
 
             elif citation.type == "url_citation":
-                # URL format: 1. title (domain) - using typed properties
+                # Markdown format: 1. [title](url)
                 title = citation.title if citation.title else "Web Page"
                 url = citation.url
                 if url:
-                    try:
-                        from urllib.parse import urlparse
-
-                        domain = urlparse(url).netloc
-                        if domain.startswith("www."):
-                            domain = domain[4:]
-                        text.append(f"{i}. {title} ({domain})\n", style=self.styles.get_style("citation_source"))
-                    except Exception:
-                        text.append(f"{i}. {title}\n", style=self.styles.get_style("citation_source"))
+                    text.append(f"{i}. [{title}]({url})")
                 else:
-                    text.append(f"{i}. {title}\n", style=self.styles.get_style("citation_source"))
+                    text.append(f"{i}. {title}")
             elif citation.type == "file_path":
-                # File path format - using typed properties
+                # Markdown format: 1. [filename](file_id)
                 source = citation.file_id or "Unknown"
-                text.append(f"{i}. {source}\n", style=self.styles.get_style("citation_source"))
+                text.append(f"{i}. [{source}]({source})")
             else:
-                # Fallback format
+                # Fallback format with Markdown links when possible
                 source = getattr(citation, "filename", getattr(citation, "url", "Unknown"))
-                text.append(f"{i}. {source}\n", style=self.styles.get_style("citation_source"))
+                url = getattr(citation, "url", getattr(citation, "file_id", source))
+                if url and url != source:
+                    text.append(f"{i}. [{source}]({url})")
+                else:
+                    text.append(f"{i}. {source}")
         
-        return text
+        return Markdown("\n".join(text))
     
     @classmethod
     def from_response(cls, response: Response, styles: PlaintextStyles, config: PlaintextDisplayConfig) -> "PlaintextCitationsRenderer":
