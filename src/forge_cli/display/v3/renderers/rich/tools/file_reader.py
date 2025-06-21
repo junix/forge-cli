@@ -145,27 +145,7 @@ class FileReaderToolRender(ToolRendable):
             self._parts.append(f"{ICONS['pages']}{page_count}p")
         return self
     
-    def with_execution_trace(self, execution_trace: str | None) -> "FileReaderToolRender":
-        """Add execution trace preview to the render.
-        
-        Args:
-            execution_trace: Execution trace string
-            
-        Returns:
-            Self for method chaining
-        """
-        if execution_trace:
-            # Show last trace line as a preview
-            trace_lines = execution_trace.strip().split("\n")
-            if trace_lines:
-                last_line = trace_lines[-1]
-                # Extract just the message part (remove timestamp and step name)
-                if "] " in last_line:
-                    message = last_line.split("] ")[-1][:30]
-                    if len(message) > 27:
-                        message = message[:27] + "..."
-                    self._parts.append(f"{ICONS['check']}{message}")
-        return self
+
     
     def render(self) -> str:
         """Build and return the final rendered string for result summary only.

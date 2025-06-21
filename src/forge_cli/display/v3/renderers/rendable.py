@@ -16,6 +16,7 @@ class ToolRendable(Rendable):
     def __init__(self):
         """Initialize the tool renderer."""
         self._status = "in_progress"
+        self._execution_trace = None
     
     def get_tool_metadata(self) -> tuple[str, str]:
         """Get tool icon and display name.
@@ -26,6 +27,30 @@ class ToolRendable(Rendable):
         # To be overridden by subclasses
         from forge_cli.display.v3.style import ICONS
         return ICONS["processing"], "Tool"
+    
+    def with_execution_trace(self, execution_trace: str | None) -> "ToolRendable":
+        """Add execution trace for traceable tools.
+        
+        Args:
+            execution_trace: Execution trace string
+            
+        Returns:
+            Self for method chaining
+        """
+        self._execution_trace = execution_trace
+        return self
+    
+    def _get_trace_block(self) -> list[str] | None:
+        """Extract and format trace lines for display.
+        
+        Returns:
+            List of formatted trace lines or None if no trace available
+        """
+        if not self._execution_trace:
+            return None
+        
+        from forge_cli.display.v3.builder import TextBuilder
+        return TextBuilder.from_text(self._execution_trace).with_slide(max_lines=3, format_type="text").build()
     
     def render_complete_tool_line(self) -> str:
         """Render the complete tool line including icon, name, status, and results.
@@ -51,3 +76,22 @@ class ToolRendable(Rendable):
             tool_line += f" {ICONS['bullet']} {result_summary}"
         
         return tool_line
+    
+    def render_complete_tool_with_trace(self) -> list[str]:
+        """Render complete tool content including tool line and trace block.
+        
+        Returns:
+            List of markdown parts (tool line and optional trace block)
+        """
+        parts = []
+        
+        # Always include the tool line
+        tool_line = self.render_complete_tool_line()
+        parts.append(tool_line)
+        
+        # Add trace block if available
+        trace_block = self._get_trace_block()
+        if trace_block:
+            parts.extend(trace_block)
+        
+        return parts

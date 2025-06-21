@@ -1,4 +1,4 @@
-"""Core methods for the RichRenderer class - refactored to use self-contained tool renderers."""
+"""Core methods for the RichRenderer class - fully self-contained tool renderers."""
 
 from typing import Any
 
@@ -25,7 +25,6 @@ from .tools import (
     FunctionCallToolRender,
     ListDocumentsToolRender,
 )
-from .tool_methods import get_trace_block
 
 
 def render_response_method(self, response: Response) -> None:
@@ -105,21 +104,12 @@ def create_response_content(self, response: Response):
             "code_interpreter_call",
             "function_call",
         ]:
-            # Use self-contained tool renderers - no external logic needed!
+            # Use fully self-contained tool renderers!
             tool_renderer = get_tool_renderer(item)
             if tool_renderer:
-                # Get complete tool line from renderer
-                tool_line = tool_renderer.render_complete_tool_line()
-
-                # Check if this tool is traceable and has execution trace
-                trace_block = get_trace_block(item)
-                if trace_block:
-                    # For traceable tools, show tool line + trace block
-                    md_parts.append(tool_line)
-                    md_parts.append("\n".join(trace_block))
-                else:
-                    # For non-traceable tools, show just the tool line
-                    md_parts.append(tool_line)
+                # Get complete tool content (tool line + trace if available)
+                tool_parts = tool_renderer.render_complete_tool_with_trace()
+                md_parts.extend(tool_parts)
         elif is_reasoning_item(item):
             rendered_reasoning = render_reasoning_item(item)
             if rendered_reasoning:

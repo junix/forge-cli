@@ -68,18 +68,6 @@ class WebSearchToolRender(ToolRendable):
             self._parts.append(f"{ICONS['check']}{count} results")
         return self
     
-    def with_execution_trace(self, execution_trace: str | None) -> "WebSearchToolRender":
-        """Add execution trace to the render (handled separately in trace blocks).
-        
-        Args:
-            execution_trace: Execution trace string
-            
-        Returns:
-            Self for method chaining
-        """
-        # Execution trace is handled separately in trace blocks
-        return self
-    
     def render(self) -> str:
         """Build and return the final rendered string for result summary only.
         
@@ -116,5 +104,10 @@ class WebSearchToolRender(ToolRendable):
         # Add results count if available
         if hasattr(tool_item, 'results_count') and tool_item.results_count is not None:
             renderer.with_results_count(tool_item.results_count)
+        
+        # Add execution trace if available (for traceable tools)
+        execution_trace = getattr(tool_item, "execution_trace", None)
+        if execution_trace:
+            renderer.with_execution_trace(execution_trace)
         
         return renderer 
