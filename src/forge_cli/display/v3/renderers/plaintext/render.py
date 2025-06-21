@@ -187,8 +187,12 @@ class PlaintextRenderer(BaseRenderer):
         if usage_renderable:
             renderables.append(usage_renderable)
 
+        new_renderables = []
+        for renderable in renderables:
+            new_renderables.append(renderable)
+            new_renderables.append(Text("\n"))
         # Return Group containing all renderables
-        return Group(*renderables)
+        return Group(*new_renderables)
 
     def _get_tool_renderer(self, tool_item: Any):
         """Get the appropriate specialized renderer for a tool item.
