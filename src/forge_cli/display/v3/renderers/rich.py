@@ -27,7 +27,7 @@ from ...citation_styling import long2circled
 from forge_cli.style.markdowns import convert_to_blockquote
 from ..base import BaseRenderer
 from ..style import ICONS, STATUS_ICONS, pack_queries, sliding_display
-from ..builder import Build
+from ..builder import TextBuilder
 
 
 class RichDisplayConfig(BaseModel):
@@ -214,7 +214,7 @@ class RichRenderer(BaseRenderer):
                 reasoning_text = item.text
                 if reasoning_text:
                     # Use Builder pattern for clean text processing
-                    processed_text = Build(reasoning_text).with_block_quote().build()
+                    processed_text = TextBuilder.from_text(reasoning_text).with_block_quote().build()
                     md_parts.append(processed_text)
 
         # References section - using type-based API
@@ -385,7 +385,7 @@ class RichRenderer(BaseRenderer):
             return None
 
         # Use Builder pattern for clean sliding display processing
-        return Build(execution_trace).with_slide(max_lines=3, format_type="text").build()
+        return TextBuilder.from_text(execution_trace).with_slide(max_lines=3, format_type="text").build()
 
     def _get_tool_result_summary(self, tool_item: Any) -> str:
         """Create a concise, beautiful summary of tool results."""

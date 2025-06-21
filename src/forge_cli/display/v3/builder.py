@@ -36,6 +36,26 @@ class TextBuilder:
         self._content = text
         self._is_list = False  # Track if content is a list of lines
     
+    @classmethod
+    def from_text(cls, text: str) -> "TextBuilder":
+        """Create a new TextBuilder instance from text.
+        
+        This is the preferred way to create a TextBuilder instance.
+        
+        Args:
+            text: Initial text content to process
+            
+        Returns:
+            New TextBuilder instance
+            
+        Example:
+            >>> result = TextBuilder.from_text("Hello\\nWorld").with_block_quote().build()
+            >>> print(result)
+            > Hello
+            > World
+        """
+        return cls(text)
+    
     def with_slide(
         self, 
         max_lines: int = 3, 
@@ -257,21 +277,4 @@ class TextBuilder:
             return str(self._content)
 
 
-def Build(text: str) -> TextBuilder:
-    """Create a new TextBuilder instance.
-    
-    Convenience function for creating a TextBuilder with shorter syntax.
-    
-    Args:
-        text: Initial text content to process
-        
-    Returns:
-        New TextBuilder instance
-        
-    Example:
-        >>> result = Build("Hello\\nWorld").with_block_quote().build()
-        >>> print(result)
-        > Hello
-        > World
-    """
-    return TextBuilder(text) 
+ 
