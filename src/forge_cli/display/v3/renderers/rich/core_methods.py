@@ -12,8 +12,6 @@ from forge_cli.response.type_guards import (
     is_reasoning_item,
 )
 
-from ...style import ICONS
-
 from .reason import render_reasoning_item
 from .output import render_message_content, render_citations
 from .tools import (
@@ -25,6 +23,7 @@ from .tools import (
     FunctionCallToolRender,
     ListDocumentsToolRender,
 )
+from .usage import UsageRenderer
 
 
 def render_response_method(self, response: Response) -> None:
@@ -125,17 +124,11 @@ def create_response_content(self, response: Response):
     # Create markdown content
     markdown_content = Markdown("\n\n".join(md_parts))
 
-    # Create the title format with usage information
-    title_parts = []
-
-    # Usage information with icons from style.py
+    # Create the title format with usage information using specialized renderer
+    panel_title = ""
     if response.usage:
-        title_parts.append("[yellow]" + ICONS["input_tokens"] + "[/yellow]")
-        title_parts.append(f"[green]{response.usage.input_tokens}[/green]")
-        title_parts.append("[yellow]" + ICONS["output_tokens"] + "[/yellow]") 
-        title_parts.append(f"[green]{response.usage.output_tokens}[/green]")
-
-    panel_title = " ".join(title_parts)
+        usage_renderer = UsageRenderer.from_usage_object(response.usage)
+        panel_title = usage_renderer.render()
 
     # Determine panel style based on response status
     border_style, title_style = get_panel_style(response)

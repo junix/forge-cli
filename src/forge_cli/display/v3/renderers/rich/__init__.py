@@ -14,6 +14,7 @@ It is organized into modular components for maintainability:
 
 from .render import RichRenderer, RichDisplayConfig
 from .welcome import WelcomeRenderer
+from .usage import UsageRenderer
 from .tools import (
     FileReaderToolRender,
     WebSearchToolRender,
@@ -29,6 +30,7 @@ __all__ = [
     "RichRenderer", 
     "RichDisplayConfig", 
     "WelcomeRenderer",
+    "UsageRenderer",
     "FileReaderToolRender",
     "WebSearchToolRender",
     "FileSearchToolRender",
