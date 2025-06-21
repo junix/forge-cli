@@ -3,7 +3,7 @@ from __future__ import annotations
 """Base display interface for v3 - pure rendering without input handling."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Protocol
+from typing import Protocol
 
 from forge_cli.response._types.response import Response
 
@@ -55,7 +55,7 @@ class StatusRenderer(Protocol):
 class ConsoleRenderer(Protocol):
     """Protocol for renderers that have a console attribute."""
 
-    _console: Any
+    _console: object
 
 
 class ChatModeRenderer(Protocol):
@@ -166,7 +166,7 @@ class Display:
             # Fallback for rich renderers
             self._renderer._console.print(f"[yellow]Status:[/yellow] {message}")
 
-    def show_status_rich(self, content: Any) -> None:
+    def show_status_rich(self, content: object) -> None:
         """Show Rich content (tables, panels, etc) directly."""
         if hasattr(self._renderer, "show_status_rich"):
             self._renderer.show_status_rich(content)

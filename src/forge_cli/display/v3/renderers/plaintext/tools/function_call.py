@@ -1,66 +1,54 @@
 """Function call tool renderer for plaintext display system."""
 
-from typing import Any
-
+from forge_cli.response._types.response_function_tool_call import ResponseFunctionToolCall
 from .base import PlaintextToolRenderBase
 from ..config import PlaintextDisplayConfig
 from ..styles import PlaintextStyles
-from ....style import ICONS
 
 
 class PlaintextFunctionCallToolRender(PlaintextToolRenderBase):
-    """Plaintext function call tool renderer."""
-    
-    def get_tool_metadata(self) -> tuple[str, str]:
-        """Get tool icon and display name.
+    """Plaintext renderer for function call tool calls."""
+
+    def _render_tool_specific_content(self) -> str:
+        """Render function call specific content.
         
         Returns:
-            Tuple of (tool_icon, tool_name)
-        """
-        return ICONS.get("function_call", "⚙️"), "Function Call"
-    
-    def get_tool_details(self) -> str:
-        """Get function call specific details.
-        
-        Returns:
-            Formatted details string showing function name and arguments
+            Function call content string
         """
         if not self._tool_item:
             return ""
-        
+
         parts = []
         
-        # Show function name if available
-        function_name = getattr(self._tool_item, "name", None)
-        if function_name:
-            parts.append(f"{ICONS['function_call']}{function_name}()")
+        # Add function name
+        if hasattr(self._tool_item, 'name') and self._tool_item.name:
+            parts.append(f"Function: {self._tool_item.name}")
         
-        # Show arguments preview if available
-        arguments = getattr(self._tool_item, "arguments", None)
-        if arguments:
-            # Show preview of arguments
-            if isinstance(arguments, str):
-                args_preview = arguments[:30]
-                if len(arguments) > 30:
-                    args_preview += "..."
-            else:
-                args_preview = str(arguments)[:30]
-                if len(str(arguments)) > 30:
-                    args_preview += "..."
-            parts.append(f"{ICONS['processing']}{args_preview}")
+        # Add call ID
+        if hasattr(self._tool_item, 'call_id') and self._tool_item.call_id:
+            parts.append(f"Call ID: {self._tool_item.call_id}")
         
-        return f" {ICONS['bullet']} ".join(parts) if parts else ""
-    
+        # Add arguments if available
+        if hasattr(self._tool_item, 'arguments') and self._tool_item.arguments:
+            # Truncate long arguments for display
+            args_str = str(self._tool_item.arguments)
+            if len(args_str) > 100:
+                args_str = args_str[:97] + "..."
+            parts.append(f"Arguments: {args_str}")
+        
+        return self._format_list(parts)
+
     @classmethod
-    def from_tool_item(cls, tool_item: Any, styles: PlaintextStyles, config: PlaintextDisplayConfig) -> "PlaintextFunctionCallToolRender":
-        """Factory method to create renderer from tool item.
+    def from_tool_item(cls, tool_item: ResponseFunctionToolCall, styles: PlaintextStyles, config: PlaintextDisplayConfig) -> "PlaintextFunctionCallToolRender":
+        """Create function call tool renderer from tool item.
         
         Args:
             tool_item: Function call tool item
-            styles: Style manager instance
+            styles: Plaintext styling configuration
             config: Display configuration
             
         Returns:
-            Function call tool renderer
+            PlaintextFunctionCallToolRender instance
         """
-        return cls(styles, config).with_tool_item(tool_item) 
+        renderer = cls(styles, config)
+        return renderer.with_tool_item(tool_item) 

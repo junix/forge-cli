@@ -1,31 +1,28 @@
-"""Reasoning content renderer for plaintext display system."""
-
-from typing import Any
+"""Reasoning renderer for plaintext display system."""
 
 from rich.text import Text
-from forge_cli.response.type_guards import is_reasoning_item
 
-from ..rendable import Rendable
+from forge_cli.response._types.response_reasoning_item import ResponseReasoningItem
 from .config import PlaintextDisplayConfig
 from .styles import PlaintextStyles
 
 
-class PlaintextReasoningRenderer(Rendable):
-    """Plaintext reasoning content renderer."""
-    
+class PlaintextReasoningRenderer:
+    """Renderer for reasoning content in plaintext format."""
+
     def __init__(self, styles: PlaintextStyles, config: PlaintextDisplayConfig):
-        """Initialize the reasoning renderer.
+        """Initialize reasoning renderer.
         
         Args:
-            styles: Style manager instance
+            styles: Plaintext styling configuration
             config: Display configuration
         """
-        self.styles = styles
-        self.config = config
-        self._reasoning_items = []
-    
-    def with_reasoning_items(self, items: list[Any]) -> "PlaintextReasoningRenderer":
-        """Set the reasoning items to render.
+        self._styles = styles
+        self._config = config
+        self._reasoning_items: list[ResponseReasoningItem] = []
+
+    def with_reasoning_items(self, items: list[ResponseReasoningItem]) -> "PlaintextReasoningRenderer":
+        """Add reasoning items to render.
         
         Args:
             items: List of reasoning items
@@ -35,79 +32,79 @@ class PlaintextReasoningRenderer(Rendable):
         """
         self._reasoning_items = items
         return self
-    
+
     def render(self) -> Text | None:
-        """Render reasoning content with proper formatting.
+        """Render reasoning items as Text object.
         
         Returns:
-            Rich Text object with formatted reasoning content or None if disabled
+            Text object with formatted reasoning content or None if no reasoning items
         """
-        if not self._reasoning_items or not self.config.show_reasoning:
+        if not self._reasoning_items or not self._config.show_reasoning:
             return None
-        
+
         text = Text()
         
-        for item in self._reasoning_items:
-            if hasattr(item, 'text') and item.text:
-                # Add spacing before reasoning content
+        # Add reasoning header
+        text.append("🤔 Reasoning:\n", style=self._styles.get_style("reasoning_header"))
+        
+        for idx, item in enumerate(self._reasoning_items):
+            if idx > 0:
                 text.append("\n")
-                
-                # Add reasoning text with dark green italic style
-                reasoning_lines = item.text.split("\n")
-                for line in reasoning_lines:
-                    if line.strip():
-                        indent = " " * self.config.indent_size
-                        text.append(f"{indent}{line.strip()}\n", style=self.styles.get_style("reasoning"))
-                    else:
-                        text.append("\n")
-                
-                # Add spacing after reasoning content
-                text.append("\n")
+            
+            # Add reasoning content
+            if hasattr(item, 'summary') and item.summary:
+                for summary_item in item.summary:
+                    if hasattr(summary_item, 'text'):
+                        # Indent reasoning content
+                        for line in summary_item.text.split('\n'):
+                            if line.strip():
+                                text.append(f"  {line}\n", style=self._styles.get_style("reasoning_content"))
+                            else:
+                                text.append("\n")
         
         return text
-    
+
     @classmethod
-    def from_response_items(cls, items: list[Any], styles: PlaintextStyles, config: PlaintextDisplayConfig) -> "PlaintextReasoningRenderer":
-        """Factory method to create renderer from response items.
+    def from_response_items(cls, items: list[ResponseReasoningItem], styles: PlaintextStyles, config: PlaintextDisplayConfig) -> "PlaintextReasoningRenderer":
+        """Create reasoning renderer from response items.
         
         Args:
-            items: List of response output items
-            styles: Style manager instance
+            items: List of reasoning items from response
+            styles: Plaintext styling configuration
             config: Display configuration
             
         Returns:
-            Reasoning renderer with filtered reasoning items
+            PlaintextReasoningRenderer instance
         """
-        reasoning_items = [item for item in items if is_reasoning_item(item)]
-        return cls(styles, config).with_reasoning_items(reasoning_items)
-    
+        renderer = cls(styles, config)
+        return renderer.with_reasoning_items(items)
+
     @classmethod
-    def from_single_item(cls, item: Any, styles: PlaintextStyles, config: PlaintextDisplayConfig) -> "PlaintextReasoningRenderer":
-        """Factory method to create renderer from a single reasoning item.
+    def from_single_item(cls, item: ResponseReasoningItem, styles: PlaintextStyles, config: PlaintextDisplayConfig) -> "PlaintextReasoningRenderer":
+        """Create reasoning renderer from a single reasoning item.
         
         Args:
             item: Single reasoning item
-            styles: Style manager instance
+            styles: Plaintext styling configuration
             config: Display configuration
             
         Returns:
-            Reasoning renderer with single item
+            PlaintextReasoningRenderer instance
         """
-        items = [item] if is_reasoning_item(item) else []
-        return cls(styles, config).with_reasoning_items(items)
+        renderer = cls(styles, config)
+        return renderer.with_reasoning_items([item])
 
 
 # Legacy function for backward compatibility
-def render_reasoning(items: list[Any], styles: PlaintextStyles, config: PlaintextDisplayConfig) -> Text | None:
+def render_reasoning(items: list[ResponseReasoningItem], styles: PlaintextStyles, config: PlaintextDisplayConfig) -> Text | None:
     """Legacy function wrapper for backward compatibility.
     
     Args:
-        items: List of response output items
-        styles: Style manager instance
+        items: List of reasoning items
+        styles: Plaintext styling configuration
         config: Display configuration
         
     Returns:
-        Rendered Text object with reasoning content or None
+        Text object with formatted reasoning content or None if no reasoning items
     """
-    renderer = PlaintextReasoningRenderer.from_response_items(items, styles, config)
-    return renderer.render() 
+    return PlaintextReasoningRenderer.from_response_items(items, styles, config).render() 

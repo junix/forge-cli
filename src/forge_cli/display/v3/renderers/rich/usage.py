@@ -1,9 +1,8 @@
 """Usage renderer for Rich display system."""
 
-from typing import Any
-
 from rich.markdown import Markdown
 from forge_cli.display.v3.style import ICONS
+from forge_cli.response._types.response_usage import ResponseUsage
 from ..rendable import Rendable
 
 
@@ -138,7 +137,7 @@ class UsageRenderer(Rendable):
         return " • ".join(parts)
     
     @classmethod
-    def from_usage_object(cls, usage: Any) -> "UsageRenderer":
+    def from_usage_object(cls, usage: ResponseUsage) -> "UsageRenderer":
         """Create a usage renderer from a usage object.
         
         Args:

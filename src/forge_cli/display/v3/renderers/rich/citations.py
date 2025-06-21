@@ -1,15 +1,14 @@
 """Citations renderer for Rich display system."""
 
-from typing import Any
-
 from rich.markdown import Markdown
+from forge_cli.response._types.annotations import Annotation
 from ..rendable import Rendable
 
 
 class CitationsRenderer(Rendable):
     """Renderer for citations as a references section."""
     
-    def __init__(self, citations: list[Any]):
+    def __init__(self, citations: list[Annotation]):
         """Initialize the citations renderer.
         
         Args:
@@ -52,7 +51,7 @@ class CitationsRenderer(Rendable):
 
 
 # Legacy function for backward compatibility
-def render_citations(citations: list[Any]) -> Markdown | None:
+def render_citations(citations: list[Annotation]) -> Markdown | None:
     """Legacy function wrapper for backward compatibility.
     
     Args:
