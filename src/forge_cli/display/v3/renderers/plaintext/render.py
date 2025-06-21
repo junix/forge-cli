@@ -190,7 +190,7 @@ class PlaintextRenderer(BaseRenderer):
         new_renderables = []
         for renderable in renderables:
             new_renderables.append(renderable)
-            new_renderables.append(Text("\n"))
+            # new_renderables.append(Text("\n"))
         # Return Group containing all renderables
         return Group(*new_renderables)
 

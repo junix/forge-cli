@@ -35,7 +35,7 @@ class PlaintextListDocumentsToolRender(PlaintextToolRenderBase):
             packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
             parts.append(packed)
         
-        return f" {ICONS['bullet']} ".join(parts) if parts else ""
+        return f"{ICONS['bullet']} ".join(parts) if parts else ""
     
     @classmethod
     def from_tool_item(cls, tool_item: Any, styles: PlaintextStyles, config: PlaintextDisplayConfig) -> "PlaintextListDocumentsToolRender":
