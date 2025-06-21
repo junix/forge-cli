@@ -13,6 +13,7 @@ from rich.syntax import Syntax
 
 from ..base import BaseRenderer
 from ....common.logger import logger
+from ....response._types import Response
 from ....response.type_guards import (
     is_code_interpreter_call,
     is_computer_tool_call,
@@ -32,7 +33,6 @@ from ....response.type_guards import (
 
 if TYPE_CHECKING:
     from ....config import AppConfig
-    from ....response._types import Response
 
 
 class JsonDisplayConfig(BaseModel):
@@ -93,7 +93,7 @@ class JsonRenderer(BaseRenderer):
                 # Fallback to stdout
                 self._console = Console(file=sys.stdout)
 
-    def render_response(self, response: "Response") -> None:
+    def render_response(self, response: Response) -> None:
         """Render a complete response snapshot as JSON using Rich live updates.
 
         This is the core v3 method - everything is available in the response object.

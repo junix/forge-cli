@@ -136,11 +136,11 @@ class WelcomeRenderer(Rendable):
             if model and isinstance(model, str):
                 renderer.with_model(model)
         
-        # Extract tools information - ensure it's a real list
-        if hasattr(config, 'enabled_tools') and config.enabled_tools:
+        # Extract tools information - check if attribute exists first
+        if hasattr(config, 'enabled_tools'):
             tools = getattr(config, 'enabled_tools', None)
             # Check if it's a real list, not a Mock object
-            if tools and isinstance(tools, list) and all(isinstance(tool, str) for tool in tools):
+            if tools is not None and isinstance(tools, list) and all(isinstance(tool, str) for tool in tools):
                 renderer.with_tools(tools)
         
         return renderer

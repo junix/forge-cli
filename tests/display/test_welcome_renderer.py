@@ -167,10 +167,10 @@ class TestWelcomeRenderer:
 
     def test_from_config_with_real_appconfig(self):
         """Test from_config with real AppConfig instance."""
-        # Create a real AppConfig instance
+        # Create a real AppConfig instance using the correct alias
         config = AppConfig(
             model="deepseek-r1-distill-qwen-32b",
-            enabled_tools=["file-search", "web-search", "page-reader"],
+            tool=["file-search", "web-search", "page-reader"],
             effort="medium"
         )
         
@@ -197,8 +197,11 @@ class TestWelcomeRenderer:
 
     def test_from_config_with_no_tools_appconfig(self):
         """Test from_config with AppConfig that has no enabled tools."""
-        # Create AppConfig with empty tools list
-        config = AppConfig(enabled_tools=[])
+        # For this test, we need to manually create a config and modify it after creation
+        # since AppConfig always ensures at least one tool is enabled
+        config = AppConfig()
+        # Directly set the attribute to empty list after creation
+        config.enabled_tools = []
         
         renderer = WelcomeRenderer.from_config(config)
         result = renderer.render()

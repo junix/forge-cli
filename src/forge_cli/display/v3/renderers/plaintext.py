@@ -23,7 +23,7 @@ from forge_cli.response.type_guards import (
 
 from ..base import BaseRenderer
 from ....common.logger import logger
-from ....style.markdowns import ICONS, STATUS_ICONS
+from ..style import ICONS, STATUS_ICONS
 
 if TYPE_CHECKING:
     from ....config import AppConfig
