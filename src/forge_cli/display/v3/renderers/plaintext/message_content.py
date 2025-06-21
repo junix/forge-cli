@@ -2,6 +2,7 @@
 
 from rich.text import Text
 from rich.markdown import Markdown
+from forge_cli.display.citation_styling import long2circled
 from ..rendable import Rendable
 from .styles import PlaintextStyles
 
@@ -40,8 +41,9 @@ class PlaintextMessageContentRenderer(Rendable):
             return None
         
         if self._content.type == "output_text":
-            # Simply use Rich's Markdown renderer
-            return Markdown(self._content.text)
+            # Convert long-style citation markers to circled digits like in rich renderer
+            converted_text = long2circled(self._content.text)
+            return Markdown(converted_text)
         elif self._content.type == "output_refusal":
             # Handle refusals as styled text
             text = Text()
