@@ -4,7 +4,8 @@ import pytest
 from unittest.mock import Mock
 
 from forge_cli.display.v3.renderers.rich.reason import ReasoningRenderer
-from forge_cli.display.v3.renderers.rich.output import MessageContentRenderer, CitationsRenderer
+from forge_cli.display.v3.renderers.rich.message_content import MessageContentRenderer
+from forge_cli.display.v3.renderers.rich.citations import CitationsRenderer
 from forge_cli.display.v3.renderers.rich.tools import FileReaderToolRender
 from forge_cli.display.v3.renderers.rendable import Rendable
 
@@ -226,7 +227,7 @@ class TestLegacyCompatibility:
     
     def test_legacy_content_function(self):
         """Test legacy render_message_content function."""
-        from forge_cli.display.v3.renderers.rich.output import render_message_content
+        from forge_cli.display.v3.renderers.rich.message_content import render_message_content
         
         content = Mock()
         content.type = "output_text"
@@ -237,7 +238,7 @@ class TestLegacyCompatibility:
     
     def test_legacy_citations_function(self):
         """Test legacy render_citations function."""
-        from forge_cli.display.v3.renderers.rich.output import render_citations
+        from forge_cli.display.v3.renderers.rich.citations import render_citations
         
         citation = Mock()
         citation.type = "file_citation"

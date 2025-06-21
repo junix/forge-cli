@@ -7,7 +7,6 @@ It is organized into modular components for maintainability:
 - reason.py: Reasoning content rendering
 - message_content.py: Message content rendering (MessageContentRenderer)
 - citations.py: Citations rendering (CitationsRenderer)
-- output.py: Re-exports message_content and citations for backward compatibility
 - welcome.py: Welcome screen rendering (WelcomeRenderer class)
 - usage.py: Usage statistics rendering (UsageRenderer class)
 - tools/: Tool-specific renderers (file_reader, etc.)

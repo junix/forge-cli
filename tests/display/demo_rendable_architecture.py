@@ -107,7 +107,8 @@ def demo_legacy_compatibility():
     
     # Test legacy functions
     from forge_cli.display.v3.renderers.rich.reason import render_reasoning_item
-    from forge_cli.display.v3.renderers.rich.output import render_message_content, render_citations
+    from forge_cli.display.v3.renderers.rich.message_content import render_message_content
+    from forge_cli.display.v3.renderers.rich.citations import render_citations
     
     reasoning_item = Mock(text="Legacy reasoning test")
     content = Mock(type="output_text", text="Legacy content test")
