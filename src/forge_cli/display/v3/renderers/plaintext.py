@@ -16,6 +16,7 @@ from forge_cli.response.type_guards import (
     is_file_search_call,
     is_function_call,
     is_list_documents_call,
+    is_message_item,
     is_page_reader_call,
     is_reasoning_item,
     is_web_search_call,
