@@ -1,7 +1,8 @@
 """Function call tool renderer for Rich display system."""
 
+from rich.markdown import Markdown
 from forge_cli.response._types.response_function_tool_call import ResponseFunctionToolCall
-from ....style import ICONS
+from ....style import ICONS, STATUS_ICONS
 from ...rendable import Rendable
 
 
@@ -16,65 +17,45 @@ class FunctionCallToolRender(Rendable):
         """Initialize the function call tool renderer."""
         self._parts = []
         self._status = "in_progress"
-        self._function = None
-        self._arguments = None
-        self._output = None
+        self._function_name = None
     
-    def with_function(self, function: str | None) -> "FunctionCallToolRender":
+    def with_function_name(self, function_name: str | None) -> "FunctionCallToolRender":
         """Add function name display to the render.
         
         Args:
-            function: The function name
+            function_name: The name of the function being called
             
         Returns:
             Self for method chaining
         """
-        if function:
-            self._function = function
-            self._parts.append(f"{ICONS['function_call']}{function}")
+        if function_name:
+            self._function_name = function_name
+            self._parts.append(f"{ICONS['function_call']}{function_name}()")
         return self
     
-    def with_arguments(self, arguments: str | dict | None) -> "FunctionCallToolRender":
-        """Add arguments display to the render.
+    def with_arguments(self, arguments: dict | str | None) -> "FunctionCallToolRender":
+        """Add function arguments display to the render.
         
         Args:
-            arguments: The function arguments (string or dict)
+            arguments: The function arguments (dict or JSON string)
             
         Returns:
             Self for method chaining
         """
         if arguments:
-            self._arguments = arguments
-            try:
-                import json
-                
-                args = (
-                    json.loads(arguments)
-                    if isinstance(arguments, str)
-                    else arguments
-                )
-                if isinstance(args, dict):
-                    arg_preview = ", ".join(f"{k}={v}" for k, v in list(args.items())[:2])
-                    if len(args) > 2:
-                        arg_preview += f", +{len(args) - 2} more"
-                    self._parts.append(f"{ICONS['code']}({arg_preview})")
-            except Exception:
-                self._parts.append(f"{ICONS['code']}(with arguments)")
-        return self
-    
-    def with_output(self, output: str | None) -> "FunctionCallToolRender":
-        """Add output display to the render.
-        
-        Args:
-            output: The function execution output
-            
-        Returns:
-            Self for method chaining
-        """
-        if output:
-            self._output = output
-            output_str = str(output)[:40] + "..." if len(str(output)) > 40 else str(output)
-            self._parts.append(f"{ICONS['check']}{output_str}")
+            if isinstance(arguments, dict):
+                # Show key count for dict
+                arg_count = len(arguments)
+                if arg_count > 0:
+                    arg_word = "arg" if arg_count == 1 else "args"
+                    self._parts.append(f"{ICONS['info']}{arg_count} {arg_word}")
+            elif isinstance(arguments, str):
+                # Show truncated string for JSON
+                if len(arguments) > 30:
+                    display_args = arguments[:27] + "..."
+                else:
+                    display_args = arguments
+                self._parts.append(f"{ICONS['code']}`{display_args}`")
         return self
     
     def with_status(self, status: str) -> "FunctionCallToolRender":
@@ -89,27 +70,65 @@ class FunctionCallToolRender(Rendable):
         self._status = status
         return self
     
-    def with_execution_trace(self, execution_trace: str | None) -> "FunctionCallToolRender":
-        """Add execution trace to the render (handled separately in trace blocks).
+    def with_progress(self, progress: float | None) -> "FunctionCallToolRender":
+        """Add progress display to the render.
         
         Args:
-            execution_trace: Execution trace string
+            progress: Progress as a float between 0 and 1
             
         Returns:
             Self for method chaining
         """
-        # Execution trace is handled separately in trace blocks
+        if progress is not None:
+            progress_percent = int(progress * 100)
+            self._parts.append(f"{ICONS['processing']}{progress_percent}%")
         return self
     
-    def render(self) -> str:
-        """Build and return the final rendered string.
+    def with_execution_time(self, execution_time: float | None) -> "FunctionCallToolRender":
+        """Add execution time display to the render.
+        
+        Args:
+            execution_time: Execution time in seconds
+            
+        Returns:
+            Self for method chaining
+        """
+        if execution_time is not None:
+            if execution_time < 1:
+                time_str = f"{int(execution_time * 1000)}ms"
+            else:
+                time_str = f"{execution_time:.1f}s"
+            self._parts.append(f"{ICONS['timer']}{time_str}")
+        return self
+    
+    def render(self) -> Markdown:
+        """Build and return the complete rendered content as Markdown.
         
         Returns:
-            The formatted display string for the function call tool
+            Markdown object with formatted tool line
         """
+        # Get tool icon and name
+        tool_icon = ICONS.get("function_call", ICONS["processing"])
+        tool_name = "Function"
+        
+        # Get status icon
+        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        
+        # Build result summary
+        result_summary = ""
         if self._parts:
-            return f" {ICONS['bullet']} ".join(self._parts)
-        return f"{ICONS['processing']}calling function..."
+            result_summary = f" {ICONS['bullet']} ".join(self._parts)
+        elif self._function_name:
+            result_summary = f"{ICONS['function_call']}{self._function_name}()"
+        else:
+            result_summary = f"{ICONS['processing']}calling function..."
+        
+        # Create complete tool line
+        tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{self._status}_"
+        if result_summary:
+            tool_line += f" {ICONS['bullet']} {result_summary}"
+        
+        return Markdown(tool_line)
     
     @classmethod
     def from_tool_item(cls, tool_item: ResponseFunctionToolCall) -> "FunctionCallToolRender":
@@ -123,17 +142,21 @@ class FunctionCallToolRender(Rendable):
         """
         renderer = cls()
         
-        # Add function name
-        if tool_item.function:
-            renderer.with_function(tool_item.function)
+        # Add function name if available
+        if tool_item.name:
+            renderer.with_function_name(tool_item.name)
         
-        # Add arguments
-        if tool_item.arguments:
+        # Add arguments if available
+        if hasattr(tool_item, 'arguments') and tool_item.arguments:
             renderer.with_arguments(tool_item.arguments)
         
-        # Add output if available
-        if hasattr(tool_item, 'output') and tool_item.output:
-            renderer.with_output(tool_item.output)
+        # Add progress if available
+        if hasattr(tool_item, 'progress') and tool_item.progress is not None:
+            renderer.with_progress(tool_item.progress)
+        
+        # Add execution time if available
+        if hasattr(tool_item, 'execution_time') and tool_item.execution_time is not None:
+            renderer.with_execution_time(tool_item.execution_time)
         
         # Add status
         renderer.with_status(tool_item.status)

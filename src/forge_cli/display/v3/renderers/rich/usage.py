@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from rich.markdown import Markdown
 from forge_cli.display.v3.style import ICONS
 from ..rendable import Rendable
 
@@ -58,6 +59,9 @@ class UsageRenderer(Rendable):
     def render(self) -> str:
         """Build and return the formatted usage string for panel title.
         
+        Note: This returns a string (not Markdown) because it's used for panel titles.
+        Use render_as_markdown() for Markdown content.
+        
         Returns:
             Formatted usage string with icons and colors, or empty string if no usage data
         """
@@ -77,6 +81,35 @@ class UsageRenderer(Rendable):
             title_parts.append(f"[green]{self._output_tokens}[/green]")
         
         return " ".join(title_parts)
+    
+    def render_as_markdown(self) -> Markdown | None:
+        """Build and return usage information as Markdown.
+        
+        Returns:
+            Markdown object with formatted usage information or None if no usage data
+        """
+        if not self._input_tokens and not self._output_tokens and not self._total_tokens:
+            return None
+        
+        parts = []
+        
+        # Input tokens
+        if self._input_tokens is not None:
+            parts.append(f"**Input tokens:** {self._input_tokens}")
+        
+        # Output tokens
+        if self._output_tokens is not None:
+            parts.append(f"**Output tokens:** {self._output_tokens}")
+        
+        # Total tokens (if different from input + output or if only total is available)
+        if self._total_tokens is not None:
+            if not self._input_tokens or not self._output_tokens or self._total_tokens != (self._input_tokens + self._output_tokens):
+                parts.append(f"**Total tokens:** {self._total_tokens}")
+        
+        if parts:
+            usage_text = " • ".join(parts)
+            return Markdown(usage_text)
+        return None
     
     def render_detailed(self) -> str:
         """Build and return a detailed usage string including total tokens.

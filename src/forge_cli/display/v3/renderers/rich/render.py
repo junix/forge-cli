@@ -4,7 +4,7 @@ import time
 from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
-from rich.console import Console
+from rich.console import Console, Group
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -168,8 +168,8 @@ class RichRenderer(BaseRenderer):
             self._live_started = True
 
     def _create_response_content(self, response: Response):
-        """Create rich content from complete response snapshot."""
-        md_parts: list[str] = []
+        """Create rich content from complete response snapshot using Group."""
+        renderables = []
 
         # Iterate through output items maintaining order
         for item in response.output:
@@ -177,7 +177,7 @@ class RichRenderer(BaseRenderer):
                 for content in item.content:
                     rendered_content = render_message_content(content)
                     if rendered_content:
-                        md_parts.append(rendered_content)
+                        renderables.append(rendered_content)
             elif item.type in [
                 "file_search_call",
                 "web_search_call", 
@@ -194,23 +194,39 @@ class RichRenderer(BaseRenderer):
                     tool_content = tool_renderer.render()
                     if tool_content:
                         if isinstance(tool_content, list):
-                            md_parts.extend(tool_content)
+                            # If it's a list, add each item as a separate renderable
+                            for item_content in tool_content:
+                                if item_content:  # Skip empty items
+                                    if isinstance(item_content, str):
+                                        renderables.append(Markdown(item_content))
+                                    else:
+                                        renderables.append(item_content)
                         else:
-                            md_parts.append(tool_content)
+                            # Single item
+                            if isinstance(tool_content, str):
+                                renderables.append(Markdown(tool_content))
+                            else:
+                                renderables.append(tool_content)
             elif is_reasoning_item(item):
                 rendered_reasoning = render_reasoning_item(item)
                 if rendered_reasoning:
-                    md_parts.append(rendered_reasoning)
+                    renderables.append(rendered_reasoning)
 
         # References section - using type-based API
         citations = self._extract_all_citations(response)
         if citations:
             citations_content = render_citations(citations)
             if citations_content:
-                md_parts.append(citations_content)
+                if isinstance(citations_content, str):
+                    renderables.append(Markdown(citations_content))
+                else:
+                    renderables.append(citations_content)
 
-        # Create markdown content
-        markdown_content = Markdown("\n\n".join(md_parts))
+        # Create Group to combine all renderables
+        if renderables:
+            group_content = Group(*renderables)
+        else:
+            group_content = Text("No content available")
 
         # Create the title format with usage information using specialized renderer
         panel_title = ""
@@ -222,7 +238,7 @@ class RichRenderer(BaseRenderer):
         border_style, title_style = self._get_panel_style(response)
 
         return Panel(
-            markdown_content,
+            group_content,
             title=panel_title,
             border_style=border_style,
             title_align="left",

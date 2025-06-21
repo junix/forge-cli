@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from rich.markdown import Markdown
 from ..rendable import Rendable
 
 
@@ -16,14 +17,14 @@ class CitationsRenderer(Rendable):
         """
         self.citations = citations
     
-    def render(self) -> str:
-        """Render citations as a references section.
+    def render(self) -> Markdown | None:
+        """Render citations as a Markdown references section.
         
         Returns:
-            Formatted references section
+            Markdown object with formatted references section or None if no citations
         """
         if not self.citations:
-            return ""
+            return None
         
         ref_lines = ["### References"]
         for idx, citation in enumerate(self.citations, 1):
@@ -46,17 +47,18 @@ class CitationsRenderer(Rendable):
                 source = citation.file_id or "unknown_file"
                 ref_lines.append(f"󰅼[{idx}] {source}")
         
-        return "\n".join(ref_lines)
+        references_text = "\n".join(ref_lines)
+        return Markdown(references_text)
 
 
 # Legacy function for backward compatibility
-def render_citations(citations: list[Any]) -> str:
+def render_citations(citations: list[Any]) -> Markdown | None:
     """Legacy function wrapper for backward compatibility.
     
     Args:
         citations: List of citation objects
         
     Returns:
-        Formatted references section
+        Markdown object with formatted references section or None if no citations
     """
     return CitationsRenderer(citations).render() 

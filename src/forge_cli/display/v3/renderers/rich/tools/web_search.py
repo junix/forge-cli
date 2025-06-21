@@ -1,7 +1,9 @@
 """Web search tool renderer for Rich display system."""
 
+from rich.markdown import Markdown
 from forge_cli.response._types.response_function_web_search import ResponseFunctionWebSearch
-from ....style import ICONS, pack_queries
+from ....style import ICONS, STATUS_ICONS, pack_queries
+from ....builder import TextBuilder
 from ...rendable import Rendable
 
 
@@ -15,24 +17,36 @@ class WebSearchToolRender(Rendable):
     def __init__(self):
         """Initialize the web search tool renderer."""
         self._parts = []
-        self._queries = []
         self._status = "in_progress"
         self._execution_trace = None
     
-    def with_queries(self, queries: list[str]) -> "WebSearchToolRender":
-        """Add search queries to the render.
+    def with_query(self, query: str | None) -> "WebSearchToolRender":
+        """Add search query display to the render using consistent styling.
         
         Args:
-            queries: List of search queries
+            query: The search query
             
         Returns:
             Self for method chaining
         """
-        if queries:
-            self._queries = queries
-            # Use pack_queries for consistent display (it handles shortening internally)
-            packed = pack_queries(*[f"{q}" for q in queries])
+        if query:
+            # Use pack_queries for consistent display style
+            packed = pack_queries(f'"{query}"')
             self._parts.append(packed)
+        return self
+    
+    def with_result_count(self, result_count: int | None) -> "WebSearchToolRender":
+        """Add result count display to the render.
+        
+        Args:
+            result_count: Number of search results found
+            
+        Returns:
+            Self for method chaining
+        """
+        if result_count is not None:
+            result_word = "result" if result_count == 1 else "results"
+            self._parts.append(f"{ICONS['search_results']}{result_count} {result_word}")
         return self
     
     def with_status(self, status: str) -> "WebSearchToolRender":
@@ -47,17 +61,18 @@ class WebSearchToolRender(Rendable):
         self._status = status
         return self
     
-    def with_results_count(self, count: int | None) -> "WebSearchToolRender":
-        """Add results count to the render.
+    def with_progress(self, progress: float | None) -> "WebSearchToolRender":
+        """Add progress display to the render.
         
         Args:
-            count: Number of search results found
+            progress: Progress as a float between 0 and 1
             
         Returns:
             Self for method chaining
         """
-        if count is not None:
-            self._parts.append(f"{ICONS['check']}{count} results")
+        if progress is not None:
+            progress_percent = int(progress * 100)
+            self._parts.append(f"{ICONS['processing']}{progress_percent}%")
         return self
     
     def with_execution_trace(self, execution_trace: str | None) -> "WebSearchToolRender":
@@ -72,28 +87,25 @@ class WebSearchToolRender(Rendable):
         self._execution_trace = execution_trace
         return self
     
-    def render(self) -> list[str]:
+    def render(self) -> list[Markdown]:
         """Build and return the complete rendered content including tool line and trace.
         
         Returns:
-            List of markdown parts (tool line and optional trace block)
+            List of Markdown objects (tool line and optional trace block)
         """
         parts = []
         
         # Get tool icon and name
-        tool_icon = ICONS.get("web_search_call", ICONS["processing"])
-        tool_name = "Web"
+        tool_icon = ICONS.get("web_search_call", ICONS["search"])
+        tool_name = "WebSearch"
         
         # Get status icon
-        from ....style import STATUS_ICONS
         status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
         
         # Build result summary
         result_summary = ""
         if self._parts:
             result_summary = f" {ICONS['bullet']} ".join(self._parts)
-        elif self._status == "searching":
-            result_summary = f"{ICONS['searching']} init"
         else:
             result_summary = f"{ICONS['processing']}searching web..."
         
@@ -102,14 +114,15 @@ class WebSearchToolRender(Rendable):
         if result_summary:
             tool_line += f" {ICONS['bullet']} {result_summary}"
         
-        parts.append(tool_line)
+        parts.append(Markdown(tool_line))
         
         # Add execution trace if available
         if self._execution_trace:
-            from ....builder import TextBuilder
             trace_block = TextBuilder.from_text(self._execution_trace).with_slide(max_lines=3, format_type="text").build()
             if trace_block:
-                parts.extend(trace_block)
+                # Convert trace block strings to Markdown objects
+                for trace_line in trace_block:
+                    parts.append(Markdown(trace_line))
         
         return parts
     
@@ -125,18 +138,22 @@ class WebSearchToolRender(Rendable):
         """
         renderer = cls()
         
-        # Add queries if available
-        if tool_item.queries:
-            renderer.with_queries(tool_item.queries)
+        # Add query if available
+        if tool_item.query:
+            renderer.with_query(tool_item.query)
+        
+        # Add result count if available
+        if hasattr(tool_item, 'result_count') and tool_item.result_count is not None:
+            renderer.with_result_count(tool_item.result_count)
+        
+        # Add progress if available
+        if hasattr(tool_item, 'progress') and tool_item.progress is not None:
+            renderer.with_progress(tool_item.progress)
         
         # Add status
         renderer.with_status(tool_item.status)
         
-        # Add results count if available
-        if hasattr(tool_item, 'results_count') and tool_item.results_count is not None:
-            renderer.with_results_count(tool_item.results_count)
-        
-        # Add execution trace if available (for traceable tools)
+        # Add execution trace if available
         execution_trace = getattr(tool_item, "execution_trace", None)
         if execution_trace:
             renderer.with_execution_trace(execution_trace)

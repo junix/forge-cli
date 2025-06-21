@@ -1,7 +1,8 @@
 """Code interpreter tool renderer for Rich display system."""
 
+from rich.markdown import Markdown
 from forge_cli.response._types.response_code_interpreter_tool_call import ResponseCodeInterpreterToolCall
-from ....style import ICONS
+from ....style import ICONS, STATUS_ICONS
 from ...rendable import Rendable
 
 
@@ -14,53 +15,42 @@ class CodeInterpreterToolRender(Rendable):
     
     def __init__(self):
         """Initialize the code interpreter tool renderer."""
-        super().__init__()
         self._parts = []
-        self._code = None
-        self._output = None
+        self._status = "in_progress"
+        self._code_snippet = None
     
-    def get_tool_metadata(self) -> tuple[str, str]:
-        """Get tool icon and display name for code interpreter.
-        
-        Returns:
-            Tuple of (tool_icon, tool_name)
-        """
-        return ICONS.get("code_interpreter_call", ICONS["processing"]), "Interpreter"
-    
-    def with_code(self, code: str | None) -> "CodeInterpreterToolRender":
-        """Add code display to the render.
+    def with_language(self, language: str | None) -> "CodeInterpreterToolRender":
+        """Add programming language display to the render.
         
         Args:
-            code: The code to be executed
+            language: The programming language being executed
+            
+        Returns:
+            Self for method chaining
+        """
+        if language:
+            self._parts.append(f"{ICONS['code_interpreter_call']}{language}")
+        return self
+    
+    def with_code_snippet(self, code: str | None) -> "CodeInterpreterToolRender":
+        """Add code snippet display to the render.
+        
+        Args:
+            code: The code being executed (will be truncated for display)
             
         Returns:
             Self for method chaining
         """
         if code:
-            self._code = code
-            # Detect language based on code content
-            language = self._detect_language(code)
-            
-            # Show code preview (first line or short snippet)
-            code_preview = code.split('\n')[0][:30] + "..." if len(code) > 30 else code.split('\n')[0]
-            code_preview = code_preview.replace('`', "'")  # Avoid markdown conflicts
-            
-            self._parts.append(f"{ICONS['code']}Code: `{code_preview}`")
-        return self
-    
-    def with_output(self, output: str | None) -> "CodeInterpreterToolRender":
-        """Add output display to the render.
-        
-        Args:
-            output: The execution output
-            
-        Returns:
-            Self for method chaining
-        """
-        if output:
-            self._output = output
-            output_str = str(output)[:30] + "..." if len(str(output)) > 30 else str(output)
-            self._parts.append(f"{ICONS['output_tokens']}output: {output_str}")
+            # Store full code for potential detailed display
+            self._code_snippet = code
+            # Show first line or truncated version for the tool line
+            first_line = code.split('\n')[0]
+            if len(first_line) > 40:
+                display_code = first_line[:37] + "..."
+            else:
+                display_code = first_line
+            self._parts.append(f'{ICONS["code"]}`{display_code}`')
         return self
     
     def with_status(self, status: str) -> "CodeInterpreterToolRender":
@@ -75,49 +65,63 @@ class CodeInterpreterToolRender(Rendable):
         self._status = status
         return self
     
-    def with_execution_trace(self, execution_trace: str | None) -> "CodeInterpreterToolRender":
-        """Add execution trace to the render (handled separately in trace blocks).
+    def with_progress(self, progress: float | None) -> "CodeInterpreterToolRender":
+        """Add progress display to the render.
         
         Args:
-            execution_trace: Execution trace string
+            progress: Progress as a float between 0 and 1
             
         Returns:
             Self for method chaining
         """
-        # Execution trace is handled separately in trace blocks
+        if progress is not None:
+            progress_percent = int(progress * 100)
+            self._parts.append(f"{ICONS['processing']}{progress_percent}%")
         return self
     
-    def _detect_language(self, code: str) -> str:
-        """Detect programming language from code content.
+    def with_execution_time(self, execution_time: float | None) -> "CodeInterpreterToolRender":
+        """Add execution time display to the render.
         
         Args:
-            code: The code string to analyze
+            execution_time: Execution time in seconds
             
         Returns:
-            Detected language name
+            Self for method chaining
         """
-        code_lower = code.lower().strip()
-        
-        # Python indicators
-        if any(keyword in code_lower for keyword in ['import ', 'def ', 'print(', 'if __name__']):
-            return "Python"
-        
-        # JavaScript indicators  
-        if any(keyword in code_lower for keyword in ['function ', 'const ', 'let ', 'var ', 'console.log']):
-            return "JavaScript"
-        
-        # Default fallback
-        return "Code"
+        if execution_time is not None:
+            if execution_time < 1:
+                time_str = f"{int(execution_time * 1000)}ms"
+            else:
+                time_str = f"{execution_time:.1f}s"
+            self._parts.append(f"{ICONS['timer']}{time_str}")
+        return self
     
-    def render(self) -> str:
-        """Build and return the final rendered string.
+    def render(self) -> Markdown:
+        """Build and return the complete rendered content as Markdown.
         
         Returns:
-            The formatted display string for the code interpreter tool
+            Markdown object with formatted tool line
         """
+        # Get tool icon and name
+        tool_icon = ICONS.get("code_interpreter_call", ICONS["processing"])
+        tool_name = "CodeInterpreter"
+        
+        # Get status icon
+        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        
+        # Build result summary
+        result_summary = ""
         if self._parts:
-            return f" {ICONS['bullet']} ".join(self._parts)
-        return f"{ICONS['processing']}executing code..."
+            result_summary = f" {ICONS['bullet']} ".join(self._parts)
+        else:
+            result_summary = f"{ICONS['processing']}executing code..."
+        
+        # Create complete tool line
+        tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{self._status}_"
+        if result_summary:
+            tool_line += f" {ICONS['bullet']} {result_summary}"
+        
+        return Markdown(tool_line)
     
     @classmethod
     def from_tool_item(cls, tool_item: ResponseCodeInterpreterToolCall) -> "CodeInterpreterToolRender":
@@ -131,24 +135,21 @@ class CodeInterpreterToolRender(Rendable):
         """
         renderer = cls()
         
-        # Add code if available
-        if tool_item.code:
-            renderer.with_code(tool_item.code)
+        # Add language if available
+        if hasattr(tool_item, 'language') and tool_item.language:
+            renderer.with_language(tool_item.language)
         
-        # Add output if available (from results) - check if results is iterable
-        if hasattr(tool_item, 'results') and tool_item.results:
-            try:
-                # Combine results into a single output string
-                output_parts = []
-                for result in tool_item.results:
-                    if hasattr(result, 'text') and result.text:
-                        output_parts.append(result.text)
-                if output_parts:
-                    combined_output = "\n".join(output_parts)
-                    renderer.with_output(combined_output)
-            except (TypeError, AttributeError):
-                # Handle Mock objects or other non-iterable cases
-                pass
+        # Add code snippet if available
+        if hasattr(tool_item, 'code') and tool_item.code:
+            renderer.with_code_snippet(tool_item.code)
+        
+        # Add progress if available
+        if hasattr(tool_item, 'progress') and tool_item.progress is not None:
+            renderer.with_progress(tool_item.progress)
+        
+        # Add execution time if available
+        if hasattr(tool_item, 'execution_time') and tool_item.execution_time is not None:
+            renderer.with_execution_time(tool_item.execution_time)
         
         # Add status
         renderer.with_status(tool_item.status)

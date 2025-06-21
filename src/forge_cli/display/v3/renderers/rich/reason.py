@@ -1,5 +1,6 @@
 """Reasoning renderer for Rich display system."""
 
+from rich.markdown import Markdown
 from ...builder import TextBuilder
 from ..rendable import Rendable
 
@@ -15,28 +16,29 @@ class ReasoningRenderer(Rendable):
         """
         self.reasoning_item = reasoning_item
     
-    def render(self) -> str:
-        """Render a reasoning item with proper formatting.
+    def render(self) -> Markdown | None:
+        """Render a reasoning item as a Markdown blockquote.
         
         Returns:
-            Formatted reasoning text as blockquote
+            Markdown object with reasoning text as blockquote, or None if no text
         """
         # Use the text property to get consolidated reasoning text
         reasoning_text = self.reasoning_item.text
         if reasoning_text:
-            # Use Builder pattern for clean text processing
-            return TextBuilder.from_text(reasoning_text).with_block_quote().build()
-        return ""
+            # Format as blockquote markdown and return Markdown object
+            blockquote_text = TextBuilder.from_text(reasoning_text).with_block_quote().build()
+            return Markdown(blockquote_text)
+        return None
 
 
 # Legacy function for backward compatibility
-def render_reasoning_item(reasoning_item) -> str:
+def render_reasoning_item(reasoning_item) -> Markdown | None:
     """Legacy function wrapper for backward compatibility.
     
     Args:
         reasoning_item: The reasoning item to render
         
     Returns:
-        Formatted reasoning text as blockquote
+        Markdown object with reasoning text as blockquote, or None if no text
     """
     return ReasoningRenderer(reasoning_item).render() 

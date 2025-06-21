@@ -1,7 +1,8 @@
 """Page reader tool renderer for Rich display system."""
 
+from rich.markdown import Markdown
 from forge_cli.response._types.response_function_page_reader import ResponseFunctionPageReader
-from ....style import ICONS
+from ....style import ICONS, STATUS_ICONS, pack_queries
 from ...rendable import Rendable
 
 
@@ -17,54 +18,40 @@ class PageReaderToolRender(Rendable):
         self._parts = []
         self._status = "in_progress"
     
-    def with_document_id(self, document_id: str) -> "PageReaderToolRender":
-        """Add document ID display to the render.
+    def with_document_title(self, document_title: str | None) -> "PageReaderToolRender":
+        """Add document title display to the render.
         
         Args:
-            document_id: The document ID to read from
+            document_title: The title of the document being read
             
         Returns:
             Self for method chaining
         """
-        if document_id:
-            doc_short = document_id[:12] + "..." if len(document_id) > 12 else document_id
-            self._parts.append(f"{ICONS['page_reader_call']}{doc_short}")
+        if document_title:
+            # Truncate very long titles for readability
+            if len(document_title) > 30:
+                display_title = document_title[:27] + "..."
+            else:
+                display_title = document_title
+            self._parts.append(f'{ICONS["page_reader_call"]}"{display_title}"')
         return self
     
     def with_page_range(self, start_page: int | None, end_page: int | None) -> "PageReaderToolRender":
         """Add page range display to the render.
         
         Args:
-            start_page: Starting page number (0-indexed)
-            end_page: Ending page number (0-indexed), None means single page
+            start_page: Starting page number
+            end_page: Ending page number
             
         Returns:
             Self for method chaining
         """
         if start_page is not None:
             if end_page is not None and end_page != start_page:
-                # Convert from 0-indexed to 1-indexed for display
-                display_start = start_page + 1
-                display_end = end_page + 1
-                self._parts.append(f"{ICONS['page_reader_call']}[p.{display_start}-{display_end}]")
+                page_range = f"pp.{start_page}-{end_page}"
             else:
-                # Single page
-                display_page = start_page + 1
-                self._parts.append(f"{ICONS['page_reader_call']}[p.{display_page}]")
-        return self
-    
-    def with_progress(self, progress: float | None) -> "PageReaderToolRender":
-        """Add progress display to the render.
-        
-        Args:
-            progress: Progress value from 0.0 to 1.0, or None if not available
-            
-        Returns:
-            Self for method chaining
-        """
-        if progress is not None:
-            progress_percent = int(progress * 100)
-            self._parts.append(f"{ICONS['processing']}{progress_percent}%")
+                page_range = f"p.{start_page}"
+            self._parts.append(f"{ICONS['pages']}{page_range}")
         return self
     
     def with_status(self, status: str) -> "PageReaderToolRender":
@@ -79,27 +66,47 @@ class PageReaderToolRender(Rendable):
         self._status = status
         return self
     
-    def with_execution_trace(self, execution_trace: str | None) -> "PageReaderToolRender":
-        """Add execution trace to the render (handled separately in trace blocks).
+    def with_query(self, query: str | None) -> "PageReaderToolRender":
+        """Add query display to the render using consistent styling.
         
         Args:
-            execution_trace: Execution trace string
+            query: The search query within the pages
             
         Returns:
             Self for method chaining
         """
-        # Execution trace is handled separately in trace blocks
+        if query:
+            # Use pack_queries for consistent display style
+            packed = pack_queries(f'"{query}"')
+            self._parts.append(packed)
         return self
     
-    def render(self) -> str:
-        """Build and return the final rendered string.
+    def render(self) -> Markdown:
+        """Build and return the complete rendered content as Markdown.
         
         Returns:
-            The formatted display string for the page reader tool
+            Markdown object with formatted tool line
         """
+        # Get tool icon and name
+        tool_icon = ICONS.get("page_reader_call", ICONS["processing"])
+        tool_name = "PageReader"
+        
+        # Get status icon
+        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        
+        # Build result summary
+        result_summary = ""
         if self._parts:
-            return f" {ICONS['bullet']} ".join(self._parts)
-        return f"{ICONS['processing']}reading pages..."
+            result_summary = f" {ICONS['bullet']} ".join(self._parts)
+        else:
+            result_summary = f"{ICONS['processing']}reading pages..."
+        
+        # Create complete tool line
+        tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{self._status}_"
+        if result_summary:
+            tool_line += f" {ICONS['bullet']} {result_summary}"
+        
+        return Markdown(tool_line)
     
     @classmethod
     def from_tool_item(cls, tool_item: ResponseFunctionPageReader) -> "PageReaderToolRender":
@@ -113,17 +120,19 @@ class PageReaderToolRender(Rendable):
         """
         renderer = cls()
         
-        # Add document ID
-        renderer.with_document_id(tool_item.document_id)
+        # Add document title if available
+        if tool_item.document_title:
+            renderer.with_document_title(tool_item.document_title)
         
-        # Add page range
-        renderer.with_page_range(tool_item.start_page, tool_item.end_page)
-        
-        # Add progress if available
-        if hasattr(tool_item, 'progress') and tool_item.progress is not None:
-            renderer.with_progress(tool_item.progress)
+        # Add page range if available
+        if tool_item.start_page is not None:
+            renderer.with_page_range(tool_item.start_page, tool_item.end_page)
         
         # Add status
         renderer.with_status(tool_item.status)
+        
+        # Add query if available
+        if hasattr(tool_item, 'query') and tool_item.query:
+            renderer.with_query(tool_item.query)
         
         return renderer 

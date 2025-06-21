@@ -1,5 +1,6 @@
 """File reader tool renderer for Rich display system."""
 
+from rich.markdown import Markdown
 from forge_cli.response._types.response_function_file_reader import ResponseFunctionFileReader
 from ....style import ICONS, pack_queries
 from ...rendable import Rendable
@@ -168,11 +169,11 @@ class FileReaderToolRender(Rendable):
         self._execution_trace = execution_trace
         return self
     
-    def render(self) -> list[str]:
+    def render(self) -> list[Markdown]:
         """Build and return the complete rendered content including tool line and trace.
         
         Returns:
-            List of markdown parts (tool line and optional trace block)
+            List of Markdown objects (tool line and optional trace block)
         """
         parts = []
         
@@ -199,14 +200,16 @@ class FileReaderToolRender(Rendable):
         if result_summary:
             tool_line += f" {ICONS['bullet']} {result_summary}"
         
-        parts.append(tool_line)
+        parts.append(Markdown(tool_line))
         
         # Add execution trace if available
         if self._execution_trace:
             from ....builder import TextBuilder
             trace_block = TextBuilder.from_text(self._execution_trace).with_slide(max_lines=3, format_type="text").build()
             if trace_block:
-                parts.extend(trace_block)
+                # Convert trace block strings to Markdown objects
+                for trace_line in trace_block:
+                    parts.append(Markdown(trace_line))
         
         return parts
     

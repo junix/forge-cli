@@ -1,7 +1,8 @@
 """File search tool renderer for Rich display system."""
 
+from rich.markdown import Markdown
 from forge_cli.response._types.response_file_search_tool_call import ResponseFileSearchToolCall
-from ....style import ICONS, pack_queries
+from ....style import ICONS, STATUS_ICONS, pack_queries
 from ...rendable import Rendable
 
 
@@ -14,32 +15,36 @@ class FileSearchToolRender(Rendable):
     
     def __init__(self):
         """Initialize the file search tool renderer."""
-        super().__init__()
         self._parts = []
-        self._queries = []
+        self._status = "in_progress"
     
-    def get_tool_metadata(self) -> tuple[str, str]:
-        """Get tool icon and display name for file search.
-        
-        Returns:
-            Tuple of (tool_icon, tool_name)
-        """
-        return ICONS.get("file_search_call", ICONS["processing"]), "Search"
-    
-    def with_queries(self, queries: list[str]) -> "FileSearchToolRender":
-        """Add search queries to the render.
+    def with_query(self, query: str | None) -> "FileSearchToolRender":
+        """Add query display to the render using consistent styling.
         
         Args:
-            queries: List of search queries
+            query: The search query
             
         Returns:
             Self for method chaining
         """
-        if queries:
-            self._queries = queries
-            # Use pack_queries for consistent display (it handles shortening internally)
-            packed = pack_queries(*[f'"{q}"' for q in queries])
+        if query:
+            # Use pack_queries for consistent display style
+            packed = pack_queries(f'"{query}"')
             self._parts.append(packed)
+        return self
+    
+    def with_result_count(self, result_count: int | None) -> "FileSearchToolRender":
+        """Add result count display to the render.
+        
+        Args:
+            result_count: Number of search results found
+            
+        Returns:
+            Self for method chaining
+        """
+        if result_count is not None:
+            result_word = "result" if result_count == 1 else "results"
+            self._parts.append(f"{ICONS['search_results']}{result_count} {result_word}")
         return self
     
     def with_status(self, status: str) -> "FileSearchToolRender":
@@ -54,44 +59,46 @@ class FileSearchToolRender(Rendable):
         self._status = status
         return self
     
-    def with_results_count(self, count: int | None) -> "FileSearchToolRender":
-        """Add results count to the render.
+    def with_progress(self, progress: float | None) -> "FileSearchToolRender":
+        """Add progress display to the render.
         
         Args:
-            count: Number of search results found
+            progress: Progress as a float between 0 and 1
             
         Returns:
             Self for method chaining
         """
-        if count is not None:
-            self._parts.append(f"{ICONS['check']}{count} results")
+        if progress is not None:
+            progress_percent = int(progress * 100)
+            self._parts.append(f"{ICONS['processing']}{progress_percent}%")
         return self
     
-    def with_execution_trace(self, execution_trace: str | None) -> "FileSearchToolRender":
-        """Add execution trace to the render (handled separately in trace blocks).
-        
-        Args:
-            execution_trace: Execution trace string
-            
-        Returns:
-            Self for method chaining
-        """
-        # Execution trace is handled separately in trace blocks
-        return self
-    
-    def render(self) -> str:
-        """Build and return the final rendered string for result summary only.
+    def render(self) -> Markdown:
+        """Build and return the complete rendered content as Markdown.
         
         Returns:
-            The formatted display string for the file search tool results
+            Markdown object with formatted tool line
         """
+        # Get tool icon and name
+        tool_icon = ICONS.get("file_search_call", ICONS["search"])
+        tool_name = "FileSearch"
+        
+        # Get status icon
+        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        
+        # Build result summary
+        result_summary = ""
         if self._parts:
-            return f" {ICONS['bullet']} ".join(self._parts)
+            result_summary = f" {ICONS['bullet']} ".join(self._parts)
+        else:
+            result_summary = f"{ICONS['processing']}searching files..."
         
-        if self._status == "searching":
-            return f"{ICONS['searching']} init"
+        # Create complete tool line
+        tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{self._status}_"
+        if result_summary:
+            tool_line += f" {ICONS['bullet']} {result_summary}"
         
-        return f"{ICONS['processing']}searching files..."
+        return Markdown(tool_line)
     
     @classmethod
     def from_tool_item(cls, tool_item: ResponseFileSearchToolCall) -> "FileSearchToolRender":
@@ -105,15 +112,19 @@ class FileSearchToolRender(Rendable):
         """
         renderer = cls()
         
-        # Add queries if available
-        if tool_item.queries:
-            renderer.with_queries(tool_item.queries)
+        # Add query if available
+        if tool_item.query:
+            renderer.with_query(tool_item.query)
+        
+        # Add result count if available
+        if hasattr(tool_item, 'result_count') and tool_item.result_count is not None:
+            renderer.with_result_count(tool_item.result_count)
+        
+        # Add progress if available
+        if hasattr(tool_item, 'progress') and tool_item.progress is not None:
+            renderer.with_progress(tool_item.progress)
         
         # Add status
         renderer.with_status(tool_item.status)
-        
-        # Add results count if available
-        if hasattr(tool_item, 'results_count') and tool_item.results_count is not None:
-            renderer.with_results_count(tool_item.results_count)
         
         return renderer 
