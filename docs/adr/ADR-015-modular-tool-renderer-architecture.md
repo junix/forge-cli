@@ -1,9 +1,10 @@
 # ADR-015: Modular Tool Renderer Architecture
 
-**Status**: Accepted  
+**Status**: Superseded by ADR-016  
 **Date**: 2025-01-20  
 **Decision Makers**: Development Team  
-**Complements**: ADR-008 (v3 Response Snapshot Display Architecture)
+**Complements**: ADR-008 (v3 Response Snapshot Display Architecture)  
+**Superseded By**: ADR-016 (Simplified Tool Renderer Architecture)
 
 ## Context
 

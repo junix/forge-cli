@@ -9,6 +9,8 @@ The module has evolved through multiple versions:
 - **v1**: Original display implementations (legacy, removed)
 - **v2**: Event-based display architecture (legacy, deprecated)
 - **v3**: Current snapshot-based architecture with simplified renderer design
+  - **ADR-015**: Modular tool renderer architecture (superseded)
+  - **ADR-016**: Simplified tool renderer architecture (current)
 
 ## Directory Structure
 
@@ -119,6 +121,66 @@ class BaseDisplay(ABC):
 Original display implementations for various output formats.
 
 ## v3 Architecture (Current)
+
+### Tool Renderer Architecture (ADR-016)
+
+The current v3 architecture uses simplified tool renderers with complete self-containment:
+
+```python
+class ToolNameToolRender(Rendable):
+    """Simplified tool renderer with single render method."""
+    
+    def __init__(self):
+        self._parts = []
+        self._status = "in_progress"
+        self._execution_trace = None
+    
+    def with_property(self, value) -> "ToolNameToolRender":
+        """Builder pattern methods for setting properties."""
+        # Process and store property
+        return self
+    
+    def render(self) -> list[str]:
+        """Return complete tool content including tool line and traces."""
+        parts = []
+        
+        # Build complete tool line with icon, name, status, and results
+        tool_icon = ICONS.get("tool_name_call", ICONS["processing"])
+        tool_name = "Tool Name"
+        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        
+        result_summary = " • ".join(self._parts) if self._parts else f"{ICONS['processing']}processing..."
+        
+        tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{self._status}_"
+        if result_summary:
+            tool_line += f" {ICONS['bullet']} {result_summary}"
+        
+        parts.append(tool_line)
+        
+        # Add execution trace if available
+        if self._execution_trace:
+            from ....builder import TextBuilder
+            trace_block = TextBuilder.from_text(self._execution_trace).with_slide(max_lines=3, format_type="text").build()
+            if trace_block:
+                parts.extend(trace_block)
+        
+        return parts
+    
+    @classmethod
+    def from_tool_item(cls, tool_item) -> "ToolNameToolRender":
+        """Factory method for creating renderer from tool item."""
+        renderer = cls()
+        # Extract properties from tool_item and configure renderer
+        return renderer
+```
+
+### Key Principles
+
+1. **Single Render Method**: Each renderer has exactly one `render()` method
+2. **Complete Self-Containment**: All rendering logic (icons, formatting, traces) handled internally
+3. **Unified Query Rendering**: All tools use `pack_queries()` utility for consistent query formatting
+4. **Builder Pattern**: Fluent interface for configuring renderers
+5. **Simple Inheritance**: All tools inherit from simple `Rendable` base class
 
 ### v3/base.py - Component Classes
 
@@ -241,6 +303,90 @@ display_v1_compatible.handle_text_delta("Hello world")
 ```
 
 ## Development Guidelines
+
+### Creating Tool Renderers (ADR-016)
+
+When creating new tool renderers for v3:
+
+1. **Inherit from simple Rendable class**:
+
+```python
+from forge_cli.display.v3.renderers.rendable import Rendable
+from forge_cli.display.v3.style import ICONS, STATUS_ICONS, pack_queries
+
+class NewToolRender(Rendable):
+    """Tool renderer for new tool type."""
+    
+    def __init__(self):
+        self._parts = []
+        self._status = "in_progress"
+        self._execution_trace = None
+    
+    def with_property(self, value) -> "NewToolRender":
+        """Add property using builder pattern."""
+        if value:
+            self._parts.append(f"{ICONS['info']}{value}")
+        return self
+    
+    def with_queries(self, queries: list[str]) -> "NewToolRender":
+        """Add queries using unified style."""
+        if queries:
+            # Use pack_queries for consistent formatting (handles shortening internally)
+            packed = pack_queries(*[f'"{q}"' for q in queries])
+            self._parts.append(packed)
+        return self
+    
+    def render(self) -> list[str]:
+        """Return complete tool content including tool line and traces."""
+        parts = []
+        
+        # Build complete tool line with icon, name, status, and results
+        tool_icon = ICONS.get("new_tool_call", ICONS["processing"])
+        tool_name = "NewTool"
+        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        
+        result_summary = " • ".join(self._parts) if self._parts else f"{ICONS['processing']}processing..."
+        
+        tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{self._status}_"
+        if result_summary:
+            tool_line += f" {ICONS['bullet']} {result_summary}"
+        
+        parts.append(tool_line)
+        
+        # Add execution trace if available
+        if self._execution_trace:
+            from ....builder import TextBuilder
+            trace_block = TextBuilder.from_text(self._execution_trace).with_slide(max_lines=3, format_type="text").build()
+            if trace_block:
+                parts.extend(trace_block)
+        
+        return parts
+    
+    @classmethod
+    def from_tool_item(cls, tool_item) -> "NewToolRender":
+        """Factory method for tool item integration."""
+        renderer = cls()
+        
+        # Extract properties from tool item
+        if hasattr(tool_item, 'property_name'):
+            renderer.with_property(tool_item.property_name)
+        
+        renderer.with_status(tool_item.status)
+        
+        # Add execution trace if available
+        execution_trace = getattr(tool_item, "execution_trace", None)
+        if execution_trace:
+            renderer.with_execution_trace(execution_trace)
+        
+        return renderer
+```
+
+2. **Key principles to follow**:
+   - **Single render() method**: Only one method that returns complete content
+   - **Self-containment**: Handle all formatting internally (icons, status, traces)
+   - **Unified query style**: Always use `pack_queries()` for query formatting
+   - **Builder pattern**: Use fluent `with_*()` methods for configuration
+   - **Complete content**: Return tool line + execution traces in single call
 
 ### Adding New V3 Renderers (Recommended)
 
