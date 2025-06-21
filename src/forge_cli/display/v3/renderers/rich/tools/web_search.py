@@ -1,5 +1,6 @@
 """Web search tool renderer for Rich display system."""
 
+from forge_cli.response._types.response_function_web_search import ResponseFunctionWebSearch
 from ....style import ICONS, pack_queries
 from ...rendable import Rendable
 
@@ -28,8 +29,8 @@ class WebSearchToolRender(Rendable):
         """
         if queries:
             self._queries = queries
-            # Use pack_queries for beautiful display
-            shortened_queries = [q[:30] + "..." if len(q) > 30 else q for q in queries]
+            # Use pack_queries for consistent display
+            shortened_queries = [q[:25] + "..." if len(q) > 25 else q for q in queries]
             packed = pack_queries(*[f"{q}" for q in shortened_queries])
             self._parts.append(packed)
         return self
@@ -83,31 +84,29 @@ class WebSearchToolRender(Rendable):
         if self._status == "searching":
             return f"{ICONS['searching']} init"
         
-        return f"{ICONS['processing']}preparing web search..."
+        return f"{ICONS['processing']}searching web..."
     
     @classmethod
-    def from_tool_item(cls, tool_item) -> str:
-        """Create a web search tool render from a tool item and return the formatted string.
+    def from_tool_item(cls, tool_item: ResponseFunctionWebSearch) -> "WebSearchToolRender":
+        """Create a web search tool renderer from a tool item.
         
         Args:
             tool_item: The web search tool item to render
             
         Returns:
-            Formatted display string
+            WebSearchToolRender instance configured with the tool item data
         """
         renderer = cls()
         
         # Add queries if available
-        if hasattr(tool_item, 'queries') and tool_item.queries:
+        if tool_item.queries:
             renderer.with_queries(tool_item.queries)
         
         # Add status
-        if hasattr(tool_item, 'status'):
-            renderer.with_status(tool_item.status)
+        renderer.with_status(tool_item.status)
         
         # Add results count if available
-        results_count = getattr(tool_item, 'results_count', None)
-        if results_count is not None:
-            renderer.with_results_count(results_count)
+        if hasattr(tool_item, 'results_count') and tool_item.results_count is not None:
+            renderer.with_results_count(tool_item.results_count)
         
-        return renderer.render() 
+        return renderer 

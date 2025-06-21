@@ -137,47 +137,47 @@ def demo_query_handling():
 def demo_from_tool_item():
     """Demonstrate the from_tool_item class method."""
     print("=== from_tool_item Method ===")
+    print()
     
-    # Example 1: With filename attribute
-    print("1. Tool item with filename:")
-    class MockToolWithFilename:
-        def __init__(self):
-            self.doc_ids = ["doc_123"]
-            self.query = "Analyze the content"
-            
-    tool1 = MockToolWithFilename()
-    setattr(tool1, "file_name", "analysis_report.docx")
-    setattr(tool1, "progress", 0.6)
+    # Create mock tool items for testing
     
-    result1 = FileReaderToolRender.from_tool_item(tool1)
-    print(f"   Result: {result1}")
+    # Tool 1: File with name and progress
+    tool1 = MockToolItem()
+    tool1.file_name = "research_report.pdf"
+    tool1.doc_ids = []
+    tool1.progress = 0.75
     
-    # Example 2: With doc IDs only
-    print("2. Tool item with doc IDs only:")
-    class MockToolWithDocIds:
-        def __init__(self):
-            self.doc_ids = ["document_id_987654321"]
-            self.query = "Extract key points"
-            
-    tool2 = MockToolWithDocIds()
-    setattr(tool2, "progress", 0.3)
+    print("Tool 1 (file with name and progress):")
+    renderer1 = FileReaderToolRender.from_tool_item(tool1)
+    result1 = renderer1.render()
+    print(f"  Input: file_name='research_report.pdf', progress=0.75")
+    print(f"  Output: {result1}")
+    print()
     
-    result2 = FileReaderToolRender.from_tool_item(tool2)
-    print(f"   Result: {result2}")
+    # Tool 2: File with doc ID only
+    tool2 = MockToolItem()
+    tool2.file_name = None
+    tool2.doc_ids = ["doc_abc123def456789"]
+    tool2.progress = None
     
-    # Example 3: Real ResponseFunctionFileReader
-    print("3. Real ResponseFunctionFileReader model:")
-    tool3 = ResponseFunctionFileReader(
-        id="reader_001",
-        type="file_reader_call", 
-        status="in_progress",
-        doc_ids=["pdf_document_456"],
-        query="Summarize the executive summary section",
-        progress=0.9
-    )
+    print("Tool 2 (file with doc ID only):")
+    renderer2 = FileReaderToolRender.from_tool_item(tool2)
+    result2 = renderer2.render()
+    print(f"  Input: doc_ids=['doc_abc123def456789']")
+    print(f"  Output: {result2}")
+    print()
     
-    result3 = FileReaderToolRender.from_tool_item(tool3)
-    print(f"   Result: {result3}")
+    # Tool 3: Minimal data
+    tool3 = MockToolItem()
+    tool3.file_name = None
+    tool3.doc_ids = []
+    tool3.progress = None
+    
+    print("Tool 3 (minimal data):")
+    renderer3 = FileReaderToolRender.from_tool_item(tool3)
+    result3 = renderer3.render()
+    print(f"  Input: (empty)")
+    print(f"  Output: {result3}")
     print()
 
 

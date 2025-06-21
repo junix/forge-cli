@@ -1,5 +1,6 @@
 """Code interpreter tool renderer for Rich display system."""
 
+from forge_cli.response._types.response_code_interpreter_tool_call import ResponseCodeInterpreterToolCall
 from ....style import ICONS
 from ...rendable import Rendable
 
@@ -29,27 +30,14 @@ class CodeInterpreterToolRender(Rendable):
         """
         if code:
             self._code = code
-            # Detect language from code
-            code_lower = code.lower()
-            if "import" in code_lower or "def " in code_lower:
-                lang = "Python"
-            elif "const " in code_lower or "function " in code_lower:
-                lang = "JavaScript"
-            elif "#include" in code_lower:
-                lang = "C/C++"
-            else:
-                lang = "Code"
-
-            # Extract first meaningful line
-            lines = [line.strip() for line in code.split("\n") if line.strip() and not line.strip().startswith("#")]
-            if lines:
-                code_preview = lines[0][:35] + "..." if len(lines[0]) > 35 else lines[0]
-                self._parts.append(f"{ICONS['code']}{lang}: `{code_preview}`")
-
-                # Show line count for longer code
-                total_lines = len([line for line in code.split("\n") if line.strip()])
-                if total_lines > 5:
-                    self._parts.append(f"{ICONS['code']}{total_lines} lines")
+            # Detect language based on code content
+            language = self._detect_language(code)
+            
+            # Show code preview (first line or short snippet)
+            code_preview = code.split('\n')[0][:30] + "..." if len(code) > 30 else code.split('\n')[0]
+            code_preview = code_preview.replace('`', "'")  # Avoid markdown conflicts
+            
+            self._parts.append(f"{ICONS['code']}Code: `{code_preview}`")
         return self
     
     def with_output(self, output: str | None) -> "CodeInterpreterToolRender":
@@ -63,8 +51,8 @@ class CodeInterpreterToolRender(Rendable):
         """
         if output:
             self._output = output
-            output_preview = str(output)[:30] + "..." if len(str(output)) > 30 else str(output)
-            self._parts.append(f"{ICONS['output_tokens']}output: {output_preview}")
+            output_str = str(output)[:30] + "..." if len(str(output)) > 30 else str(output)
+            self._parts.append(f"{ICONS['output_tokens']}output: {output_str}")
         return self
     
     def with_status(self, status: str) -> "CodeInterpreterToolRender":
@@ -91,6 +79,28 @@ class CodeInterpreterToolRender(Rendable):
         # Execution trace is handled separately in trace blocks
         return self
     
+    def _detect_language(self, code: str) -> str:
+        """Detect programming language from code content.
+        
+        Args:
+            code: The code string to analyze
+            
+        Returns:
+            Detected language name
+        """
+        code_lower = code.lower().strip()
+        
+        # Python indicators
+        if any(keyword in code_lower for keyword in ['import ', 'def ', 'print(', 'if __name__']):
+            return "Python"
+        
+        # JavaScript indicators  
+        if any(keyword in code_lower for keyword in ['function ', 'const ', 'let ', 'var ', 'console.log']):
+            return "JavaScript"
+        
+        # Default fallback
+        return "Code"
+    
     def render(self) -> str:
         """Build and return the final rendered string.
         
@@ -102,29 +112,33 @@ class CodeInterpreterToolRender(Rendable):
         return f"{ICONS['processing']}executing code..."
     
     @classmethod
-    def from_tool_item(cls, tool_item) -> str:
-        """Create a code interpreter tool render from a tool item and return the formatted string.
+    def from_tool_item(cls, tool_item: ResponseCodeInterpreterToolCall) -> "CodeInterpreterToolRender":
+        """Create a code interpreter tool renderer from a tool item.
         
         Args:
             tool_item: The code interpreter tool item to render
             
         Returns:
-            Formatted display string
+            CodeInterpreterToolRender instance configured with the tool item data
         """
         renderer = cls()
         
         # Add code if available
-        code = getattr(tool_item, 'code', None)
-        if code:
-            renderer.with_code(code)
+        if tool_item.code:
+            renderer.with_code(tool_item.code)
         
-        # Add output if available
-        output = getattr(tool_item, 'output', None)
-        if output:
-            renderer.with_output(output)
+        # Add output if available (from results)
+        if tool_item.results:
+            # Combine results into a single output string
+            output_parts = []
+            for result in tool_item.results:
+                if hasattr(result, 'text') and result.text:
+                    output_parts.append(result.text)
+            if output_parts:
+                combined_output = "\n".join(output_parts)
+                renderer.with_output(combined_output)
         
         # Add status
-        if hasattr(tool_item, 'status'):
-            renderer.with_status(tool_item.status)
+        renderer.with_status(tool_item.status)
         
-        return renderer.render() 
+        return renderer 

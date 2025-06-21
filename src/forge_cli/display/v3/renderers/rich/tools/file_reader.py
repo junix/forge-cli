@@ -1,5 +1,6 @@
 """File reader tool renderer for Rich display system."""
 
+from forge_cli.response._types.response_function_file_reader import ResponseFunctionFileReader
 from ....style import ICONS
 from ...rendable import Rendable
 
@@ -156,38 +157,32 @@ class FileReaderToolRender(Rendable):
         return f"{ICONS['processing']}loading file..."
     
     @classmethod
-    def from_tool_item(cls, tool_item) -> str:
-        """Create a file reader tool render from a tool item and return the formatted string.
-        
-        This is a convenience method that matches the current rendering style exactly.
+    def from_tool_item(cls, tool_item: ResponseFunctionFileReader) -> "FileReaderToolRender":
+        """Create a file reader tool renderer from a tool item.
         
         Args:
             tool_item: The file reader tool item to render
             
         Returns:
-            Formatted display string
+            FileReaderToolRender instance configured with the tool item data
         """
         renderer = cls()
-        parts = []
         
-        # File identification - matches current logic exactly
-        file_name = getattr(tool_item, "file_name", None)
-        if file_name:
-            # Show file extension
-            ext = file_name.split(".")[-1].lower() if "." in file_name else "file"
-            name_short = file_name[:30] + "..." if len(file_name) > 30 else file_name
-            parts.append(f'{ICONS["file_reader_call"]}"{name_short}" [{ext.upper()}]')
-        elif tool_item.doc_ids and len(tool_item.doc_ids) > 0:
-            parts.append(f"{ICONS['file_reader_call']}file:{tool_item.doc_ids[0][:12]}...")
+        # File identification - use file_name if available, otherwise doc_ids
+        if hasattr(tool_item, 'file_name') and tool_item.file_name:
+            renderer.with_filename(tool_item.file_name)
+        elif tool_item.doc_ids:
+            renderer.with_doc_ids(tool_item.doc_ids)
         
-        # Show progress if available (inherited from TraceableToolCall)
-        progress = getattr(tool_item, "progress", None)
-        if progress is not None:
-            progress_percent = int(progress * 100)
-            parts.append(f"{ICONS['processing']}{progress_percent}%")
+        # Show progress if available
+        if hasattr(tool_item, 'progress') and tool_item.progress is not None:
+            renderer.with_progress(tool_item.progress)
         
-        # Note: execution trace is now handled separately in trace block
+        # Add query
+        if tool_item.query:
+            renderer.with_query(tool_item.query)
         
-        if parts:
-            return f" {ICONS['bullet']} ".join(parts)
-        return f"{ICONS['processing']}loading file..." 
+        # Add status
+        renderer.with_status(tool_item.status)
+        
+        return renderer 

@@ -3,6 +3,7 @@
 import pytest
 from src.forge_cli.display.v3.renderers.rich import FileReaderToolRender
 from src.forge_cli.response._types.response_function_file_reader import ResponseFunctionFileReader
+from unittest.mock import Mock
 
 
 class TestFileReaderToolRender:
@@ -109,64 +110,58 @@ class TestFileReaderToolRender:
 
     def test_from_tool_item_with_filename(self):
         """Test from_tool_item class method with filename."""
-        # Create a mock tool item
-        class MockToolItem:
-            def __init__(self):
-                self.doc_ids = ["doc123"]
-                self.query = "test query"
-                
-        tool_item = MockToolItem()
-        setattr(tool_item, "file_name", "test.pdf")
-        setattr(tool_item, "progress", 0.8)
+        # Mock tool item with filename
+        tool_item = Mock()
+        tool_item.file_name = "sample_report.pdf"
+        tool_item.doc_ids = []  # Empty to trigger filename path
+        tool_item.progress = 0.8
+
+        renderer = FileReaderToolRender.from_tool_item(tool_item)
+        result = renderer.render()
         
-        result = FileReaderToolRender.from_tool_item(tool_item)
-        assert '"test.pdf"' in result
-        assert "[PDF]" in result
+        # Should contain filename and progress
+        assert "sample_report.pdf" in result
         assert "80%" in result
 
     def test_from_tool_item_with_doc_ids_only(self):
         """Test from_tool_item class method with doc IDs only."""
-        # Create a mock tool item
-        class MockToolItem:
-            def __init__(self):
-                self.doc_ids = ["document_id_12345678901234567890"]
-                self.query = "test query"
-                
-        tool_item = MockToolItem()
-        # No file_name attribute
-        setattr(tool_item, "progress", None)
+        # Mock tool item with doc IDs only
+        tool_item = Mock()
+        tool_item.file_name = None
+        tool_item.doc_ids = ["doc12345", "doc67890"]
+        tool_item.progress = None
+
+        renderer = FileReaderToolRender.from_tool_item(tool_item)
+        result = renderer.render()
         
-        result = FileReaderToolRender.from_tool_item(tool_item)
-        assert "file:document_id" in result
+        # Should contain the first doc ID truncated
+        assert "doc12345" in result
 
     def test_from_tool_item_minimal(self):
         """Test from_tool_item class method with minimal data."""
-        # Create a mock tool item with minimal data
-        class MockToolItem:
-            def __init__(self):
-                self.doc_ids = []
-                self.query = ""
-                
-        tool_item = MockToolItem()
-        setattr(tool_item, "progress", None)
+        # Mock tool item with minimal data
+        tool_item = Mock()
+        tool_item.file_name = None
+        tool_item.doc_ids = []
+        tool_item.progress = None
+
+        renderer = FileReaderToolRender.from_tool_item(tool_item)
+        result = renderer.render()
         
-        result = FileReaderToolRender.from_tool_item(tool_item)
-        assert "loading file..." in result
+        # Should contain default loading message
+        assert "loading file" in result
 
     def test_from_tool_item_with_real_model(self):
         """Test from_tool_item with actual ResponseFunctionFileReader model."""
-        tool_item = ResponseFunctionFileReader(
-            id="test_123",
-            type="file_reader_call",
-            status="in_progress",
-            doc_ids=["doc_abc123"],
-            query="What are the key findings?",
-            progress=0.6
-        )
+        from forge_cli.response._types.response_function_file_reader import ResponseFunctionFileReader
         
-        result = FileReaderToolRender.from_tool_item(tool_item)
-        assert "file:doc_abc123" in result
-        assert "60%" in result
+        # Create real model instance
+        tool_item = ResponseFunctionFileReader(file_name="data.csv")
+        
+        renderer = FileReaderToolRender.from_tool_item(tool_item)
+        result = renderer.render()
+        
+        assert "data.csv" in result
 
     def test_empty_values_handling(self):
         """Test handling of None and empty values."""

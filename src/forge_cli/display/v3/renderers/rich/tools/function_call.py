@@ -1,9 +1,10 @@
 """Function call tool renderer for Rich display system."""
 
 from ....style import ICONS
+from ...rendable import Rendable
 
 
-class FunctionCallToolRender:
+class FunctionCallToolRender(Rendable):
     """Specialized renderer for function call tool calls.
     
     This class handles the rendering of function call tool calls with consistent styling
@@ -110,14 +111,14 @@ class FunctionCallToolRender:
         return f"{ICONS['processing']}calling function..."
     
     @classmethod
-    def from_tool_item(cls, tool_item) -> str:
-        """Create a function call tool render from a tool item and return the formatted string.
+    def from_tool_item(cls, tool_item) -> "FunctionCallToolRender":
+        """Create a function call tool renderer from a tool item.
         
         Args:
             tool_item: The function call tool item to render
             
         Returns:
-            Formatted display string
+            FunctionCallToolRender instance configured with the tool item data
         """
         renderer = cls()
         
@@ -138,4 +139,4 @@ class FunctionCallToolRender:
         if hasattr(tool_item, 'status'):
             renderer.with_status(tool_item.status)
         
-        return renderer.render() 
+        return renderer 

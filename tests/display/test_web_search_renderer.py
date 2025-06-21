@@ -66,7 +66,8 @@ def test_web_search_factory_method():
         queries=["Python programming"], 
         status="searching"
     )
-    result = WebSearchToolRender.from_tool_item(tool_item)
+    renderer = WebSearchToolRender.from_tool_item(tool_item)
+    result = renderer.render()
     
     print(f"Factory test result: {result}")
     assert "Python programming" in result

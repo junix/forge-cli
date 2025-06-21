@@ -1,5 +1,6 @@
 """Page reader tool renderer for Rich display system."""
 
+from forge_cli.response._types.response_function_page_reader import ResponseFunctionPageReader
 from ....style import ICONS
 from ...rendable import Rendable
 
@@ -15,35 +16,41 @@ class PageReaderToolRender(Rendable):
         """Initialize the page reader tool renderer."""
         self._parts = []
         self._status = "in_progress"
-        self._document_id = None
-        self._start_page = None
-        self._end_page = None
     
-    def with_document_id(self, document_id: str | None) -> "PageReaderToolRender":
+    def with_document_id(self, document_id: str) -> "PageReaderToolRender":
         """Add document ID display to the render.
         
         Args:
-            document_id: The document ID to display
+            document_id: The document ID to read from
             
         Returns:
             Self for method chaining
         """
         if document_id:
-            self._document_id = document_id
+            doc_short = document_id[:12] + "..." if len(document_id) > 12 else document_id
+            self._parts.append(f"{ICONS['page_reader_call']}{doc_short}")
         return self
     
     def with_page_range(self, start_page: int | None, end_page: int | None) -> "PageReaderToolRender":
         """Add page range display to the render.
         
         Args:
-            start_page: Starting page number
-            end_page: Ending page number
+            start_page: Starting page number (0-indexed)
+            end_page: Ending page number (0-indexed), None means single page
             
         Returns:
             Self for method chaining
         """
-        self._start_page = start_page
-        self._end_page = end_page
+        if start_page is not None:
+            if end_page is not None and end_page != start_page:
+                # Convert from 0-indexed to 1-indexed for display
+                display_start = start_page + 1
+                display_end = end_page + 1
+                self._parts.append(f"{ICONS['page_reader_call']}[p.{display_start}-{display_end}]")
+            else:
+                # Single page
+                display_page = start_page + 1
+                self._parts.append(f"{ICONS['page_reader_call']}[p.{display_page}]")
         return self
     
     def with_progress(self, progress: float | None) -> "PageReaderToolRender":
@@ -90,56 +97,33 @@ class PageReaderToolRender(Rendable):
         Returns:
             The formatted display string for the page reader tool
         """
-        parts = []
-        
-        # Document identification with page range
-        if self._document_id:
-            doc_short = self._document_id
-            if self._start_page is not None:
-                if self._end_page is not None and self._end_page != self._start_page:
-                    page_info = f"p.{self._start_page}-{self._end_page}"
-                else:
-                    page_info = f"p.{self._start_page}"
-                parts.append(f"{ICONS['page_reader_call']} 󰈙 {doc_short} 󰕅 [{page_info}]")
-            else:
-                parts.append(f"{ICONS['page_reader_call']} 󰈙 {doc_short}")
-        
-        # Add additional parts from builder methods
-        parts.extend(self._parts)
-        
-        if parts:
-            return f" {ICONS['bullet']} ".join(parts)
-        return f"{ICONS['processing']}loading pages..."
+        if self._parts:
+            return f" {ICONS['bullet']} ".join(self._parts)
+        return f"{ICONS['processing']}reading pages..."
     
     @classmethod
-    def from_tool_item(cls, tool_item) -> str:
-        """Create a page reader tool render from a tool item and return the formatted string.
+    def from_tool_item(cls, tool_item: ResponseFunctionPageReader) -> "PageReaderToolRender":
+        """Create a page reader tool renderer from a tool item.
         
         Args:
             tool_item: The page reader tool item to render
             
         Returns:
-            Formatted display string
+            PageReaderToolRender instance configured with the tool item data
         """
         renderer = cls()
         
         # Add document ID
-        if hasattr(tool_item, 'document_id'):
-            renderer.with_document_id(tool_item.document_id)
+        renderer.with_document_id(tool_item.document_id)
         
         # Add page range
-        start_page = getattr(tool_item, 'start_page', None)
-        end_page = getattr(tool_item, 'end_page', None)
-        if start_page is not None or end_page is not None:
-            renderer.with_page_range(start_page, end_page)
+        renderer.with_page_range(tool_item.start_page, tool_item.end_page)
         
         # Add progress if available
-        progress = getattr(tool_item, 'progress', None)
-        if progress is not None:
-            renderer.with_progress(progress)
+        if hasattr(tool_item, 'progress') and tool_item.progress is not None:
+            renderer.with_progress(tool_item.progress)
         
         # Add status
-        if hasattr(tool_item, 'status'):
-            renderer.with_status(tool_item.status)
+        renderer.with_status(tool_item.status)
         
-        return renderer.render() 
+        return renderer 

@@ -1,9 +1,11 @@
 """List documents tool renderer for Rich display system."""
 
+from forge_cli.response._types.response_list_documents_tool_call import ResponseListDocumentsToolCall
 from ....style import ICONS, pack_queries
+from ...rendable import Rendable
 
 
-class ListDocumentsToolRender:
+class ListDocumentsToolRender(Rendable):
     """Specialized renderer for list documents tool calls.
     
     This class handles the rendering of list documents tool calls with consistent styling
@@ -85,28 +87,26 @@ class ListDocumentsToolRender:
         return f"{ICONS['processing']}listing documents..."
     
     @classmethod
-    def from_tool_item(cls, tool_item) -> str:
-        """Create a list documents tool render from a tool item and return the formatted string.
+    def from_tool_item(cls, tool_item: ResponseListDocumentsToolCall) -> "ListDocumentsToolRender":
+        """Create a list documents tool renderer from a tool item.
         
         Args:
             tool_item: The list documents tool item to render
             
         Returns:
-            Formatted display string
+            ListDocumentsToolRender instance configured with the tool item data
         """
         renderer = cls()
         
         # Add queries if available
-        if hasattr(tool_item, 'queries') and tool_item.queries:
+        if tool_item.queries:
             renderer.with_queries(tool_item.queries)
         
         # Add status
-        if hasattr(tool_item, 'status'):
-            renderer.with_status(tool_item.status)
+        renderer.with_status(tool_item.status)
         
         # Add document count if available
-        document_count = getattr(tool_item, 'document_count', None)
-        if document_count is not None:
-            renderer.with_document_count(document_count)
+        if hasattr(tool_item, 'document_count') and tool_item.document_count is not None:
+            renderer.with_document_count(tool_item.document_count)
         
-        return renderer.render() 
+        return renderer 
