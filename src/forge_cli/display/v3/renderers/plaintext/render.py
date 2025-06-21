@@ -3,7 +3,7 @@
 import time
 from typing import TYPE_CHECKING, Any, Optional
 
-from rich.console import Console
+from rich.console import Console, Group
 from rich.live import Live
 from rich.text import Text
 
@@ -48,7 +48,7 @@ class PlaintextRenderer(BaseRenderer):
     """Refactored plaintext renderer using modular components.
 
     Creates beautiful, colorful plaintext output without panels or markdown.
-    Uses only Rich's Live display and Text components with custom styling.
+    Uses Rich's Group to combine different renderable objects.
     
     Now uses modular components following the same pattern as Rich renderer:
     - Separate renderers for each component type
@@ -98,8 +98,8 @@ class PlaintextRenderer(BaseRenderer):
         if not self._live_started:
             self._start_live_display()
 
-        # Create text content using modular renderers
-        content = self._create_response_text_modular(response)
+        # Create content using modular renderers and Group
+        content = self._create_response_group_modular(response)
 
         # Update live display
         if self._live and self._live_started:
@@ -139,53 +139,53 @@ class PlaintextRenderer(BaseRenderer):
             self._live.start()
             self._live_started = True
 
-    def _create_response_text_modular(self, response: Response) -> Text:
-        """Create Rich Text from complete response snapshot using modular renderers."""
-        text = Text()
+    def _create_response_group_modular(self, response: Response) -> Group:
+        """Create Rich Group from complete response snapshot using modular renderers."""
+        renderables = []
 
         # Process output items in their original order to preserve event sequence
         for item in response.output:
             if is_message_item(item):
-                # Use message content renderer
+                # Use message content renderer for each content item
                 for content in item.content:
-                    message_text = PlaintextMessageContentRenderer.from_content(
-                        content, self._styles, self._config
+                    message_renderable = PlaintextMessageContentRenderer.from_content(
+                        content, self._styles
                     )
-                    if message_text:
-                        text.append(message_text)
+                    if message_renderable:
+                        renderables.append(message_renderable)
 
             elif is_reasoning_item(item) and self._config.show_reasoning:
                 # Use reasoning renderer for single item
-                reasoning_text = PlaintextReasoningRenderer.from_single_item(
+                reasoning_renderable = PlaintextReasoningRenderer.from_single_item(
                     item, self._styles, self._config
                 ).render()
-                if reasoning_text:
-                    text.append(reasoning_text)
+                if reasoning_renderable:
+                    renderables.append(reasoning_renderable)
 
             elif self._is_tool_item(item) and self._config.show_tool_details:
                 # Use specialized tool renderers
                 tool_renderer = self._get_tool_renderer(item)
                 if tool_renderer:
-                    tool_text = tool_renderer.render()
-                    if tool_text:
-                        text.append(tool_text)
+                    tool_renderable = tool_renderer.render()
+                    if tool_renderable:
+                        renderables.append(tool_renderable)
 
         # Add citations section using citations renderer
-        citations_text = PlaintextCitationsRenderer.from_response(
+        citations_renderable = PlaintextCitationsRenderer.from_response(
             response, self._styles, self._config
         ).render()
-        if citations_text:
-            text.append("\n")
-            text.append(citations_text)
+        if citations_renderable:
+            renderables.append(citations_renderable)
 
         # Add usage statistics using usage renderer
-        usage_text = PlaintextUsageRenderer.from_response(
+        usage_renderable = PlaintextUsageRenderer.from_response(
             response, self._render_count, self._styles, self._config
         ).render()
-        if usage_text:
-            text.append(usage_text)
+        if usage_renderable:
+            renderables.append(usage_renderable)
 
-        return text
+        # Return Group containing all renderables
+        return Group(*renderables)
 
     def _get_tool_renderer(self, tool_item: Any):
         """Get the appropriate specialized renderer for a tool item.
