@@ -6,13 +6,14 @@ It is organized into modular components for maintainability:
 - render.py: Main RichRenderer class and configuration
 - reason.py: Reasoning content rendering
 - output.py: Message content and citation rendering  
-- welcome.py: Welcome screen rendering
+- welcome.py: Welcome screen rendering (WelcomeRenderer class)
 - tools/: Tool-specific renderers (file_reader, etc.)
 - core_methods.py: Core rendering methods
 - tool_methods.py: Tool result summary methods
 """
 
 from .render import RichRenderer, RichDisplayConfig
+from .welcome import WelcomeRenderer
 
-# Maintain backward compatibility
-__all__ = ["RichRenderer", "RichDisplayConfig"] 
+# Maintain backward compatibility and export new classes
+__all__ = ["RichRenderer", "RichDisplayConfig", "WelcomeRenderer"] 
