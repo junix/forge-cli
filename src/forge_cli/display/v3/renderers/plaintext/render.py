@@ -101,6 +101,9 @@ class PlaintextRenderer(BaseRenderer):
         # Create content using modular renderers and Group
         content = self._create_response_group_modular(response)
 
+        # Save current content for potential final print
+        self._current_content = content
+
         # Update live display
         if self._live and self._live_started:
             self._live.update(content)
@@ -113,8 +116,10 @@ class PlaintextRenderer(BaseRenderer):
     def finalize(self) -> None:
         """Complete rendering and cleanup resources."""
         if self._live and self._live_started:
-            # Stop live display
+            # Stop live display (transient=True clears screen), then print final content once
             self._live.stop()
+            if getattr(self, "_current_content", None) is not None:
+                self._console.print(self._current_content)
             self._live = None
             self._live_started = False
 
@@ -132,7 +137,7 @@ class PlaintextRenderer(BaseRenderer):
                 initial_text,
                 console=self._console,
                 refresh_per_second=self._config.refresh_rate,
-                transient=False,
+                transient=True,
             )
 
         if not self._live_started:
