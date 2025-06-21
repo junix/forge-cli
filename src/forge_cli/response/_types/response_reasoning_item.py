@@ -40,3 +40,27 @@ class ResponseReasoningItem(BaseModel):
     One of `in_progress`, `completed`, or `incomplete`. Populated when items are
     returned via API.
     """
+
+    @property
+    def text(self) -> str:
+        """Get the consolidated text from all summary items.
+        
+        Returns:
+            Combined text from all summary items, joined with double newlines.
+            Returns empty string if no summary or no text content.
+            
+        Example:
+            >>> item.text
+            "First reasoning part\\n\\nSecond reasoning part"
+        """
+        if not self.summary:
+            return ""
+        
+        reasoning_parts: list[str] = []
+        for summary in self.summary:
+            if summary.text:
+                summary_text = summary.text.strip()
+                if summary_text:
+                    reasoning_parts.append(summary_text)
+        
+        return "\n\n".join(reasoning_parts)

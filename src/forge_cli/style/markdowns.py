@@ -102,6 +102,34 @@ def italicize_markdown(text: str, use_robust: bool = True) -> str:
         return rendered
 
 
+def convert_to_blockquote(markdown_text: str) -> str:
+    """Convert markdown text to blockquote format.
+    
+    Args:
+        markdown_text: The markdown text to convert
+        
+    Returns:
+        The text formatted with blockquote markers (> prefix)
+        
+    Example:
+        >>> convert_to_blockquote("Hello\\nWorld")
+        "> Hello\\n> World"
+        
+        >>> convert_to_blockquote("Line 1\\n\\nLine 2")
+        "> Line 1\\n>\\n> Line 2"
+    """
+    quoted_lines: list[str] = []
+    for line in markdown_text.splitlines():
+        if line.strip():
+            # Non-empty lines get blockquote prefix
+            quoted_lines.append(f"> {line}")
+        else:
+            # Empty lines just get blockquote marker to preserve spacing
+            quoted_lines.append(">")
+    
+    return "\n".join(quoted_lines)
+
+
 def italicize_file(
     input_path: Path | str, output_path: Path | str | None = None, use_robust: bool = True, in_place: bool = False
 ) -> Path:

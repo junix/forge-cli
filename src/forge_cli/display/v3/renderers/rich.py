@@ -24,8 +24,10 @@ from forge_cli.response.type_guards import (
 )
 
 from ...citation_styling import long2circled
+from forge_cli.style.markdowns import convert_to_blockquote
 from ..base import BaseRenderer
-from ..style import ICONS, STATUS_ICONS, pack_queries
+from ..style import ICONS, STATUS_ICONS, pack_queries, sliding_display
+from ..builder import Build
 
 
 class RichDisplayConfig(BaseModel):
@@ -208,31 +210,12 @@ class RichRenderer(BaseRenderer):
                     # For non-traceable tools, show just the tool line
                     md_parts.append(tool_line)
             elif is_reasoning_item(item):
-                if item.summary:
-                    # Collect all reasoning text and apply robust italic formatting
-                    reasoning_parts: list[str] = []
-                    for summary in item.summary:
-                        if summary.text:
-                            summary_text = summary.text.strip()
-                            if summary_text:
-                                reasoning_parts.append(summary_text)
-                    
-                    if reasoning_parts:
-                        # Combine all reasoning text into one block
-                        combined_reasoning = "\n\n".join(reasoning_parts)
-                        
-                        # Wrap each line in blockquotes for visual distinction
-                        quoted_lines: list[str] = []
-                        for line in combined_reasoning.splitlines():
-                            if line.strip():
-                                # Just wrap in blockquote, no italic formatting
-                                quoted_lines.append(f"> {line}")
-                            else:
-                                # Empty lines just get blockquote marker to preserve spacing
-                                quoted_lines.append(">")
-                        
-                        if quoted_lines:
-                            md_parts.append("\n".join(quoted_lines))
+                # Use the text property to get consolidated reasoning text
+                reasoning_text = item.text
+                if reasoning_text:
+                    # Use Builder pattern for clean text processing
+                    processed_text = Build(reasoning_text).with_block_quote().build()
+                    md_parts.append(processed_text)
 
         # References section - using type-based API
         citations = self._extract_all_citations(response)
@@ -389,7 +372,7 @@ class RichRenderer(BaseRenderer):
         return None
 
     def _get_trace_block(self, tool_item: Any) -> list[str] | None:
-        """Extract the last 3 trace lines from a traceable tool for multi-line display.
+        """Extract the last few trace lines from a traceable tool for sliding display.
 
         Args:
             tool_item: The tool item to extract trace from
@@ -401,20 +384,8 @@ class RichRenderer(BaseRenderer):
         if not execution_trace:
             return None
 
-        # Get last 3 trace lines
-        trace_lines = execution_trace.strip().split("\n")
-        if not trace_lines:
-            return None
-
-        # Take the last 3 lines (or fewer if less than 3 available)
-        last_lines = trace_lines[-3:]
-
-        formatted_lines = ["```text"]
-        for line in last_lines:
-            formatted_lines.append(line)
-        formatted_lines.append("```")
-
-        return formatted_lines
+        # Use Builder pattern for clean sliding display processing
+        return Build(execution_trace).with_slide(max_lines=3, format_type="text").build()
 
     def _get_tool_result_summary(self, tool_item: Any) -> str:
         """Create a concise, beautiful summary of tool results."""

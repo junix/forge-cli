@@ -191,22 +191,19 @@ class PlaintextRenderer(BaseRenderer):
                         text.append(f"{content.refusal}\n", style=self._styles["error"])
 
             elif is_reasoning_item(item) and self._config.show_reasoning:
-                # Handle reasoning content with dark green italic style
-                if item.summary:
-                    # text.append("🤔 ", style=self._styles["reasoning_header"])
-                    # text.append("AI Thinking Process", style=self._styles["reasoning_header"])
+                # Handle reasoning content with dark green italic style using the text property
+                reasoning_text = item.text
+                if reasoning_text:
                     text.append("\n", style="")
-
-                    for summary in item.summary:
-                        if summary.text:
-                            # Add reasoning text with dark green italic style
-                            reasoning_lines = summary.text.split("\n")
-                            for line in reasoning_lines:
-                                if line.strip():
-                                    indent = "" * self._config.indent_size
-                                    text.append(f"{indent}{line.strip()}\n", style=self._styles["reasoning"])
-                                else:
-                                    text.append("\n")
+                    
+                    # Add reasoning text with dark green italic style
+                    reasoning_lines = reasoning_text.split("\n")
+                    for line in reasoning_lines:
+                        if line.strip():
+                            indent = " " * self._config.indent_size
+                            text.append(f"{indent}{line.strip()}\n", style=self._styles["reasoning"])
+                        else:
+                            text.append("\n")
                     text.append("\n")
 
             elif (
