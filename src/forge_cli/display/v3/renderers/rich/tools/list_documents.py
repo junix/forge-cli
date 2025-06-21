@@ -30,9 +30,8 @@ class ListDocumentsToolRender(Rendable):
         """
         if queries:
             self._queries = queries
-            # Use pack_queries for consistent display
-            shortened_queries = [q[:25] + "..." if len(q) > 25 else q for q in queries]
-            packed = pack_queries(*[f"{q}" for q in shortened_queries])
+            # Use pack_queries for consistent display (it handles shortening internally)
+            packed = pack_queries(*[f"{q}" for q in queries])
             self._parts.append(packed)
         return self
     

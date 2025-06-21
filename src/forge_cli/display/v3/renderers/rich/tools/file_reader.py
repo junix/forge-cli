@@ -99,14 +99,8 @@ class FileReaderToolRender(Rendable):
             Self for method chaining
         """
         if query:
-            # Use consistent query length truncation like other tools
-            if len(query) > 25:
-                display_query = query[:22] + "..."
-            else:
-                display_query = query
-            
-            # Use pack_queries for consistent display style
-            packed = pack_queries(f'"{display_query}"')
+            # Use pack_queries for consistent display style (it handles shortening internally)
+            packed = pack_queries(f'"{query}"')
             self._parts.append(packed)
         return self
     

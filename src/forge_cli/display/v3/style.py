@@ -61,6 +61,7 @@ STATUS_ICONS = {
 
 
 def pack_queries(*queries) -> str:
+    queries = [q if len(q) < 25 else q[:22] + "..." for q in queries if q]
     if len(queries) == 0:
         return ""
     if len(queries) == 1:
