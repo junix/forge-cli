@@ -2,10 +2,10 @@
 
 from forge_cli.response._types.response_file_search_tool_call import ResponseFileSearchToolCall
 from ....style import ICONS, pack_queries
-from ...rendable import ToolRendable
+from ...rendable import Rendable
 
 
-class FileSearchToolRender(ToolRendable):
+class FileSearchToolRender(Rendable):
     """Specialized renderer for file search tool calls.
     
     This class handles the rendering of file search tool calls with consistent styling

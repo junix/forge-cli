@@ -190,9 +190,13 @@ class RichRenderer(BaseRenderer):
                 # Use fully self-contained tool renderers!
                 tool_renderer = self._get_tool_renderer(item)
                 if tool_renderer:
-                    # Get complete tool content (tool line + trace if available)
-                    tool_parts = tool_renderer.render_complete_tool_with_trace()
-                    md_parts.extend(tool_parts)
+                    # Get complete tool content from single render() method
+                    tool_content = tool_renderer.render()
+                    if tool_content:
+                        if isinstance(tool_content, list):
+                            md_parts.extend(tool_content)
+                        else:
+                            md_parts.append(tool_content)
             elif is_reasoning_item(item):
                 rendered_reasoning = render_reasoning_item(item)
                 if rendered_reasoning:

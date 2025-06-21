@@ -64,11 +64,11 @@ def pack_queries(*queries) -> str:
     if len(queries) == 0:
         return ""
     if len(queries) == 1:
-        return f"  {queries[0]}"
+        return f"   {queries[0]}"
     if len(queries) == 2:
-        return f"   {queries[0]}  {queries[1]}"
+        return f"    {queries[0]}  {queries[1]}"
 
-    fmt = f"   {queries[0]}  {queries[1]}  {queries[2]}"
+    fmt = f"    {queries[0]}  {queries[1]}  {queries[2]}"
     remain_count = len(queries) - 3
     if remain_count > 0:
         fmt += f" • {remain_count} more"

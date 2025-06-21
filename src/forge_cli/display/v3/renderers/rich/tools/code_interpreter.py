@@ -2,10 +2,10 @@
 
 from forge_cli.response._types.response_code_interpreter_tool_call import ResponseCodeInterpreterToolCall
 from ....style import ICONS
-from ...rendable import ToolRendable
+from ...rendable import Rendable
 
 
-class CodeInterpreterToolRender(ToolRendable):
+class CodeInterpreterToolRender(Rendable):
     """Specialized renderer for code interpreter tool calls.
     
     This class handles the rendering of code interpreter tool calls with consistent styling

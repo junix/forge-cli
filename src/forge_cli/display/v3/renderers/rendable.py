@@ -5,7 +5,7 @@ from rich.table import Table
 class Rendable:
     """Base class for rendable objects."""
 
-    def render(self) -> str | Text | Panel | Table | None :
+    def render(self) -> str | Text | Panel | Table | list[str] | None :
         """Render the object."""
         raise NotImplementedError("Subclasses must implement this method")
 

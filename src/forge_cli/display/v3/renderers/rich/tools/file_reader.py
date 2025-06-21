@@ -1,11 +1,11 @@
 """File reader tool renderer for Rich display system."""
 
 from forge_cli.response._types.response_function_file_reader import ResponseFunctionFileReader
-from ....style import ICONS
-from ...rendable import ToolRendable
+from ....style import ICONS, pack_queries
+from ...rendable import Rendable
 
 
-class FileReaderToolRender(ToolRendable):
+class FileReaderToolRender(Rendable):
     """Specialized renderer for file reader tool calls.
     
     This class handles the rendering of file reader tool calls with consistent styling
@@ -14,17 +14,10 @@ class FileReaderToolRender(ToolRendable):
     
     def __init__(self):
         """Initialize the file reader tool renderer."""
-        super().__init__()
         self._parts = []
         self._doc_ids = []
-    
-    def get_tool_metadata(self) -> tuple[str, str]:
-        """Get tool icon and display name for file reader.
-        
-        Returns:
-            Tuple of (tool_icon, tool_name)
-        """
-        return ICONS.get("file_reader_call", ICONS["processing"]), "Reader"
+        self._status = "in_progress"
+        self._execution_trace = None
     
     def with_filename(self, filename: str | None) -> "FileReaderToolRender":
         """Add filename display to the render.
@@ -97,7 +90,7 @@ class FileReaderToolRender(ToolRendable):
         return self
     
     def with_query(self, query: str | None) -> "FileReaderToolRender":
-        """Add query display to the render.
+        """Add query display to the render using consistent styling.
         
         Args:
             query: The search query within the file
@@ -106,13 +99,15 @@ class FileReaderToolRender(ToolRendable):
             Self for method chaining
         """
         if query:
-            # Don't truncate short queries like "What is the main topic?" (25 chars)
-            # Only truncate really long queries (>50 chars)
-            if len(query) > 50:
-                display_query = query[:47] + "..."
+            # Use consistent query length truncation like other tools
+            if len(query) > 25:
+                display_query = query[:22] + "..."
             else:
                 display_query = query
-            self._parts.append(f'{ICONS["search"]}query: "{display_query}"')
+            
+            # Use pack_queries for consistent display style
+            packed = pack_queries(f'"{display_query}"')
+            self._parts.append(packed)
         return self
     
     def with_file_size(self, file_size: int | None) -> "FileReaderToolRender":
@@ -167,23 +162,59 @@ class FileReaderToolRender(ToolRendable):
             self._parts.append(f"{ICONS['pages']}{page_count} {page_word}")
         return self
     
-
+    def with_execution_trace(self, execution_trace: str | None) -> "FileReaderToolRender":
+        """Add execution trace for later inclusion in complete render.
+        
+        Args:
+            execution_trace: Execution trace string
+            
+        Returns:
+            Self for method chaining
+        """
+        self._execution_trace = execution_trace
+        return self
     
-    def render(self) -> str:
-        """Build and return the final rendered string for result summary only.
+    def render(self) -> list[str]:
+        """Build and return the complete rendered content including tool line and trace.
         
         Returns:
-            The formatted display string for the file reader tool results
+            List of markdown parts (tool line and optional trace block)
         """
+        parts = []
+        
+        # Get tool icon and name
+        tool_icon = ICONS.get("file_reader_call", ICONS["processing"])
+        tool_name = "Reader"
+        
+        # Get status icon
+        from ....style import STATUS_ICONS
+        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        
+        # Build result summary
+        result_summary = ""
         if self._parts:
-            return f" {ICONS['bullet']} ".join(self._parts)
-        
-        # Default fallback if no parts
-        if self._doc_ids:
+            result_summary = f" {ICONS['bullet']} ".join(self._parts)
+        elif self._doc_ids:
             first_doc = self._doc_ids[0][:12] if len(self._doc_ids[0]) > 12 else self._doc_ids[0]
-            return f"{ICONS['file_reader_call']}file:{first_doc}"
+            result_summary = f"{ICONS['file_reader_call']}file:{first_doc}"
+        else:
+            result_summary = f"{ICONS['processing']}reading file..."
         
-        return f"{ICONS['processing']}reading file..."
+        # Create complete tool line
+        tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{self._status}_"
+        if result_summary:
+            tool_line += f" {ICONS['bullet']} {result_summary}"
+        
+        parts.append(tool_line)
+        
+        # Add execution trace if available
+        if self._execution_trace:
+            from ....builder import TextBuilder
+            trace_block = TextBuilder.from_text(self._execution_trace).with_slide(max_lines=3, format_type="text").build()
+            if trace_block:
+                parts.extend(trace_block)
+        
+        return parts
     
     @classmethod
     def from_tool_item(cls, tool_item: ResponseFunctionFileReader) -> "FileReaderToolRender":
