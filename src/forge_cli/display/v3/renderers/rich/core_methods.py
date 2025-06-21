@@ -13,7 +13,8 @@ from forge_cli.response.type_guards import (
 )
 
 from .reason import render_reasoning_item
-from .output import render_message_content, render_citations
+from .message_content import render_message_content
+from .citations import render_citations
 from .tools import (
     FileReaderToolRender,
     WebSearchToolRender,

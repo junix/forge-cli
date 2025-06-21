@@ -4,7 +4,8 @@ from unittest.mock import Mock
 
 from forge_cli.display.v3.renderers.rendable import Rendable
 from forge_cli.display.v3.renderers.rich.reason import ReasoningRenderer
-from forge_cli.display.v3.renderers.rich.output import MessageContentRenderer, CitationsRenderer
+from forge_cli.display.v3.renderers.rich.message_content import MessageContentRenderer
+from forge_cli.display.v3.renderers.rich.citations import CitationsRenderer
 from forge_cli.display.v3.renderers.rich.tools import (
     FileReaderToolRender,
     WebSearchToolRender,

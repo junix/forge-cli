@@ -32,7 +32,8 @@ from ...builder import TextBuilder
 # Import from our new modular structure
 from .tools import FileReaderToolRender
 from .reason import render_reasoning_item
-from .output import render_message_content, render_citations
+from .message_content import render_message_content
+from .citations import render_citations
 from .welcome import render_welcome
 
 if TYPE_CHECKING:

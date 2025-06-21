@@ -5,8 +5,11 @@ It is organized into modular components for maintainability:
 
 - render.py: Main RichRenderer class and configuration
 - reason.py: Reasoning content rendering
-- output.py: Message content and citation rendering  
+- message_content.py: Message content rendering (MessageContentRenderer)
+- citations.py: Citations rendering (CitationsRenderer)
+- output.py: Re-exports message_content and citations for backward compatibility
 - welcome.py: Welcome screen rendering (WelcomeRenderer class)
+- usage.py: Usage statistics rendering (UsageRenderer class)
 - tools/: Tool-specific renderers (file_reader, etc.)
 - core_methods.py: Core rendering methods
 - tool_methods.py: Tool result summary methods
@@ -15,6 +18,8 @@ It is organized into modular components for maintainability:
 from .render import RichRenderer, RichDisplayConfig
 from .welcome import WelcomeRenderer
 from .usage import UsageRenderer
+from .message_content import MessageContentRenderer
+from .citations import CitationsRenderer
 from .tools import (
     FileReaderToolRender,
     WebSearchToolRender,
@@ -31,6 +36,8 @@ __all__ = [
     "RichDisplayConfig", 
     "WelcomeRenderer",
     "UsageRenderer",
+    "MessageContentRenderer",
+    "CitationsRenderer",
     "FileReaderToolRender",
     "WebSearchToolRender",
     "FileSearchToolRender",
