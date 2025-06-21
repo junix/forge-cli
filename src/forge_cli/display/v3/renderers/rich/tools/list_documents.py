@@ -20,18 +20,19 @@ class ListDocumentsToolRender(Rendable):
         self._status = "in_progress"
         self._execution_trace = None
     
-    def with_query(self, query: str | None) -> "ListDocumentsToolRender":
-        """Add search query display to the render using consistent styling.
+    def with_queries(self, *queries: str) -> "ListDocumentsToolRender":
+        """Add search queries display to the render using consistent styling.
         
         Args:
-            query: The search query for filtering documents
+            *queries: Variable number of search queries for filtering documents
             
         Returns:
             Self for method chaining
         """
-        if query:
-            # Use pack_queries for consistent display style
-            packed = pack_queries(f'"{query}"')
+        if queries:
+            # Use pack_queries for consistent display style with multiple queries
+            formatted_queries = [f'"{q}"' for q in queries]
+            packed = pack_queries(*formatted_queries)
             self._parts.append(packed)
         return self
     
@@ -138,9 +139,9 @@ class ListDocumentsToolRender(Rendable):
         """
         renderer = cls()
         
-        # Add query if available
-        if hasattr(tool_item, 'query') and tool_item.query:
-            renderer.with_query(tool_item.query)
+        # Add queries if available
+        if tool_item.queries:
+            renderer.with_queries(*tool_item.queries)
         
         # Add document count if available
         if hasattr(tool_item, 'document_count') and tool_item.document_count is not None:

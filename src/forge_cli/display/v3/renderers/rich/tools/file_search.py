@@ -18,18 +18,19 @@ class FileSearchToolRender(Rendable):
         self._parts = []
         self._status = "in_progress"
     
-    def with_query(self, query: str | None) -> "FileSearchToolRender":
-        """Add query display to the render using consistent styling.
+    def with_queries(self, *queries: str) -> "FileSearchToolRender":
+        """Add search queries display to the render using consistent styling.
         
         Args:
-            query: The search query
+            *queries: Variable number of search queries
             
         Returns:
             Self for method chaining
         """
-        if query:
-            # Use pack_queries for consistent display style
-            packed = pack_queries(f'"{query}"')
+        if queries:
+            # Use pack_queries for consistent display style with multiple queries
+            formatted_queries = [f'"{q}"' for q in queries]
+            packed = pack_queries(*formatted_queries)
             self._parts.append(packed)
         return self
     
@@ -112,9 +113,9 @@ class FileSearchToolRender(Rendable):
         """
         renderer = cls()
         
-        # Add query if available
-        if tool_item.query:
-            renderer.with_query(tool_item.query)
+        # Add queries if available
+        if tool_item.queries:
+            renderer.with_queries(*tool_item.queries)
         
         # Add result count if available
         if hasattr(tool_item, 'result_count') and tool_item.result_count is not None:

@@ -13,6 +13,7 @@ from rich.syntax import Syntax
 
 from ..base import BaseRenderer
 from ....common.logger import logger
+from ....display.citation_styling import long2circled
 from ....response._types import Response
 from ....response.type_guards import (
     is_code_interpreter_call,
@@ -253,7 +254,7 @@ class JsonRenderer(BaseRenderer):
         elif is_reasoning_item(item):
             item_dict = {"type": "reasoning"}
             if item.summary:
-                item_dict["summary"] = [{"text": summary.text} for summary in item.summary if hasattr(summary, "text")]
+                item_dict["summary"] = [{"text": long2circled(summary.text)} for summary in item.summary if hasattr(summary, "text")]
             return item_dict
 
         # Handle file search tool calls
@@ -378,7 +379,7 @@ class JsonRenderer(BaseRenderer):
         if is_output_text(content):
             content_dict = {
                 "type": "output_text",
-                "text": content.text,
+                "text": long2circled(content.text),
             }
 
             # Add annotations if present

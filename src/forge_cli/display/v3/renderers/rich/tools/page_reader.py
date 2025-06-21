@@ -120,9 +120,9 @@ class PageReaderToolRender(Rendable):
         """
         renderer = cls()
         
-        # Add document title if available
-        if tool_item.document_title:
-            renderer.with_document_title(tool_item.document_title)
+        # Add document ID as title if available
+        if tool_item.document_id:
+            renderer.with_document_title(tool_item.document_id)
         
         # Add page range if available
         if tool_item.start_page is not None:
@@ -130,9 +130,5 @@ class PageReaderToolRender(Rendable):
         
         # Add status
         renderer.with_status(tool_item.status)
-        
-        # Add query if available
-        if hasattr(tool_item, 'query') and tool_item.query:
-            renderer.with_query(tool_item.query)
         
         return renderer 
