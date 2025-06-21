@@ -1,5 +1,6 @@
 """Function call tool renderer for Rich display system."""
 
+from forge_cli.response._types.response_function_tool_call import ResponseFunctionToolCall
 from ....style import ICONS
 from ...rendable import Rendable
 
@@ -111,7 +112,7 @@ class FunctionCallToolRender(Rendable):
         return f"{ICONS['processing']}calling function..."
     
     @classmethod
-    def from_tool_item(cls, tool_item) -> "FunctionCallToolRender":
+    def from_tool_item(cls, tool_item: ResponseFunctionToolCall) -> "FunctionCallToolRender":
         """Create a function call tool renderer from a tool item.
         
         Args:
@@ -123,20 +124,18 @@ class FunctionCallToolRender(Rendable):
         renderer = cls()
         
         # Add function name
-        if hasattr(tool_item, 'function') and tool_item.function:
+        if tool_item.function:
             renderer.with_function(tool_item.function)
         
         # Add arguments
-        if hasattr(tool_item, 'arguments') and tool_item.arguments:
+        if tool_item.arguments:
             renderer.with_arguments(tool_item.arguments)
         
         # Add output if available
-        output = getattr(tool_item, 'output', None)
-        if output:
-            renderer.with_output(output)
+        if hasattr(tool_item, 'output') and tool_item.output:
+            renderer.with_output(tool_item.output)
         
         # Add status
-        if hasattr(tool_item, 'status'):
-            renderer.with_status(tool_item.status)
+        renderer.with_status(tool_item.status)
         
         return renderer 

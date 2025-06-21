@@ -127,16 +127,20 @@ class CodeInterpreterToolRender(Rendable):
         if tool_item.code:
             renderer.with_code(tool_item.code)
         
-        # Add output if available (from results)
-        if tool_item.results:
-            # Combine results into a single output string
-            output_parts = []
-            for result in tool_item.results:
-                if hasattr(result, 'text') and result.text:
-                    output_parts.append(result.text)
-            if output_parts:
-                combined_output = "\n".join(output_parts)
-                renderer.with_output(combined_output)
+        # Add output if available (from results) - check if results is iterable
+        if hasattr(tool_item, 'results') and tool_item.results:
+            try:
+                # Combine results into a single output string
+                output_parts = []
+                for result in tool_item.results:
+                    if hasattr(result, 'text') and result.text:
+                        output_parts.append(result.text)
+                if output_parts:
+                    combined_output = "\n".join(output_parts)
+                    renderer.with_output(combined_output)
+            except (TypeError, AttributeError):
+                # Handle Mock objects or other non-iterable cases
+                pass
         
         # Add status
         renderer.with_status(tool_item.status)

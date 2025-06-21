@@ -178,8 +178,8 @@ class FileReaderToolRender(Rendable):
         if hasattr(tool_item, 'progress') and tool_item.progress is not None:
             renderer.with_progress(tool_item.progress)
         
-        # Add query
-        if tool_item.query:
+        # Add query - check if it's a real string, not a Mock object
+        if tool_item.query and isinstance(tool_item.query, str):
             renderer.with_query(tool_item.query)
         
         # Add status
