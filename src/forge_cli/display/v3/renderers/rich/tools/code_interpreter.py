@@ -1,8 +1,8 @@
 """Code interpreter tool renderer for Rich display system."""
 
-from rich.markdown import Markdown
+from rich.text import Text
 from forge_cli.response._types.response_code_interpreter_tool_call import ResponseCodeInterpreterToolCall
-from ....style import ICONS, STATUS_ICONS
+from ....style import ICONS, STATUS_ICONS, get_status_color
 from ...rendable import Rendable
 
 
@@ -18,6 +18,9 @@ class CodeInterpreterToolRender(Rendable):
         self._parts = []
         self._status = "in_progress"
         self._code_snippet = None
+        self._progress = None
+        self._language = None
+        self._execution_time = None
     
     def with_language(self, language: str | None) -> "CodeInterpreterToolRender":
         """Add programming language display to the render.
@@ -29,7 +32,7 @@ class CodeInterpreterToolRender(Rendable):
             Self for method chaining
         """
         if language:
-            self._parts.append(f"{ICONS['code_interpreter_call']}{language}")
+            self._language = language
         return self
     
     def with_code_snippet(self, code: str | None) -> "CodeInterpreterToolRender":
@@ -44,13 +47,6 @@ class CodeInterpreterToolRender(Rendable):
         if code:
             # Store full code for potential detailed display
             self._code_snippet = code
-            # Show first line or truncated version for the tool line
-            first_line = code.split('\n')[0]
-            if len(first_line) > 40:
-                display_code = first_line[:37] + "..."
-            else:
-                display_code = first_line
-            self._parts.append(f'{ICONS["code"]}`{display_code}`')
         return self
     
     def with_status(self, status: str) -> "CodeInterpreterToolRender":
@@ -75,8 +71,7 @@ class CodeInterpreterToolRender(Rendable):
             Self for method chaining
         """
         if progress is not None:
-            progress_percent = int(progress * 100)
-            self._parts.append(f"{ICONS['processing']}{progress_percent}%")
+            self._progress = progress
         return self
     
     def with_execution_time(self, execution_time: float | None) -> "CodeInterpreterToolRender":
@@ -89,39 +84,84 @@ class CodeInterpreterToolRender(Rendable):
             Self for method chaining
         """
         if execution_time is not None:
-            if execution_time < 1:
-                time_str = f"{int(execution_time * 1000)}ms"
-            else:
-                time_str = f"{execution_time:.1f}s"
-            self._parts.append(f"{ICONS['timer']}{time_str}")
+            self._execution_time = execution_time
         return self
     
-    def render(self) -> Markdown:
-        """Build and return the complete rendered content as Markdown.
+    def render(self) -> list[Text]:
+        """Build and return the complete rendered content as Text objects.
         
         Returns:
-            Markdown object with formatted tool line
+            List of Text objects with formatted tool line
         """
-        # Get tool icon and name
+        parts = []
+        
+        # Get tool icon and name (keep original icons unchanged)
         tool_icon = ICONS.get("code_interpreter_call", ICONS["processing"])
         tool_name = "CodeInterpreter"
         
-        # Get status icon
-        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        # Get status color using mood-based colors
+        status_color = get_status_color(self._status)
         
-        # Build result summary
-        result_summary = ""
+        # Build the tool line with colors
+        tool_line = Text()
+        
+        # Add tool icon and name - tool name in bright_white + bold
+        tool_line.append(f"{tool_icon} ")
+        tool_line.append(tool_name, style="bright_white bold italic")
+        tool_line.append(" • ")
+        
+        # Add status with mood-based color
+        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        tool_line.append(f"{status_icon}")
+        tool_line.append(self._status, style=f"{status_color} italic")
+        
+        # Add progress if available - bright_cyan for active feeling
+        if self._progress is not None:
+            progress_percent = int(self._progress * 100)
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(f"{ICONS['processing']}")
+            tool_line.append(f"{progress_percent}%", style="bright_cyan bold")
+        
+        # Add language if available
+        if self._language:
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(f"{ICONS['code_interpreter_call']}")
+            tool_line.append(self._language, style="bright_yellow")
+        
+        # Add code snippet if available - bright_yellow for code queries
+        if self._code_snippet:
+            # Show first line or truncated version for the tool line
+            first_line = self._code_snippet.split('\n')[0]
+            if len(first_line) > 40:
+                display_code = first_line[:37] + "..."
+            else:
+                display_code = first_line
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(f'{ICONS["code"]}`')
+            tool_line.append(display_code, style="bright_yellow")
+            tool_line.append("`")
+        
+        # Add execution time if available
+        if self._execution_time is not None:
+            if self._execution_time < 1:
+                time_str = f"{int(self._execution_time * 1000)}ms"
+            else:
+                time_str = f"{self._execution_time:.1f}s"
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(f"{ICONS['timer']}")
+            tool_line.append(time_str, style="bright_cyan")
+        
+        # Add other parts if available
         if self._parts:
             result_summary = f" {ICONS['bullet']} ".join(self._parts)
-        else:
-            result_summary = f"{ICONS['processing']}executing code..."
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(result_summary)
+        elif not self._language and not self._code_snippet and self._progress is None:
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(f"{ICONS['processing']}executing code...")
         
-        # Create complete tool line
-        tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{self._status}_"
-        if result_summary:
-            tool_line += f" {ICONS['bullet']} {result_summary}"
-        
-        return Markdown(tool_line)
+        parts.append(tool_line)
+        return parts
     
     @classmethod
     def from_tool_item(cls, tool_item: ResponseCodeInterpreterToolCall) -> "CodeInterpreterToolRender":

@@ -1,8 +1,8 @@
 """File reader tool renderer for Rich display system."""
 
-from rich.markdown import Markdown
+from rich.text import Text
 from forge_cli.response._types.response_function_file_reader import ResponseFunctionFileReader
-from ....style import ICONS, pack_queries
+from ....style import ICONS, pack_queries, get_status_color
 from ...rendable import Rendable
 
 
@@ -19,6 +19,8 @@ class FileReaderToolRender(Rendable):
         self._doc_ids = []
         self._status = "in_progress"
         self._execution_trace = None
+        self._progress = None
+        self._query = None
     
     def with_filename(self, filename: str | None) -> "FileReaderToolRender":
         """Add filename display to the render.
@@ -74,8 +76,7 @@ class FileReaderToolRender(Rendable):
             Self for method chaining
         """
         if progress is not None:
-            progress_percent = int(progress * 100)
-            self._parts.append(f"{ICONS['processing']}{progress_percent}%")
+            self._progress = progress
         return self
     
     def with_status(self, status: str) -> "FileReaderToolRender":
@@ -100,9 +101,7 @@ class FileReaderToolRender(Rendable):
             Self for method chaining
         """
         if query:
-            # Use pack_queries for consistent display style (it handles shortening internally)
-            packed = pack_queries(f'"{query}"')
-            self._parts.append(packed)
+            self._query = query
         return self
     
     def with_file_size(self, file_size: int | None) -> "FileReaderToolRender":
@@ -169,47 +168,76 @@ class FileReaderToolRender(Rendable):
         self._execution_trace = execution_trace
         return self
     
-    def render(self) -> list[Markdown]:
+
+    
+    def render(self) -> list[Text]:
         """Build and return the complete rendered content including tool line and trace.
         
         Returns:
-            List of Markdown objects (tool line and optional trace block)
+            List of Text objects (tool line and optional trace block)
         """
         parts = []
         
-        # Get tool icon and name
+        # Get tool icon and name (keep original icons unchanged)
         tool_icon = ICONS.get("file_reader_call", ICONS["processing"])
         tool_name = "Reader"
         
-        # Get status icon
+        # Get status color using mood-based colors
+        status_color = get_status_color(self._status)
+        
+        # Build the tool line with colors
+        tool_line = Text()
+        
+        # Add tool icon and name - tool name in bright_white + bold
+        tool_line.append(f"{tool_icon} ")
+        tool_line.append(tool_name, style="bright_white bold italic")
+        tool_line.append(" • ")
+        
+        # Add status with mood-based color
         from ....style import STATUS_ICONS
         status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        tool_line.append(f"{status_icon}")
+        tool_line.append(self._status, style=f"{status_color} italic")
         
-        # Build result summary
-        result_summary = ""
+        # Add progress if available - bright_cyan for active feeling
+        if self._progress is not None:
+            progress_percent = int(self._progress * 100)
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(f"{ICONS['processing']}")
+            tool_line.append(f"{progress_percent}%", style="bright_cyan bold")
+        
+        # Add query if available - bright_yellow for attention
+        if self._query:
+            packed = pack_queries(f'"{self._query}"')
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(packed, style="bright_yellow")
+        
+        # Add other parts (file info, etc.) in default white
         if self._parts:
             result_summary = f" {ICONS['bullet']} ".join(self._parts)
-        elif self._doc_ids:
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(result_summary)
+        elif self._doc_ids and not self._parts:
             first_doc = self._doc_ids[0][:12] if len(self._doc_ids[0]) > 12 else self._doc_ids[0]
-            result_summary = f"{ICONS['file_reader_call']}file:{first_doc}"
-        else:
-            result_summary = f"{ICONS['processing']}reading file..."
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(f"{ICONS['file_reader_call']}file:{first_doc}")
+        elif not self._parts and not self._query and self._progress is None:
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(f"{ICONS['processing']}reading file...")
         
-        # Create complete tool line
-        tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{self._status}_"
-        if result_summary:
-            tool_line += f" {ICONS['bullet']} {result_summary}"
-        
-        parts.append(Markdown(tool_line))
+        parts.append(tool_line)
         
         # Add execution trace if available
         if self._execution_trace:
             from ....builder import TextBuilder
             trace_block = TextBuilder.from_text(self._execution_trace).with_slide(max_lines=3, format_type="text").build()
             if trace_block:
-                # Convert trace block strings to Markdown objects
+                # Convert trace block strings to Text objects
                 for trace_line in trace_block:
-                    parts.append(Markdown(trace_line))
+                    if isinstance(trace_line, str):
+                        parts.append(Text(trace_line))
+                    else:
+                        parts.append(trace_line)
         
         return parts
     

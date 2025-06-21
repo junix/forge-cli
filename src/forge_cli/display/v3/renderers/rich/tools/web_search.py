@@ -1,8 +1,8 @@
 """Web search tool renderer for Rich display system."""
 
-from rich.markdown import Markdown
+from rich.text import Text
 from forge_cli.response._types.response_function_web_search import ResponseFunctionWebSearch
-from ....style import ICONS, STATUS_ICONS, pack_queries
+from ....style import ICONS, STATUS_ICONS, pack_queries, get_status_color
 from ....builder import TextBuilder
 from ...rendable import Rendable
 
@@ -19,6 +19,8 @@ class WebSearchToolRender(Rendable):
         self._parts = []
         self._status = "in_progress"
         self._execution_trace = None
+        self._progress = None
+        self._queries = []
     
     def with_queries(self, *queries: str) -> "WebSearchToolRender":
         """Add search queries display to the render using consistent styling.
@@ -30,10 +32,7 @@ class WebSearchToolRender(Rendable):
             Self for method chaining
         """
         if queries:
-            # Use pack_queries for consistent display style with multiple queries
-            formatted_queries = [f'"{q}"' for q in queries]
-            packed = pack_queries(*formatted_queries)
-            self._parts.append(packed)
+            self._queries = list(queries)
         return self
     
     def with_result_count(self, result_count: int | None) -> "WebSearchToolRender":
@@ -72,8 +71,7 @@ class WebSearchToolRender(Rendable):
             Self for method chaining
         """
         if progress is not None:
-            progress_percent = int(progress * 100)
-            self._parts.append(f"{ICONS['processing']}{progress_percent}%")
+            self._progress = progress
         return self
     
     def with_execution_trace(self, execution_trace: str | None) -> "WebSearchToolRender":
@@ -88,42 +86,71 @@ class WebSearchToolRender(Rendable):
         self._execution_trace = execution_trace
         return self
     
-    def render(self) -> list[Markdown]:
+
+    
+    def render(self) -> list[Text]:
         """Build and return the complete rendered content including tool line and trace.
         
         Returns:
-            List of Markdown objects (tool line and optional trace block)
+            List of Text objects (tool line and optional trace block)
         """
         parts = []
         
-        # Get tool icon and name
+        # Get tool icon and name (keep original icons unchanged)
         tool_icon = ICONS.get("web_search_call", ICONS["search"])
         tool_name = "WebSearch"
         
-        # Get status icon
-        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        # Get status color using mood-based colors
+        status_color = get_status_color(self._status)
         
-        # Build result summary
-        result_summary = ""
+        # Build the tool line with colors
+        tool_line = Text()
+        
+        # Add tool icon and name - tool name in bright_white + bold
+        tool_line.append(f"{tool_icon} ")
+        tool_line.append(tool_name, style="bright_white bold italic")
+        tool_line.append(" • ")
+        
+        # Add status with mood-based color
+        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        tool_line.append(f"{status_icon}")
+        tool_line.append(self._status, style=f"{status_color} italic")
+        
+        # Add progress if available - bright_cyan for active feeling
+        if self._progress is not None:
+            progress_percent = int(self._progress * 100)
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(f"{ICONS['processing']}")
+            tool_line.append(f"{progress_percent}%", style="bright_cyan bold")
+        
+        # Add queries if available - bright_yellow for attention
+        if self._queries:
+            formatted_queries = [f'"{q}"' for q in self._queries]
+            packed = pack_queries(*formatted_queries)
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(packed, style="bright_yellow")
+        
+        # Add other parts (result count, etc.) in default white
         if self._parts:
             result_summary = f" {ICONS['bullet']} ".join(self._parts)
-        else:
-            result_summary = f"{ICONS['processing']}searching web..."
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(result_summary)
+        elif not self._parts and not self._queries and self._progress is None:
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(f"{ICONS['processing']}searching web...")
         
-        # Create complete tool line
-        tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{self._status}_"
-        if result_summary:
-            tool_line += f" {ICONS['bullet']} {result_summary}"
-        
-        parts.append(Markdown(tool_line))
+        parts.append(tool_line)
         
         # Add execution trace if available
         if self._execution_trace:
             trace_block = TextBuilder.from_text(self._execution_trace).with_slide(max_lines=3, format_type="text").build()
             if trace_block:
-                # Convert trace block strings to Markdown objects
+                # Convert trace block strings to Text objects
                 for trace_line in trace_block:
-                    parts.append(Markdown(trace_line))
+                    if isinstance(trace_line, str):
+                        parts.append(Text(trace_line))
+                    else:
+                        parts.append(trace_line)
         
         return parts
     

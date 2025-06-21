@@ -1,8 +1,9 @@
 """File search tool renderer for Rich display system."""
 
-from rich.markdown import Markdown
+from rich.text import Text
 from forge_cli.response._types.response_file_search_tool_call import ResponseFileSearchToolCall
-from ....style import ICONS, STATUS_ICONS, pack_queries
+from ....style import ICONS, STATUS_ICONS, pack_queries, get_status_color
+from ....builder import TextBuilder
 from ...rendable import Rendable
 
 
@@ -17,6 +18,9 @@ class FileSearchToolRender(Rendable):
         """Initialize the file search tool renderer."""
         self._parts = []
         self._status = "in_progress"
+        self._execution_trace = None
+        self._progress = None
+        self._queries = []
     
     def with_queries(self, *queries: str) -> "FileSearchToolRender":
         """Add search queries display to the render using consistent styling.
@@ -28,10 +32,7 @@ class FileSearchToolRender(Rendable):
             Self for method chaining
         """
         if queries:
-            # Use pack_queries for consistent display style with multiple queries
-            formatted_queries = [f'"{q}"' for q in queries]
-            packed = pack_queries(*formatted_queries)
-            self._parts.append(packed)
+            self._queries = list(queries)
         return self
     
     def with_result_count(self, result_count: int | None) -> "FileSearchToolRender":
@@ -70,36 +71,86 @@ class FileSearchToolRender(Rendable):
             Self for method chaining
         """
         if progress is not None:
-            progress_percent = int(progress * 100)
-            self._parts.append(f"{ICONS['processing']}{progress_percent}%")
+            self._progress = progress
         return self
     
-    def render(self) -> Markdown:
-        """Build and return the complete rendered content as Markdown.
+    def with_execution_trace(self, execution_trace: str | None) -> "FileSearchToolRender":
+        """Add execution trace for later inclusion in complete render.
+        
+        Args:
+            execution_trace: Execution trace string
+            
+        Returns:
+            Self for method chaining
+        """
+        self._execution_trace = execution_trace
+        return self
+    
+    def render(self) -> list[Text]:
+        """Build and return the complete rendered content including tool line and trace.
         
         Returns:
-            Markdown object with formatted tool line
+            List of Text objects (tool line and optional trace block)
         """
-        # Get tool icon and name
+        parts = []
+        
+        # Get tool icon and name (keep original icons unchanged)
         tool_icon = ICONS.get("file_search_call", ICONS["search"])
         tool_name = "FileSearch"
         
-        # Get status icon
-        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        # Get status color using mood-based colors
+        status_color = get_status_color(self._status)
         
-        # Build result summary
-        result_summary = ""
+        # Build the tool line with colors
+        tool_line = Text()
+        
+        # Add tool icon and name - tool name in bright_white + bold
+        tool_line.append(f"{tool_icon} ")
+        tool_line.append(tool_name, style="bright_white bold italic")
+        tool_line.append(" • ")
+        
+        # Add status with mood-based color
+        status_icon = STATUS_ICONS.get(self._status, STATUS_ICONS["default"])
+        tool_line.append(f"{status_icon}")
+        tool_line.append(self._status, style=f"{status_color} italic")
+        
+        # Add progress if available - bright_cyan for active feeling
+        if self._progress is not None:
+            progress_percent = int(self._progress * 100)
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(f"{ICONS['processing']}")
+            tool_line.append(f"{progress_percent}%", style="bright_cyan bold")
+        
+        # Add queries if available - bright_yellow for attention
+        if self._queries:
+            formatted_queries = [f'"{q}"' for q in self._queries]
+            packed = pack_queries(*formatted_queries)
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(packed, style="bright_yellow")
+        
+        # Add other parts (result count, etc.) in default white
         if self._parts:
             result_summary = f" {ICONS['bullet']} ".join(self._parts)
-        else:
-            result_summary = f"{ICONS['processing']}searching files..."
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(result_summary)
+        elif not self._parts and not self._queries and self._progress is None:
+            tool_line.append(f" {ICONS['bullet']} ")
+            tool_line.append(f"{ICONS['processing']}searching files...")
         
-        # Create complete tool line
-        tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{self._status}_"
-        if result_summary:
-            tool_line += f" {ICONS['bullet']} {result_summary}"
+        parts.append(tool_line)
         
-        return Markdown(tool_line)
+        # Add execution trace if available
+        if self._execution_trace:
+            trace_block = TextBuilder.from_text(self._execution_trace).with_slide(max_lines=3, format_type="text").build()
+            if trace_block:
+                # Convert trace block strings to Text objects
+                for trace_line in trace_block:
+                    if isinstance(trace_line, str):
+                        parts.append(Text(trace_line))
+                    else:
+                        parts.append(trace_line)
+        
+        return parts
     
     @classmethod
     def from_tool_item(cls, tool_item: ResponseFileSearchToolCall) -> "FileSearchToolRender":
@@ -114,7 +165,7 @@ class FileSearchToolRender(Rendable):
         renderer = cls()
         
         # Add queries if available
-        if tool_item.queries:
+        if hasattr(tool_item, 'queries') and tool_item.queries:
             renderer.with_queries(*tool_item.queries)
         
         # Add result count if available
@@ -127,5 +178,10 @@ class FileSearchToolRender(Rendable):
         
         # Add status
         renderer.with_status(tool_item.status)
+        
+        # Add execution trace if available
+        execution_trace = getattr(tool_item, "execution_trace", None)
+        if execution_trace:
+            renderer.with_execution_trace(execution_trace)
         
         return renderer 

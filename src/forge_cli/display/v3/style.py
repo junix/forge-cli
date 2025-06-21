@@ -62,6 +62,28 @@ STATUS_ICONS = {
 }
 
 
+def get_status_color(status: str) -> str:
+    """Get mood-based color for status.
+    
+    Args:
+        status: Current status
+        
+    Returns:
+        Color name for the status
+    """
+    # Proposal B: Mood-Based Status Colors
+    status_colors = {
+        "completed": "bright_green",  # satisfaction
+        "failed": "red",  # concern, not alarming
+        "in_progress": "cyan",  # calm activity
+        "searching": "magenta",  # curiosity
+        "interpreting": "blue",  # thoughtfulness
+        "incomplete": "dim yellow",  # mild concern
+        "default": "dim white",  # neutral
+    }
+    return status_colors.get(status, status_colors["default"])
+
+
 def pack_queries(*queries) -> str:
     queries = [q if len(q) < 25 else q[:22] + "..." for q in queries if q]
     if len(queries) == 0:
