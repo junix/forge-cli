@@ -10,8 +10,6 @@ It is organized into modular components for maintainability:
 - welcome.py: Welcome screen rendering (WelcomeRenderer class)
 - usage.py: Usage statistics rendering (UsageRenderer class)
 - tools/: Tool-specific renderers (file_reader, etc.)
-- core_methods.py: Core rendering methods
-- tool_methods.py: Tool result summary methods
 """
 
 from .render import RichRenderer, RichDisplayConfig
