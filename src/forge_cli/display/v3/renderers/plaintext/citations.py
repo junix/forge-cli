@@ -49,7 +49,7 @@ class PlaintextCitationsRenderer(Rendable):
         text = Text()
         
         # Use compact format for file citations
-        text.append("ref:\n", style=self.styles.get_style("citation_ref"))
+        text.append("\nreferences:\n", style=self.styles.get_style("citation_ref"))
 
         for i, citation in enumerate(self._citations, 1):
             if citation.type == "file_citation":
