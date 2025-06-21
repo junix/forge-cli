@@ -2,9 +2,11 @@
 
 from rich.text import Text
 
+from forge_cli.display.v3.builder import TextBuilder
 from forge_cli.response._types.response_reasoning_item import ResponseReasoningItem
 from .config import PlaintextDisplayConfig
 from .styles import PlaintextStyles
+from rich.markdown import Markdown
 
 
 class PlaintextReasoningRenderer:
@@ -33,36 +35,25 @@ class PlaintextReasoningRenderer:
         self._reasoning_items = items
         return self
 
-    def render(self) -> Text | None:
+    def render(self) -> list[Markdown] | None:
         """Render reasoning items as Text object.
         
         Returns:
             Text object with formatted reasoning content or None if no reasoning items
         """
-        if not self._reasoning_items or not self._config.show_reasoning:
+        if not self._reasoning_items:
             return None
 
-        text = Text()
-        
-        # Add reasoning header
-        text.append("🤔 Reasoning:\n", style=self._styles.get_style("reasoning_header"))
-        
-        for idx, item in enumerate(self._reasoning_items):
-            if idx > 0:
-                text.append("\n")
-            
-            # Add reasoning content
-            if hasattr(item, 'summary') and item.summary:
-                for summary_item in item.summary:
-                    if hasattr(summary_item, 'text'):
-                        # Indent reasoning content
-                        for line in summary_item.text.split('\n'):
-                            if line.strip():
-                                text.append(f"  {line}\n", style=self._styles.get_style("reasoning_content"))
-                            else:
-                                text.append("\n")
-        
-        return text
+        acc = []
+        for item in self._reasoning_items:
+            text = item.text
+            if not text:
+                continue
+
+            text = TextBuilder.from_text(text).with_slide(max_lines=5, format_type="text").with_block_quote().build()
+            acc.append(Markdown(text))
+        return acc
+
 
     @classmethod
     def from_response_items(cls, items: list[ResponseReasoningItem], styles: PlaintextStyles, config: PlaintextDisplayConfig) -> "PlaintextReasoningRenderer":

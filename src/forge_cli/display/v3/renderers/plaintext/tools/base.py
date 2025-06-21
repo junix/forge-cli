@@ -3,6 +3,7 @@
 from forge_cli.response._types.response_output_item import ResponseOutputItem
 from ..config import PlaintextDisplayConfig
 from ..styles import PlaintextStyles
+from ....style import ICONS, STATUS_ICONS
 
 
 class PlaintextToolRenderBase:
@@ -31,8 +32,27 @@ class PlaintextToolRenderBase:
         self._tool_item = tool_item
         return self
 
+    def get_tool_metadata(self) -> tuple[str, str]:
+        """Get tool icon and display name. Override in subclasses.
+        
+        Returns:
+            Tuple of (tool_icon, tool_name)
+        """
+        tool_type = getattr(self._tool_item, 'type', 'unknown_tool')
+        tool_icon = ICONS.get(tool_type, ICONS["processing"])
+        tool_name = tool_type.replace("_call", "").replace("_", " ").title()
+        return tool_icon, tool_name
+
+    def get_tool_details(self) -> str:
+        """Get tool-specific details. Override in subclasses.
+        
+        Returns:
+            Formatted details string
+        """
+        return ""
+
     def render(self) -> str:
-        """Render the tool call as plaintext.
+        """Render the tool call as plaintext using the old clean style.
         
         Returns:
             Formatted plaintext string
@@ -40,31 +60,22 @@ class PlaintextToolRenderBase:
         if not self._tool_item:
             return ""
 
-        # Build basic tool information
-        parts = []
+        # Get tool metadata
+        tool_icon, tool_name = self.get_tool_metadata()
         
-        # Add tool header
-        tool_type = getattr(self._tool_item, 'type', 'unknown_tool')
-        tool_id = getattr(self._tool_item, 'id', 'unknown_id')
-        status = getattr(self._tool_item, 'status', 'unknown')
+        # Get status
+        status = getattr(self._tool_item, 'status', 'in_progress')
+        status_icon = STATUS_ICONS.get(status, STATUS_ICONS["default"])
         
-        header = f"[{tool_type.upper()}] {tool_id} - {status}"
-        parts.append(header)
+        # Build the tool line using the old clean format
+        tool_line = f"{tool_icon} {tool_name} • {status_icon}{status}"
         
-        # Add tool-specific content
-        tool_content = self._render_tool_specific_content()
-        if tool_content:
-            parts.append(tool_content)
+        # Get tool-specific details
+        details = self.get_tool_details()
+        if details:
+            tool_line += f" {ICONS['bullet']} {details}"
         
-        return "\n".join(parts)
-
-    def _render_tool_specific_content(self) -> str:
-        """Render tool-specific content. Override in subclasses.
-        
-        Returns:
-            Tool-specific content string
-        """
-        return ""
+        return tool_line
 
     def _format_with_style(self, text: str, style_name: str) -> str:
         """Format text with style (for plaintext, this is a no-op).

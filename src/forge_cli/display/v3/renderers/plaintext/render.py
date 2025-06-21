@@ -160,7 +160,10 @@ class PlaintextRenderer(BaseRenderer):
                     item, self._styles, self._config
                 ).render()
                 if reasoning_renderable:
-                    renderables.append(reasoning_renderable)
+                    if isinstance(reasoning_renderable, list):
+                        renderables.extend(reasoning_renderable)
+                    else:
+                        renderables.append(reasoning_renderable)
 
             elif self._is_tool_item(item) and self._config.show_tool_details:
                 # Use specialized tool renderers
