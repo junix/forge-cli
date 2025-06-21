@@ -1,4 +1,4 @@
-"""Core methods for the RichRenderer class."""
+"""Core methods for the RichRenderer class - refactored to use self-contained tool renderers."""
 
 from typing import Any
 
@@ -12,12 +12,20 @@ from forge_cli.response.type_guards import (
     is_reasoning_item,
 )
 
-from ...style import ICONS, STATUS_ICONS
+from ...style import ICONS
 
 from .reason import render_reasoning_item
 from .output import render_message_content, render_citations
-from .tools import FileReaderToolRender
-from .tool_methods import get_tool_result_summary, get_trace_block
+from .tools import (
+    FileReaderToolRender,
+    WebSearchToolRender,
+    FileSearchToolRender,
+    PageReaderToolRender,
+    CodeInterpreterToolRender,
+    FunctionCallToolRender,
+    ListDocumentsToolRender,
+)
+from .tool_methods import get_trace_block
 
 
 def render_response_method(self, response: Response) -> None:
@@ -97,40 +105,21 @@ def create_response_content(self, response: Response):
             "code_interpreter_call",
             "function_call",
         ]:
-            # Get tool-specific icon and format the tool call
-            tool_icon = get_tool_icon(item.type)
-            short_name = {
-                "web_search_call": "Web",
-                "file_search_call": "Search", 
-                "list_documents_call": "List",
-                "file_reader_call": "Reader",
-                "page_reader_call": "Page",
-                "code_interpreter_call": "Interpreter",
-                "function_call": "Tool",
-            }
-            tool_name = short_name.get(item.type, item.type.replace("_call", "").replace("_", " ").title())
+            # Use self-contained tool renderers - no external logic needed!
+            tool_renderer = get_tool_renderer(item)
+            if tool_renderer:
+                # Get complete tool line from renderer
+                tool_line = tool_renderer.render_complete_tool_line()
 
-            # Get status icon
-            status_icon = STATUS_ICONS.get(item.status, STATUS_ICONS["default"])
-
-            # Create concise result summary based on tool type
-            result_summary = get_tool_result_summary(item)
-
-            # Format: Tool Icon + Bold Name + Status Icon + Status + Result
-            tool_line = f"{tool_icon} _{tool_name}_ • {status_icon}_{item.status}_"
-
-            if result_summary:
-                tool_line += f" {ICONS['bullet']} {result_summary}"
-
-            # Check if this tool is traceable and has execution trace
-            trace_block = get_trace_block(item)
-            if trace_block:
-                # For traceable tools, show tool line + trace block
-                md_parts.append(tool_line)
-                md_parts.append("\n".join(trace_block))
-            else:
-                # For non-traceable tools, show just the tool line
-                md_parts.append(tool_line)
+                # Check if this tool is traceable and has execution trace
+                trace_block = get_trace_block(item)
+                if trace_block:
+                    # For traceable tools, show tool line + trace block
+                    md_parts.append(tool_line)
+                    md_parts.append("\n".join(trace_block))
+                else:
+                    # For non-traceable tools, show just the tool line
+                    md_parts.append(tool_line)
         elif is_reasoning_item(item):
             rendered_reasoning = render_reasoning_item(item)
             if rendered_reasoning:
@@ -170,6 +159,28 @@ def create_response_content(self, response: Response):
     )
 
 
+def get_tool_renderer(tool_item: Any):
+    """Get the appropriate specialized renderer for a tool item."""
+    tool_type = tool_item.type
+    
+    # Map tool types to their specialized renderers
+    renderer_map = {
+        "file_reader_call": FileReaderToolRender,
+        "web_search_call": WebSearchToolRender,
+        "file_search_call": FileSearchToolRender,
+        "page_reader_call": PageReaderToolRender,
+        "code_interpreter_call": CodeInterpreterToolRender,
+        "function_call": FunctionCallToolRender,
+        "list_documents_call": ListDocumentsToolRender,
+    }
+    
+    renderer_class = renderer_map.get(tool_type)
+    if renderer_class:
+        return renderer_class.from_tool_item(tool_item)
+    
+    return None
+
+
 def extract_all_citations(response: Response) -> list[Any]:
     """Extract all citations from response annotations using type-based API."""
     citations = []
@@ -195,9 +206,4 @@ def get_panel_style(response: Response) -> tuple[str, str]:
     elif response.status == "in_progress":
         return "yellow", "bold yellow"
     else:
-        return "blue", "bold blue"
-
-
-def get_tool_icon(tool_type: str) -> str:
-    """Get icon for tool type."""
-    return ICONS.get(tool_type, ICONS["processing"]) 
+        return "blue", "bold blue" 

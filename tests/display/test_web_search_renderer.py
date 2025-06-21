@@ -38,7 +38,7 @@ def test_web_search_empty_queries():
     result = renderer.with_queries([]).render()
     
     print(f"Empty queries result: {result}")
-    assert "preparing web search" in result
+    assert "searching web..." in result
 
 
 def test_web_search_searching_status():

@@ -13,7 +13,7 @@ class TestFileReaderToolRender:
         """Test basic FileReaderToolRender initialization."""
         renderer = FileReaderToolRender()
         result = renderer.render()
-        assert "loading file..." in result
+        assert "reading file..." in result
 
     def test_with_filename(self):
         """Test filename display."""
@@ -148,8 +148,8 @@ class TestFileReaderToolRender:
         renderer = FileReaderToolRender.from_tool_item(tool_item)
         result = renderer.render()
         
-        # Should contain default loading message
-        assert "loading file" in result
+        # Should contain default reading message
+        assert "reading file" in result
 
     def test_from_tool_item_with_real_model(self):
         """Test from_tool_item with actual ResponseFunctionFileReader model."""
@@ -176,7 +176,7 @@ class TestFileReaderToolRender:
                  .with_page_count(None)
                  .render())
         
-        assert "loading file..." in result
+        assert "reading file..." in result
 
     def test_edge_cases(self):
         """Test edge cases for various inputs."""

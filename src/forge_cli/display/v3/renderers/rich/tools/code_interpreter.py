@@ -2,10 +2,10 @@
 
 from forge_cli.response._types.response_code_interpreter_tool_call import ResponseCodeInterpreterToolCall
 from ....style import ICONS
-from ...rendable import Rendable
+from ...rendable import ToolRendable
 
 
-class CodeInterpreterToolRender(Rendable):
+class CodeInterpreterToolRender(ToolRendable):
     """Specialized renderer for code interpreter tool calls.
     
     This class handles the rendering of code interpreter tool calls with consistent styling
@@ -14,10 +14,18 @@ class CodeInterpreterToolRender(Rendable):
     
     def __init__(self):
         """Initialize the code interpreter tool renderer."""
+        super().__init__()
         self._parts = []
-        self._status = "in_progress"
         self._code = None
         self._output = None
+    
+    def get_tool_metadata(self) -> tuple[str, str]:
+        """Get tool icon and display name for code interpreter.
+        
+        Returns:
+            Tuple of (tool_icon, tool_name)
+        """
+        return ICONS.get("code_interpreter_call", ICONS["processing"]), "Interpreter"
     
     def with_code(self, code: str | None) -> "CodeInterpreterToolRender":
         """Add code display to the render.

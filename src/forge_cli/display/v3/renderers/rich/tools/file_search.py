@@ -2,10 +2,10 @@
 
 from forge_cli.response._types.response_file_search_tool_call import ResponseFileSearchToolCall
 from ....style import ICONS, pack_queries
-from ...rendable import Rendable
+from ...rendable import ToolRendable
 
 
-class FileSearchToolRender(Rendable):
+class FileSearchToolRender(ToolRendable):
     """Specialized renderer for file search tool calls.
     
     This class handles the rendering of file search tool calls with consistent styling
@@ -14,9 +14,17 @@ class FileSearchToolRender(Rendable):
     
     def __init__(self):
         """Initialize the file search tool renderer."""
+        super().__init__()
         self._parts = []
-        self._status = "in_progress"
         self._queries = []
+    
+    def get_tool_metadata(self) -> tuple[str, str]:
+        """Get tool icon and display name for file search.
+        
+        Returns:
+            Tuple of (tool_icon, tool_name)
+        """
+        return ICONS.get("file_search_call", ICONS["processing"]), "Search"
     
     def with_queries(self, queries: list[str]) -> "FileSearchToolRender":
         """Add search queries to the render.
@@ -31,7 +39,7 @@ class FileSearchToolRender(Rendable):
             self._queries = queries
             # Use pack_queries for consistent display
             shortened_queries = [q[:25] + "..." if len(q) > 25 else q for q in queries]
-            packed = pack_queries(*[f"{q}" for q in shortened_queries])
+            packed = pack_queries(*[f'"{q}"' for q in shortened_queries])
             self._parts.append(packed)
         return self
     
@@ -73,10 +81,10 @@ class FileSearchToolRender(Rendable):
         return self
     
     def render(self) -> str:
-        """Build and return the final rendered string.
+        """Build and return the final rendered string for result summary only.
         
         Returns:
-            The formatted display string for the file search tool
+            The formatted display string for the file search tool results
         """
         if self._parts:
             return f" {ICONS['bullet']} ".join(self._parts)

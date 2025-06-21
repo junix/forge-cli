@@ -2,10 +2,10 @@
 
 from forge_cli.response._types.response_function_web_search import ResponseFunctionWebSearch
 from ....style import ICONS, pack_queries
-from ...rendable import Rendable
+from ...rendable import ToolRendable
 
 
-class WebSearchToolRender(Rendable):
+class WebSearchToolRender(ToolRendable):
     """Specialized renderer for web search tool calls.
     
     This class handles the rendering of web search tool calls with consistent styling
@@ -14,9 +14,17 @@ class WebSearchToolRender(Rendable):
     
     def __init__(self):
         """Initialize the web search tool renderer."""
+        super().__init__()
         self._parts = []
-        self._status = "in_progress"
         self._queries = []
+    
+    def get_tool_metadata(self) -> tuple[str, str]:
+        """Get tool icon and display name for web search.
+        
+        Returns:
+            Tuple of (tool_icon, tool_name)
+        """
+        return ICONS.get("web_search_call", ICONS["processing"]), "Web"
     
     def with_queries(self, queries: list[str]) -> "WebSearchToolRender":
         """Add search queries to the render.
@@ -73,10 +81,10 @@ class WebSearchToolRender(Rendable):
         return self
     
     def render(self) -> str:
-        """Build and return the final rendered string.
+        """Build and return the final rendered string for result summary only.
         
         Returns:
-            The formatted display string for the web search tool
+            The formatted display string for the web search tool results
         """
         if self._parts:
             return f" {ICONS['bullet']} ".join(self._parts)

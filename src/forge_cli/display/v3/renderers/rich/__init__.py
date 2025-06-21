@@ -14,6 +14,26 @@ It is organized into modular components for maintainability:
 
 from .render import RichRenderer, RichDisplayConfig
 from .welcome import WelcomeRenderer
+from .tools import (
+    FileReaderToolRender,
+    WebSearchToolRender,
+    FileSearchToolRender,
+    PageReaderToolRender,
+    CodeInterpreterToolRender,
+    FunctionCallToolRender,
+    ListDocumentsToolRender,
+)
 
 # Maintain backward compatibility and export new classes
-__all__ = ["RichRenderer", "RichDisplayConfig", "WelcomeRenderer"] 
+__all__ = [
+    "RichRenderer", 
+    "RichDisplayConfig", 
+    "WelcomeRenderer",
+    "FileReaderToolRender",
+    "WebSearchToolRender",
+    "FileSearchToolRender",
+    "PageReaderToolRender",
+    "CodeInterpreterToolRender",
+    "FunctionCallToolRender",
+    "ListDocumentsToolRender",
+] 
