@@ -55,3 +55,41 @@ class Rendable(Protocol):
     ):
         """Render the object."""
         ...
+
+    async def arender(
+        self, **kwargs
+    ) -> (
+        str
+        | Text
+        | Panel
+        | Table
+        | JSON
+        | Markdown
+        | Syntax
+        | Tree
+        | Rule
+        | Align
+        | Columns
+        | Group
+        | Layout
+        | Progress
+        | list[
+            str
+            | Text
+            | Panel
+            | JSON
+            | Table
+            | Markdown
+            | Syntax
+            | Tree
+            | Rule
+            | Align
+            | Columns
+            | Group
+            | Layout
+            | Progress
+        ]
+        | None
+    ):
+        """Render the object."""
+        return self.render(**kwargs)
