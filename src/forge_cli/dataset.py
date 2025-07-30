@@ -106,7 +106,7 @@ class Dataset(BaseModel):
         return False
 
 
-def load_test_dataset(json_path: str = "test-dataset.json") -> Dataset:
+def load_test_dataset(json_path: str = "/Users/junix/forge-cli/src/forge_cli/test-dataset.json") -> Dataset:
     """Convenience function to load test dataset from default or specified path.
 
     Args:

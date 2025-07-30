@@ -37,6 +37,12 @@ MessageId = NewType("MessageId", str)
 DEFAULT_MODEL: Final[str] = "qwen-max-latest"
 
 
+CUSTOM_ROLE_JSON_SCHEMA = {
+    "role": "南京的云学堂公司客服",
+    "response_style": {"tone": "string (optional)", "language": "日文"},
+}
+
+
 class ConversationPersistence(Protocol):
     """Protocol for conversation persistence strategies."""
 
@@ -445,6 +451,8 @@ class ConversationState(BaseModel):
             input_messages.append(InputMessage(role=msg.role, content=content_str))
 
         # Create typed request
+        instructions = json.dumps(CUSTOM_ROLE_JSON_SCHEMA)
+        print("innnnnnnnnnnnnnnnnnnnnn", instructions)
         return Request(
             input=input_messages,
             model=config.model,
@@ -452,4 +460,5 @@ class ConversationState(BaseModel):
             temperature=config.temperature or 0.7,
             max_output_tokens=config.max_output_tokens or 2000,
             effort=config.effort or "low",
+            instructions=instructions,
         )

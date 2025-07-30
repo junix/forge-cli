@@ -131,6 +131,7 @@ async def astream_typed_response(
         "temperature": request_dict.get("temperature", 0.7),
         "max_output_tokens": request_dict.get("max_output_tokens", 1000),
         "input": input_messages,  # Use validated/converted messages
+        "instructions": request_dict.get("instructions"),
     }
 
     # Convert tools to API format
