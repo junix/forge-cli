@@ -129,6 +129,24 @@ class CLIParser:
             help="Resume an existing conversation by ID",
         )
 
+        # Custom role and response style arguments
+        parser.add_argument(
+            "--role",
+            type=str,
+            help="Custom role for the AI assistant (e.g., 'technical expert', 'creative writer')",
+        )
+        parser.add_argument(
+            "--language",
+            type=str,
+            choices=["chinese", "english", "spanish", "french", "german", "japanese", "korean", "portuguese", "russian", "arabic"],
+            help="Response language",
+        )
+        parser.add_argument(
+            "--style",
+            type=str,
+            help="Custom response style description (e.g., 'be concise and technical', 'use bullet points')",
+        )
+
         # Other arguments
         parser.add_argument(
             "--version",
@@ -166,6 +184,12 @@ class CLIParser:
         print()
         print("  # Resume existing conversation:")
         print("  python -m forge_cli --resume conv_123")
+        print()
+        print("  # Custom role and language:")
+        print("  python -m forge_cli --role 'technical expert' --language chinese")
+        print()
+        print("  # Custom response style:")
+        print("  python -m forge_cli --style 'be concise and use bullet points'")
 
     @staticmethod
     def show_version() -> None:

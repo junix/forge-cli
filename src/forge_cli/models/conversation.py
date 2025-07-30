@@ -451,8 +451,10 @@ class ConversationState(BaseModel):
             input_messages.append(InputMessage(role=msg.role, content=content_str))
 
         # Create typed request
-        instructions = json.dumps(CUSTOM_ROLE_JSON_SCHEMA)
-        print("innnnnnnnnnnnnnnnnnnnnn", instructions)
+        instructions = config.build_instructions_json()
+        if config.debug and instructions:
+            print(f"Custom instructions: {instructions}")
+            
         return Request(
             input=input_messages,
             model=config.model,
