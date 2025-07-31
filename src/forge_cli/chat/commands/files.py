@@ -744,171 +744,425 @@ class ShowDocumentCommand(ChatCommand):
         return status_emojis.get(status.lower(), "📄")
 
 
-class ShowCollectionCommand(ChatCommand):
-    """Show detailed information about a specific collection.
+class FileHelpCommand(ChatCommand):
+    """Comprehensive help system for file management commands.
     
     Usage:
-    - /show-collection <collection-id>
-    - /collection vs_abc123
-    - /vs vs_abc123 --summary (to include summary if available)
+    - /file-help - Show general overview of all file commands
+    - /file-help <command-name> - Show detailed help for specific command
     """
     
-    name = "show-collection"
-    description = "Show detailed information about a specific collection"
-    aliases = ["collection", "vs", "show-vs"]
+    name = "file-help"
+    description = "Show detailed help for file management commands"
+    aliases = ["fhelp", "file-usage", "help-files"]
     
     async def execute(self, args: str, controller: ChatController) -> bool:
-        """Execute the show-collection command.
+        """Execute the file help command.
         
         Args:
-            args: Command arguments containing the collection ID and optional flags
+            args: Optional command name to get specific help
             controller: The ChatController instance
             
         Returns:
             True to continue the chat session
         """
-        if not args.strip():
-            controller.display.show_error("Please provide a collection ID: /show-collection <collection-id>")
-            controller.display.show_status("Example: /show-collection vs_abc123")
-            controller.display.show_status("Optional: --summary to include collection summary")
-            return True
+        command_name = args.strip().lower() if args.strip() else None
         
-        # Parse arguments
-        arg_parts = args.strip().split()
-        collection_id = arg_parts[0]
-        show_summary = "--summary" in arg_parts
-        
-        controller.display.show_status(f"🔍 Fetching collection information: {collection_id}")
-        
-        try:
-            # Import SDK functions
-            from forge_cli.sdk import async_get_vectorstore, async_get_vectorstore_summary
-            
-            # Fetch the collection
-            collection = await async_get_vectorstore(collection_id)
-            
-            if collection is None:
-                controller.display.show_error(f"❌ Collection not found: {collection_id}")
-                controller.display.show_status("💡 Make sure the collection ID is correct and exists")
-                return True
-            
-            # Display collection information
-            controller.display.show_status("📚 Collection Information")
-            controller.display.show_status("=" * 50)
-            
-            # Basic information
-            controller.display.show_status(f"🆔 Collection ID: {collection.id}")
-            controller.display.show_status(f"📝 Name: {collection.name}")
-            
-            if collection.description:
-                controller.display.show_status(f"📄 Description: {collection.description}")
-            
-            # Statistics
-            file_counts = collection.file_counts
-            controller.display.show_status(f"📊 File Statistics:")
-            controller.display.show_status(f"  📁 Total Files: {file_counts.total}")
-            
-            if file_counts.completed > 0:
-                controller.display.show_status(f"  ✅ Completed: {file_counts.completed}")
-            if file_counts.in_progress > 0:
-                controller.display.show_status(f"  🔄 In Progress: {file_counts.in_progress}")
-            if file_counts.failed > 0:
-                controller.display.show_status(f"  ❌ Failed: {file_counts.failed}")
-            if file_counts.cancelled > 0:
-                controller.display.show_status(f"  ⏹️ Cancelled: {file_counts.cancelled}")
-            
-            # File list (with smart truncation)
-            if collection.file_ids:
-                controller.display.show_status(f"📋 Files in Collection:")
-                if len(collection.file_ids) <= 10:
-                    for i, file_id in enumerate(collection.file_ids, 1):
-                        controller.display.show_status(f"  {i}. {file_id}")
-                else:
-                    # Show first 8 and last 2
-                    for i, file_id in enumerate(collection.file_ids[:8], 1):
-                        controller.display.show_status(f"  {i}. {file_id}")
-                    controller.display.show_status(f"  ... ({len(collection.file_ids) - 10} more files)")
-                    for i, file_id in enumerate(collection.file_ids[-2:], len(collection.file_ids) - 1):
-                        controller.display.show_status(f"  {i}. {file_id}")
-            
-            # Size information
-            if collection.bytes:
-                size_str = self._format_file_size(collection.bytes)
-                controller.display.show_status(f"💾 Total Size: {size_str}")
-            
-            # Creation date
-            created_str = self._format_datetime(collection.created_at)
-            controller.display.show_status(f"📅 Created: {created_str}")
-            
-            # Metadata
-            if collection.metadata:
-                controller.display.show_status("🏷️ Metadata:")
-                for key, value in collection.metadata.items():
-                    if isinstance(value, (list, dict)):
-                        controller.display.show_status(f"  • {key}: {len(value)} items")
-                    else:
-                        controller.display.show_status(f"  • {key}: {value}")
-            
-            # Collection summary (if requested)
-            if show_summary:
-                controller.display.show_status("")
-                controller.display.show_status("📋 Fetching collection summary...")
-                try:
-                    summary = await async_get_vectorstore_summary(collection_id)
-                    if summary:
-                        controller.display.show_status(f"📝 Summary:")
-                        controller.display.show_status(f"   {summary.summary_text}")
-                        controller.display.show_status(f"🤖 Generated by: {summary.model_used}")
-                    else:
-                        controller.display.show_status("ℹ️ No summary available for this collection")
-                except Exception as e:
-                    controller.display.show_error(f"❌ Failed to fetch summary: {str(e)}")
-            
-            # Usage tips
-            controller.display.show_status("")
-            controller.display.show_status("💡 Related commands:")
-            controller.display.show_status(f"  • Add documents: /join-docs {collection.id} <doc_id1> <doc_id2>")
-            controller.display.show_status(f"  • Search collection: (enable file search and ask questions)")
-            controller.display.show_status(f"  • Show summary: /show-collection {collection.id} --summary")
-            controller.display.show_status("  • List all collections: /tools")
-            
-        except Exception as e:
-            controller.display.show_error(f"❌ Failed to fetch collection information: {str(e)}")
-            controller.display.show_status("💡 Check the collection ID and server connectivity")
+        if not command_name:
+            await self._show_general_help(controller)
+        else:
+            await self._show_specific_help(command_name, controller)
         
         return True
     
-    def _format_file_size(self, bytes_size: int) -> str:
-        """Format file size in human-readable format.
+    async def _show_general_help(self, controller: ChatController) -> None:
+        """Show general overview of all file management commands."""
+        controller.display.show_status("📚 File Management Commands - Overview")
+        controller.display.show_status("=" * 60)
+        controller.display.show_status("")
         
-        Args:
-            bytes_size: Size in bytes
-            
-        Returns:
-            Formatted size string
-        """
-        if bytes_size < 1024:
-            return f"{bytes_size} bytes"
-        elif bytes_size < 1024 * 1024:
-            return f"{bytes_size / 1024:.1f} KB"
-        elif bytes_size < 1024 * 1024 * 1024:
-            return f"{bytes_size / (1024 * 1024):.1f} MB"
-        else:
-            return f"{bytes_size / (1024 * 1024 * 1024):.1f} GB"
+        commands_info = [
+            ("📤 /upload", "Upload files with progress tracking", "Essential"),
+            ("📋 /documents", "List uploaded documents in conversation", "Basic"),
+            ("🔗 /join-docs", "Join documents to collections", "Advanced"),
+            ("🏗️ /new-collection", "Create new vector store collections", "Advanced"),
+            ("📄 /show-doc", "Show detailed document information", "Utility"),
+            ("📚 /show-collection", "Show detailed collection information", "Utility"),
+            ("❓ /file-help", "This help system", "Help")
+        ]
+        
+        controller.display.show_status("Available Commands:")
+        for cmd, desc, level in commands_info:
+            controller.display.show_status(f"  {cmd:<18} - {desc} ({level})")
+        
+        controller.display.show_status("")
+        controller.display.show_status("💡 Quick Start Workflow:")
+        controller.display.show_status("  1. Upload documents: /upload path/to/file.pdf")
+        controller.display.show_status("  2. Create collection: /new-collection name=\"My Docs\" desc=\"My collection\"")
+        controller.display.show_status("  3. Join documents: /join-docs <collection-id>")
+        controller.display.show_status("  4. Enable file search: /enable-file-search")
+        controller.display.show_status("  5. Ask questions about your documents!")
+        
+        controller.display.show_status("")
+        controller.display.show_status("📖 For detailed help on any command:")
+        controller.display.show_status("  /file-help <command-name>")
+        controller.display.show_status("  Example: /file-help upload")
     
-    def _format_datetime(self, dt) -> str:
-        """Format datetime to readable string.
-        
-        Args:
-            dt: Datetime object
+    async def _show_specific_help(self, command_name: str, controller: ChatController) -> None:
+        """Show detailed help for a specific command."""
+        # Map command names and aliases to help methods
+        help_methods = {
+            "upload": self._show_upload_help,
+            "u": self._show_upload_help,
+            "up": self._show_upload_help,
             
-        Returns:
-            Formatted datetime string
-        """
-        try:
-            if hasattr(dt, 'strftime'):
-                return dt.strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                return str(dt)
-        except:
-            return str(dt)
+            "documents": self._show_documents_help,
+            "docs": self._show_documents_help,
+            "files": self._show_documents_help,
+            
+            "join-docs": self._show_join_docs_help,
+            "join": self._show_join_docs_help,
+            "add-to-collection": self._show_join_docs_help,
+            
+            "new-collection": self._show_new_collection_help,
+            "new-vs": self._show_new_collection_help,
+            "create-collection": self._show_new_collection_help,
+            "create-vs": self._show_new_collection_help,
+            
+            "show-doc": self._show_show_doc_help,
+            "doc": self._show_show_doc_help,
+            "document": self._show_show_doc_help,
+            "file-info": self._show_show_doc_help,
+            
+            "show-collection": self._show_show_collection_help,
+            "collection": self._show_show_collection_help,
+            "vs": self._show_show_collection_help,
+            "show-vs": self._show_show_collection_help,
+            
+            "file-help": self._show_help_help,
+            "fhelp": self._show_help_help,
+            "file-usage": self._show_help_help,
+            "help-files": self._show_help_help,
+        }
+        
+        help_method = help_methods.get(command_name)
+        if help_method:
+            await help_method(controller)
+        else:
+            controller.display.show_error(f"❌ No help available for command: {command_name}")
+            controller.display.show_status("Available commands: upload, documents, join-docs, new-collection, show-doc, show-collection, file-help")
+    
+    async def _show_upload_help(self, controller: ChatController) -> None:
+        """Show detailed help for upload command."""
+        controller.display.show_status("📤 Upload Command - Detailed Help")
+        controller.display.show_status("=" * 50)
+        controller.display.show_status("")
+        
+        controller.display.show_status("📋 Purpose:")
+        controller.display.show_status("  Upload and process files with real-time progress tracking")
+        controller.display.show_status("")
+        
+        controller.display.show_status("⚡ Basic Usage:")
+        controller.display.show_status("  /upload <file_path>")
+        controller.display.show_status("  /u <file_path>           # Short alias")
+        controller.display.show_status("  /up <file_path>          # Alternative alias")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🎛️ Advanced Options:")
+        controller.display.show_status("  /upload <file_path> --vectorize    # Enable full text processing")
+        controller.display.show_status("  /upload <file_path> --purpose qa   # Set specific purpose")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📝 Examples:")
+        controller.display.show_status("  /upload ./documents/report.pdf")
+        controller.display.show_status("  /upload ~/Desktop/research.docx --vectorize")
+        controller.display.show_status("  /upload /path/to/manual.pdf --purpose documentation")
+        controller.display.show_status("")
+        
+        controller.display.show_status("✨ Features:")
+        controller.display.show_status("  • Real-time progress tracking with status updates")
+        controller.display.show_status("  • Automatic document ID persistence")
+        controller.display.show_status("  • Support for various file formats (PDF, DOCX, TXT, etc.)")
+        controller.display.show_status("  • Intelligent error handling and recovery")
+        controller.display.show_status("  • Path expansion (~/Documents works)")
+        controller.display.show_status("")
+        
+        controller.display.show_status("⚠️ Important Notes:")
+        controller.display.show_status("  • File must exist and be readable")
+        controller.display.show_status("  • Processing may take time for large files")
+        controller.display.show_status("  • Document IDs are saved automatically for easy reference")
+        controller.display.show_status("  • Use --vectorize for better search capabilities")
+    
+    async def _show_documents_help(self, controller: ChatController) -> None:
+        """Show detailed help for documents command."""
+        controller.display.show_status("📋 Documents Command - Detailed Help")
+        controller.display.show_status("=" * 50)
+        controller.display.show_status("")
+        
+        controller.display.show_status("📋 Purpose:")
+        controller.display.show_status("  List all documents uploaded during this conversation")
+        controller.display.show_status("")
+        
+        controller.display.show_status("⚡ Usage:")
+        controller.display.show_status("  /documents               # List all uploaded documents")
+        controller.display.show_status("  /docs                   # Short alias")
+        controller.display.show_status("  /files                  # Alternative alias")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📊 Information Displayed:")
+        controller.display.show_status("  • Document filename")
+        controller.display.show_status("  • Document ID (for use with other commands)")
+        controller.display.show_status("  • Upload timestamp")
+        controller.display.show_status("  • Total count of documents")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📝 Example Output:")
+        controller.display.show_status("  📚 2 document(s) uploaded in this conversation:")
+        controller.display.show_status("    1. 📄 report.pdf (ID: doc_abc123) - 2024-01-15 14:30:25")
+        controller.display.show_status("    2. 📄 manual.docx (ID: doc_def456) - 2024-01-15 14:35:12")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🔗 Related Commands:")
+        controller.display.show_status("  • /upload <file>          # Upload more documents")
+        controller.display.show_status("  • /show-doc <doc-id>      # View detailed document info")
+        controller.display.show_status("  • /join-docs <vs-id>      # Add documents to collections")
+    
+    async def _show_join_docs_help(self, controller: ChatController) -> None:
+        """Show detailed help for join-docs command."""
+        controller.display.show_status("🔗 Join Documents Command - Detailed Help")
+        controller.display.show_status("=" * 50)
+        controller.display.show_status("")
+        
+        controller.display.show_status("📋 Purpose:")
+        controller.display.show_status("  Join uploaded documents to vector store collections for search")
+        controller.display.show_status("")
+        
+        controller.display.show_status("⚡ Basic Usage:")
+        controller.display.show_status("  /join-docs <collection_id>                  # Join all documents")
+        controller.display.show_status("  /join-docs <collection_id> <doc1> <doc2>    # Join specific documents")
+        controller.display.show_status("  /join <collection_id>                       # Short alias")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📝 Examples:")
+        controller.display.show_status("  /join-docs vs_abc123                        # Join all uploaded docs")
+        controller.display.show_status("  /join-docs vs_abc123 doc_123 doc_456        # Join specific documents")
+        controller.display.show_status("  /add-to-collection vs_research doc_789      # Using alternative alias")
+        controller.display.show_status("")
+        
+        controller.display.show_status("✨ Features:")
+        controller.display.show_status("  • Automatically adds collection to conversation context")
+        controller.display.show_status("  • Validates document IDs before joining")
+        controller.display.show_status("  • Shows confirmation of successful joins")
+        controller.display.show_status("  • Lists all joined documents for verification")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🔄 Workflow:")
+        controller.display.show_status("  1. Upload documents: /upload file.pdf")
+        controller.display.show_status("  2. Create collection: /new-collection name=\"My Docs\" desc=\"Description\"")
+        controller.display.show_status("  3. Join documents: /join-docs <collection-id>")
+        controller.display.show_status("  4. Enable file search: /enable-file-search")
+        controller.display.show_status("  5. Ask questions about your documents!")
+        controller.display.show_status("")
+        
+        controller.display.show_status("⚠️ Prerequisites:")
+        controller.display.show_status("  • Documents must be uploaded first (/upload)")
+        controller.display.show_status("  • Collection must exist (/new-collection)")
+        controller.display.show_status("  • Use /documents to see available document IDs")
+    
+    async def _show_new_collection_help(self, controller: ChatController) -> None:
+        """Show detailed help for new-collection command."""
+        controller.display.show_status("🏗️ New Collection Command - Detailed Help")
+        controller.display.show_status("=" * 50)
+        controller.display.show_status("")
+        
+        controller.display.show_status("📋 Purpose:")
+        controller.display.show_status("  Create new vector store collections to organize your documents")
+        controller.display.show_status("")
+        
+        controller.display.show_status("⚡ Basic Usage:")
+        controller.display.show_status("  /new-collection name=\"Collection Name\" desc=\"Description\"")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🎛️ Advanced Options:")
+        controller.display.show_status("  name=\"Name\"              # Required: Collection name")
+        controller.display.show_status("  desc=\"Description\"        # Required: Collection description")
+        controller.display.show_status("  model=\"embedding-model\"   # Optional: Embedding model")
+        controller.display.show_status("  id=\"custom-id\"           # Optional: Custom collection ID")
+        controller.display.show_status("  metadata=\"key:val,k2:v2\" # Optional: Custom metadata")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📝 Examples:")
+        controller.display.show_status("  # Basic collection")
+        controller.display.show_status("  /new-collection name=\"Research Papers\" desc=\"AI research documents\"")
+        controller.display.show_status("")
+        controller.display.show_status("  # Advanced collection with metadata")
+        controller.display.show_status("  /new-collection name=\"Support FAQ\" desc=\"Customer support docs\" metadata=\"domain:support,priority:high\"")
+        controller.display.show_status("")
+        controller.display.show_status("  # Collection with custom model")
+        controller.display.show_status("  /new-collection name=\"Technical Docs\" desc=\"Technical documentation\" model=\"text-embedding-v4\"")
+        controller.display.show_status("")
+        
+        controller.display.show_status("✨ Features:")
+        controller.display.show_status("  • Intelligent parameter parsing with quoted values")
+        controller.display.show_status("  • Automatic collection ID generation")
+        controller.display.show_status("  • Metadata support for organization")
+        controller.display.show_status("  • Auto-adds to conversation context")
+        controller.display.show_status("  • Helpful next-steps guidance")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🔧 Parameter Format:")
+        controller.display.show_status("  • Use quotes for values with spaces: name=\"My Collection\"")
+        controller.display.show_status("  • Metadata format: \"key:value,key2:value2\"")
+        controller.display.show_status("  • Parameters can be in any order")
+        controller.display.show_status("  • Both name and desc are required")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🔗 Related Commands:")
+        controller.display.show_status("  • /join-docs <collection-id>     # Add documents to collection")
+        controller.display.show_status("  • /show-collection <id>          # View collection details")
+        controller.display.show_status("  • /enable-file-search            # Enable search functionality")
+    
+    async def _show_show_doc_help(self, controller: ChatController) -> None:
+        """Show detailed help for show-doc command."""
+        controller.display.show_status("📄 Show Document Command - Detailed Help")
+        controller.display.show_status("=" * 50)
+        controller.display.show_status("")
+        
+        controller.display.show_status("📋 Purpose:")
+        controller.display.show_status("  Display comprehensive information about a specific document")
+        controller.display.show_status("")
+        
+        controller.display.show_status("⚡ Usage:")
+        controller.display.show_status("  /show-doc <document-id>")
+        controller.display.show_status("  /doc <document-id>          # Short alias")
+        controller.display.show_status("  /document <document-id>     # Alternative alias")
+        controller.display.show_status("  /file-info <document-id>    # Descriptive alias")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📝 Examples:")
+        controller.display.show_status("  /show-doc file_abc123")
+        controller.display.show_status("  /doc doc_456789")
+        controller.display.show_status("  /file-info upload-task-123")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📊 Information Displayed:")
+        controller.display.show_status("  • Document ID and filename")
+        controller.display.show_status("  • File size (human-readable format)")
+        controller.display.show_status("  • Content type and purpose")
+        controller.display.show_status("  • Processing status with emoji indicators")
+        controller.display.show_status("  • Creation and update timestamps")
+        controller.display.show_status("  • Task ID for processing tracking")
+        controller.display.show_status("  • Custom metadata (if any)")
+        controller.display.show_status("  • MD5 hash for integrity verification")
+        controller.display.show_status("  • Error information (if processing failed)")
+        controller.display.show_status("")
+        
+        controller.display.show_status("💡 Finding Document IDs:")
+        controller.display.show_status("  • Use /documents to list all uploaded document IDs")
+        controller.display.show_status("  • Document IDs are shown during upload process")
+        controller.display.show_status("  • IDs usually start with 'file_' or 'doc_'")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🔗 Related Commands:")
+        controller.display.show_status("  • /documents                     # List all document IDs")
+        controller.display.show_status("  • /join-docs <vs-id> <doc-id>   # Add document to collection")
+        controller.display.show_status("  • /upload <file>                # Upload new documents")
+    
+    async def _show_show_collection_help(self, controller: ChatController) -> None:
+        """Show detailed help for show-collection command."""
+        controller.display.show_status("📚 Show Collection Command - Detailed Help")
+        controller.display.show_status("=" * 50)
+        controller.display.show_status("")
+        
+        controller.display.show_status("📋 Purpose:")
+        controller.display.show_status("  Display comprehensive information about a vector store collection")
+        controller.display.show_status("")
+        
+        controller.display.show_status("⚡ Usage:")
+        controller.display.show_status("  /show-collection <collection-id>")
+        controller.display.show_status("  /show-collection <collection-id> --summary    # Include AI summary")
+        controller.display.show_status("  /collection <collection-id>                   # Short alias")
+        controller.display.show_status("  /vs <collection-id>                          # Vector store alias")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📝 Examples:")
+        controller.display.show_status("  /show-collection vs_abc123")
+        controller.display.show_status("  /vs vs_research --summary")
+        controller.display.show_status("  /collection vs_docs_456")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📊 Information Displayed:")
+        controller.display.show_status("  • Collection ID, name, and description")
+        controller.display.show_status("  • File statistics (total, completed, in progress, failed)")
+        controller.display.show_status("  • List of document IDs in the collection")
+        controller.display.show_status("  • Total storage size (human-readable)")
+        controller.display.show_status("  • Creation timestamp")
+        controller.display.show_status("  • Custom metadata (if any)")
+        controller.display.show_status("  • AI-generated summary (with --summary flag)")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🎯 Smart Features:")
+        controller.display.show_status("  • Intelligent file list truncation (shows first 8 + last 2)")
+        controller.display.show_status("  • Status emoji indicators for visual clarity")
+        controller.display.show_status("  • Optional AI summary for content overview")
+        controller.display.show_status("  • Helpful usage tips and related commands")
+        controller.display.show_status("")
+        
+        controller.display.show_status("💡 Finding Collection IDs:")
+        controller.display.show_status("  • Use /tools to see active vector stores")
+        controller.display.show_status("  • Collection IDs are shown when creating with /new-collection")
+        controller.display.show_status("  • IDs usually start with 'vs_'")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🔗 Related Commands:")
+        controller.display.show_status("  • /new-collection               # Create new collection")
+        controller.display.show_status("  • /join-docs <id>              # Add documents to collection")
+        controller.display.show_status("  • /show-doc <doc-id>           # View document details")
+        controller.display.show_status("  • /enable-file-search          # Enable search on collections")
+    
+    async def _show_help_help(self, controller: ChatController) -> None:
+        """Show help for the help command itself."""
+        controller.display.show_status("❓ File Help Command - Detailed Help")
+        controller.display.show_status("=" * 50)
+        controller.display.show_status("")
+        
+        controller.display.show_status("📋 Purpose:")
+        controller.display.show_status("  Comprehensive help system for all file management commands")
+        controller.display.show_status("")
+        
+        controller.display.show_status("⚡ Usage:")
+        controller.display.show_status("  /file-help                  # General overview of all commands")
+        controller.display.show_status("  /file-help <command>        # Detailed help for specific command")
+        controller.display.show_status("  /fhelp <command>           # Short alias")
+        controller.display.show_status("  /help-files                # Alternative alias")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📝 Examples:")
+        controller.display.show_status("  /file-help                 # Show command overview")
+        controller.display.show_status("  /file-help upload          # Detailed upload help")
+        controller.display.show_status("  /fhelp new-collection      # Help for creating collections")
+        controller.display.show_status("  /help-files join-docs      # Help for joining documents")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🎯 Available Help Topics:")
+        controller.display.show_status("  • upload, u, up            # File upload help")
+        controller.display.show_status("  • documents, docs, files   # Document listing help")
+        controller.display.show_status("  • join-docs, join          # Document joining help")
+        controller.display.show_status("  • new-collection, new-vs   # Collection creation help")
+        controller.display.show_status("  • show-doc, doc           # Document details help")
+        controller.display.show_status("  • show-collection, vs     # Collection details help")
+        controller.display.show_status("  • file-help, fhelp        # This help system")
+        controller.display.show_status("")
+        
+        controller.display.show_status("✨ Features:")
+        controller.display.show_status("  • Alias support - all command aliases work")
+        controller.display.show_status("  • Comprehensive examples and use cases")
+        controller.display.show_status("  • Related command suggestions")
+        controller.display.show_status("  • Workflow guidance and best practices")
+        controller.display.show_status("")
+        
+        controller.display.show_status("💡 Pro Tips:")
+        controller.display.show_status("  • Start with /file-help for overview")
+        controller.display.show_status("  • Use specific command help when stuck")
+        controller.display.show_status("  • Check related commands for workflow ideas")
+        controller.display.show_status("  • Commands work with all their aliases")

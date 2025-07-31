@@ -71,6 +71,7 @@ class CommandRegistry:
         from .conversation import HistoryCommand, ListConversationsCommand, LoadCommand, SaveCommand
         from .files import (
             DocumentsCommand, 
+            FileHelpCommand,
             JoinDocumentsCommand, 
             NewCollectionCommand, 
             ShowCollectionCommand,
@@ -100,6 +101,7 @@ class CommandRegistry:
             NewCollectionCommand(),
             ShowDocumentCommand(),
             ShowCollectionCommand(),
+            FileHelpCommand(),
             # Web Search Toggle Commands
             ToggleToolCommand(
                 tool_name="web-search",
