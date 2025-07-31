@@ -223,6 +223,57 @@ class ConversationState(BaseModel):
         """Check if file search is enabled for this conversation."""
         return self.file_search_enabled
 
+    def add_uploaded_document(self, document_id: str, filename: str, upload_time: str | None = None) -> None:
+        """Add a document to the uploaded documents list.
+        
+        Args:
+            document_id: The unique ID of the uploaded document
+            filename: The original filename of the uploaded document
+            upload_time: ISO format timestamp (defaults to current time)
+        """
+        import datetime
+        
+        if upload_time is None:
+            upload_time = datetime.datetime.now().isoformat()
+            
+        document_info = {
+            "id": document_id,
+            "filename": filename,
+            "uploaded_at": upload_time
+        }
+        
+        # Avoid duplicates based on document ID
+        if not any(doc["id"] == document_id for doc in self.uploaded_documents):
+            self.uploaded_documents.append(document_info)
+
+    def get_uploaded_documents(self) -> list[dict[str, str]]:
+        """Get the list of documents uploaded during this conversation.
+        
+        Returns:
+            List of document info dictionaries with keys: id, filename, uploaded_at
+        """
+        return self.uploaded_documents.copy()
+
+    def remove_uploaded_document(self, document_id: str) -> bool:
+        """Remove a document from the uploaded documents list.
+        
+        Args:
+            document_id: The ID of the document to remove
+            
+        Returns:
+            True if document was found and removed, False otherwise
+        """
+        original_length = len(self.uploaded_documents)
+        self.uploaded_documents = [
+            doc for doc in self.uploaded_documents 
+            if doc["id"] != document_id
+        ]
+        return len(self.uploaded_documents) < original_length
+
+    def clear_uploaded_documents(self) -> None:
+        """Clear all uploaded documents from the conversation."""
+        self.uploaded_documents.clear()
+
     @classmethod
     def get_conversations_dir(cls) -> Path:
         """Get the directory where conversations are stored."""

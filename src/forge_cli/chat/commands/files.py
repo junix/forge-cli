@@ -161,7 +161,15 @@ class UploadCommand(ChatCommand):
                     if task_status.status in ["completed", "failed", "cancelled"]:
                         if task_status.status == "completed":
                             controller.display.show_status(f"✅ Processing completed: {filename}")
-                            controller.display.show_status(f"📄 Document ID: {task_id.replace('upload-', '')}")
+                            document_id = task_id.replace('upload-', '')
+                            controller.display.show_status(f"📄 Document ID: {document_id}")
+                            
+                            # Save document ID to conversation state
+                            controller.conversation.add_uploaded_document(
+                                document_id=document_id,
+                                filename=filename
+                            )
+                            controller.display.show_status(f"💾 Document saved to conversation state")
                         elif task_status.status == "failed":
                             error_msg = "Unknown error"
                             # Try multiple fields for error information
@@ -237,3 +245,146 @@ class UploadCommand(ChatCommand):
             "parse_pending": "⏳"
         }
         return status_emojis.get(status, "🔄")
+
+
+class DocumentsCommand(ChatCommand):
+    """List documents uploaded during this conversation.
+    
+    Usage:
+    - /documents - List all uploaded documents
+    - /docs - Alias for documents command
+    """
+    
+    name = "documents"
+    description = "List documents uploaded during this conversation"
+    aliases = ["docs", "files"]
+    
+    async def execute(self, args: str, controller: ChatController) -> bool:
+        """Execute the documents command to list uploaded documents.
+        
+        Args:
+            args: Command arguments (unused for now)
+            controller: The ChatController instance
+            
+        Returns:
+            True to continue the chat session
+        """
+        uploaded_docs = controller.conversation.get_uploaded_documents()
+        
+        if not uploaded_docs:
+            controller.display.show_status("📂 No documents uploaded in this conversation yet")
+            return True
+        
+        controller.display.show_status(f"📚 {len(uploaded_docs)} document(s) uploaded in this conversation:")
+        
+        for i, doc in enumerate(uploaded_docs, 1):
+            # Format upload time
+            try:
+                from datetime import datetime
+                upload_dt = datetime.fromisoformat(doc["uploaded_at"])
+                time_str = upload_dt.strftime("%Y-%m-%d %H:%M:%S")
+            except (ValueError, KeyError):
+                time_str = doc.get("uploaded_at", "Unknown time")
+            
+            controller.display.show_status(
+                f"  {i}. 📄 {doc['filename']} (ID: {doc['id']}) - {time_str}"
+            )
+        
+        controller.display.show_status("💡 Use /upload to add more documents")
+        return True
+
+
+class JoinDocumentsCommand(ChatCommand):
+    """Join uploaded documents to a vector store collection.
+    
+    Usage:
+    - /join-docs <vector_store_id> - Join all uploaded documents to the vector store
+    - /join-docs <vector_store_id> <doc_id1> <doc_id2> ... - Join specific documents
+    """
+    
+    name = "join-docs"
+    description = "Join uploaded documents to a vector store collection"
+    aliases = ["join", "add-to-collection"]
+    
+    async def execute(self, args: str, controller: ChatController) -> bool:
+        """Execute the join-documents command.
+        
+        Args:
+            args: Command arguments containing vector store ID and optional document IDs
+            controller: The ChatController instance
+            
+        Returns:
+            True to continue the chat session
+        """
+        if not args.strip():
+            controller.display.show_error("Please specify a vector store ID: /join-docs <vector_store_id> [doc_ids...]")
+            controller.display.show_status("Example: /join-docs vs_123")
+            controller.display.show_status("Example: /join-docs vs_123 doc1 doc2")
+            return True
+        
+        arg_parts = args.strip().split()
+        vector_store_id = arg_parts[0]
+        
+        # Get uploaded documents
+        uploaded_docs = controller.conversation.get_uploaded_documents()
+        if not uploaded_docs:
+            controller.display.show_error("No documents have been uploaded in this conversation")
+            controller.display.show_status("Use /upload to upload documents first")
+            return True
+        
+        # Determine which documents to join
+        if len(arg_parts) > 1:
+            # Specific document IDs provided
+            requested_doc_ids = arg_parts[1:]
+            documents_to_join = []
+            
+            for doc_id in requested_doc_ids:
+                doc = next((d for d in uploaded_docs if d["id"] == doc_id), None)
+                if doc:
+                    documents_to_join.append(doc)
+                else:
+                    controller.display.show_error(f"Document ID not found: {doc_id}")
+            
+            if not documents_to_join:
+                controller.display.show_error("No valid document IDs provided")
+                return True
+        else:
+            # Join all uploaded documents
+            documents_to_join = uploaded_docs
+        
+        controller.display.show_status(f"🔗 Joining {len(documents_to_join)} document(s) to vector store: {vector_store_id}")
+        
+        try:
+            # Import SDK function
+            from forge_cli.sdk import async_join_files_to_vectorstore
+            
+            # Extract document IDs
+            file_ids = [doc["id"] for doc in documents_to_join]
+            
+            # Join documents to vector store
+            result = await async_join_files_to_vectorstore(
+                vector_store_id=vector_store_id,
+                file_ids=file_ids
+            )
+            
+            if result:
+                controller.display.show_status(f"✅ Successfully joined {len(documents_to_join)} document(s) to vector store")
+                
+                # Update conversation state to include this vector store
+                current_vs_ids = controller.conversation.get_current_vector_store_ids()
+                if vector_store_id not in current_vs_ids:
+                    current_vs_ids.append(vector_store_id)
+                    controller.conversation.set_vector_store_ids(current_vs_ids)
+                    controller.display.show_status(f"📚 Vector store {vector_store_id} added to conversation")
+                
+                # Show joined documents
+                for doc in documents_to_join:
+                    controller.display.show_status(f"  📄 {doc['filename']} (ID: {doc['id']})")
+                    
+            else:
+                controller.display.show_error("Failed to join documents to vector store")
+                
+        except Exception as e:
+            controller.display.show_error(f"Error joining documents: {str(e)}")
+        
+        return True
