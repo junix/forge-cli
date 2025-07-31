@@ -19,6 +19,7 @@ async def async_upload_file(
     purpose: str = "general",
     custom_id: str = None,
     skip_exists: bool = False,
+    parse_options: dict[str, str] = None,
 ) -> File:  # Changed return type
     """
     Asynchronously upload a file to the Knowledge Forge API and return the file details.
@@ -28,6 +29,9 @@ async def async_upload_file(
         purpose: The intended purpose of the file (e.g., "qa", "general")
         custom_id: Optional custom ID for the file
         skip_exists: Whether to skip upload if file with same MD5 exists
+        parse_options: Optional dict of parsing options. Keys: "abstract", "summary", 
+                      "outline", "keywords", "contexts", "graph", "vectorize", 
+                      "outline_json_style", "fast_mode". Values: "enable" or "disable".
 
     Returns:
         File object containing file details including id and task_id
@@ -56,6 +60,10 @@ async def async_upload_file(
 
     if skip_exists:
         form_data.add_field("skip_exists", "true")
+    
+    if parse_options:
+        import json
+        form_data.add_field("parse_options", json.dumps(parse_options))
 
     status_code, response_data = await async_make_request("POST", url, data=form_data)
 

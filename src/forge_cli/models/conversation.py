@@ -78,6 +78,9 @@ class ConversationState(BaseModel):
     file_search_enabled: bool = Field(default=False)
     page_reader_enabled: bool = Field(default=False)
     current_vector_store_ids: list[str] = Field(default_factory=list)
+    
+    # Track documents uploaded during this conversation
+    uploaded_documents: list[dict[str, str]] = Field(default_factory=list)
 
     # Pydantic configuration
     model_config = {"arbitrary_types_allowed": True}

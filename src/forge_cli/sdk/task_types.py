@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class TaskStatus(BaseModel):
@@ -13,27 +13,49 @@ class TaskStatus(BaseModel):
 
     id: str = Field(description="The unique identifier for the task.")
     object_field: str = Field(default="task", alias="object", description="The type of object, typically 'task'.")
-    type: str = Field(
-        description="The type of operation the task is performing (e.g., 'file_processing', 'vector_store_creation')."
+    type: str | None = Field(
+        None, description="The type of operation the task is performing (e.g., 'file_processing', 'vector_store_creation')."
     )
-    status: Literal["pending", "in_progress", "completed", "failed", "cancelled"] = Field(
-        description="The current status of the task."
-    )
+    status: str = Field(description="The current status of the task.")
 
-    created_at: datetime = Field(description="Timestamp when the task was created.")
-    updated_at: datetime = Field(description="Timestamp when the task was last updated.")
+    created_at: datetime | None = Field(None, description="Timestamp when the task was created.")
+    updated_at: datetime | None = Field(None, description="Timestamp when the task was last updated.")
 
     progress: float | None = Field(None, description="Task completion progress (e.g., percentage).", ge=0, le=100)
     result: dict[str, Any] | None = Field(
         None, description="The result of the task if completed successfully. Structure may vary based on task type."
     )
     error_message: str | None = Field(None, description="Error message if the task failed.")
+    
+    # Additional fields from the actual server response
+    data: dict[str, Any] | None = Field(None, description="Additional task data from server.")
+    failure_reason: str | None = Field(None, description="Detailed failure reason if task failed.")
 
     # Optional field to link back to the resource that initiated or is related to this task
     resource_id: str | None = Field(
         None,
         description="Identifier of the primary resource associated with this task (e.g., file_id, vector_store_id).",
     )
+
+    @field_validator('created_at', mode='before')
+    @classmethod
+    def parse_created_at(cls, v):
+        """Convert Unix timestamp to datetime if needed."""
+        if v is None:
+            return None
+        if isinstance(v, int):
+            return datetime.fromtimestamp(v)
+        return v
+    
+    @field_validator('updated_at', mode='before')
+    @classmethod
+    def parse_updated_at(cls, v):
+        """Convert Unix timestamp to datetime if needed."""
+        if v is None:
+            return None
+        if isinstance(v, int):
+            return datetime.fromtimestamp(v)
+        return v
 
     class Config:
         populate_by_name = True
