@@ -183,6 +183,47 @@ async def async_fetch_file(file_id: str) -> File | None:  # Changed return type
         return None
 
 
+async def async_fetch_document_content(document_id: str):
+    """
+    Asynchronously fetch document content by its ID.
+    This function handles the actual API response structure for document content.
+
+    Args:
+        document_id: The ID of the document to fetch
+
+    Returns:
+        DocumentResponse object containing document details or None if not found
+    """
+    from .file_types import DocumentResponse
+    
+    url = f"{BASE_URL}/v1/files/{document_id}/content"
+
+    try:
+        status_code, response_data = await async_make_request("GET", url)
+
+        if status_code == 200 and isinstance(response_data, dict):
+            try:
+                return DocumentResponse.model_validate(response_data)
+            except Exception as e:
+                logger.error(
+                    f"Fetch document {document_id} succeeded but failed to parse response: {e}. Response keys: {list(response_data.keys()) if response_data else 'None'}"
+                )
+                return None
+        elif status_code == 404:
+            return None
+        elif status_code == 200 and isinstance(response_data, str):
+            logger.error(
+                f"Fetch document {document_id} failed: Server returned 200 but response was not valid JSON. Content: {response_data}"
+            )
+            return None
+        else:
+            logger.error(f"Fetch document {document_id} returned unhandled status {status_code}. Data: {response_data}")
+            return None
+    except Exception as e:
+        logger.error(f"Error fetching document {document_id}: {str(e)}")
+        return None
+
+
 async def async_delete_file(file_id: str) -> DeleteResponse | None:  # Changed return type
     """
     Asynchronously delete a file by its ID.

@@ -614,14 +614,14 @@ class ShowDocumentCommand(ChatCommand):
         
         document_id = args.strip()
         
-        controller.display.show_status(f"🔍 Fetching document information: {document_id}")
+        controller.display.show_status_rich(f"🔍 Fetching document information: {document_id}")
         
         try:
             # Import SDK function
-            from forge_cli.sdk import async_fetch_file
+            from forge_cli.sdk import async_fetch_document_content
             
             # Fetch the document
-            document = await async_fetch_file(document_id)
+            document = await async_fetch_document_content(document_id)
             
             if document is None:
                 controller.display.show_error(f"❌ Document not found: {document_id}")
@@ -629,58 +629,77 @@ class ShowDocumentCommand(ChatCommand):
                 return True
             
             # Display document information
-            controller.display.show_status("📄 Document Information")
-            controller.display.show_status("=" * 50)
+            controller.display.show_status_rich("📄 Document Information")
+            controller.display.show_status_rich("=" * 50)
             
             # Basic information
-            controller.display.show_status(f"🆔 Document ID: {document.id}")
-            controller.display.show_status(f"📁 Filename: {document.filename}")
-            controller.display.show_status(f"📏 Size: {self._format_file_size(document.bytes)}")
+            controller.display.show_status_rich(f"🆔 Document ID: {document.id}")
+            controller.display.show_status_rich(f"📁 Title: {document.title}")
             
-            if document.content_type:
-                controller.display.show_status(f"📋 Content Type: {document.content_type}")
+            if document.mime_type:
+                controller.display.show_status_rich(f"📋 Content Type: {document.mime_type}")
             
-            controller.display.show_status(f"🎯 Purpose: {document.purpose}")
+            if document.md5sum:
+                controller.display.show_status_rich(f"🔐 MD5 Hash: {document.md5sum}")
             
-            # Status information
-            if document.status:
-                status_emoji = self._get_status_emoji(document.status)
-                controller.display.show_status(f"{status_emoji} Status: {document.status}")
+            # Content information
+            if document.content:
+                controller.display.show_status_rich(f"📄 Pages: {document.content.page_count}")
+                controller.display.show_status_rich(f"🔤 File Type: {document.content.file_type}")
+                
+                if document.content.language:
+                    controller.display.show_status_rich(f"🌐 Language: {document.content.language}")
+                
+                # Show keywords if available
+                if document.content.keywords:
+                    controller.display.show_status_rich(f"🏷️ Keywords: {', '.join(document.content.keywords[:10])}")
+                
+                # Show segments count
+                if document.content.segments:
+                    controller.display.show_status_rich(f"📝 Segments: {len(document.content.segments)}")
             
             # Timestamps
             created_str = self._format_datetime(document.created_at)
-            controller.display.show_status(f"📅 Created: {created_str}")
+            controller.display.show_status_rich(f"📅 Created: {created_str}")
             
-            if document.updated_at:
-                updated_str = self._format_datetime(document.updated_at)
-                controller.display.show_status(f"🔄 Updated: {updated_str}")
+            updated_str = self._format_datetime(document.updated_at)
+            controller.display.show_status_rich(f"🔄 Updated: {updated_str}")
             
-            # Processing information
-            if document.task_id:
-                controller.display.show_status(f"⚙️ Task ID: {document.task_id}")
+            # Author information
+            if document.author:
+                controller.display.show_status_rich(f"👤 Author: {document.author}")
             
-            if document.processing_error_message:
-                controller.display.show_error(f"❌ Processing Error: {document.processing_error_message}")
+            # Vector stores
+            if document.vector_store_ids:
+                controller.display.show_status_rich(f"📚 Vector Stores: {len(document.vector_store_ids)}")
+                for vs_id in document.vector_store_ids[:3]:  # Show first 3
+                    controller.display.show_status_rich(f"  • {vs_id}")
+                if len(document.vector_store_ids) > 3:
+                    controller.display.show_status_rich(f"  ... and {len(document.vector_store_ids) - 3} more")
             
-            # Additional details
-            if document.custom_id:
-                controller.display.show_status(f"🏷️ Custom ID: {document.custom_id}")
+            # Content summary/abstract if available
+            if document.content and document.content.abstract:
+                controller.display.show_status_rich("")
+                controller.display.show_status_rich("📋 Abstract:")
+                # Truncate long abstracts
+                abstract = document.content.abstract
+                if len(abstract) > 300:
+                    abstract = abstract[:297] + "..."
+                controller.display.show_status_rich(f"  {abstract}")
             
-            if document.md5:
-                controller.display.show_status(f"🔐 MD5 Hash: {document.md5}")
-            
-            # Metadata
+            # Document metadata
             if document.metadata:
-                controller.display.show_status("📋 Metadata:")
+                controller.display.show_status_rich("")
+                controller.display.show_status_rich("📋 Metadata:")
                 for key, value in document.metadata.items():
-                    controller.display.show_status(f"  • {key}: {value}")
+                    controller.display.show_status_rich(f"  • {key}: {value}")
             
             # Usage tips
-            controller.display.show_status("")
-            controller.display.show_status("💡 Related commands:")
-            controller.display.show_status(f"  • Join to collection: /join-docs <collection_id> {document.id}")
-            controller.display.show_status("  • List collections: /tools")
-            controller.display.show_status("  • View uploaded documents: /documents")
+            controller.display.show_status_rich("")
+            controller.display.show_status_rich("💡 Related commands:")
+            controller.display.show_status_rich(f"  • Join to collection: /join-docs <collection_id> {document.id}")
+            controller.display.show_status_rich("  • List collections: /tools")
+            controller.display.show_status_rich("  • View uploaded documents: /documents")
             
         except Exception as e:
             controller.display.show_error(f"❌ Failed to fetch document information: {str(e)}")
@@ -688,60 +707,345 @@ class ShowDocumentCommand(ChatCommand):
         
         return True
     
-    def _format_file_size(self, bytes_size: int) -> str:
-        """Format file size in human-readable format.
-        
-        Args:
-            bytes_size: Size in bytes
-            
-        Returns:
-            Formatted size string
-        """
-        if bytes_size < 1024:
-            return f"{bytes_size} bytes"
-        elif bytes_size < 1024 * 1024:
-            return f"{bytes_size / 1024:.1f} KB"
-        elif bytes_size < 1024 * 1024 * 1024:
-            return f"{bytes_size / (1024 * 1024):.1f} MB"
-        else:
-            return f"{bytes_size / (1024 * 1024 * 1024):.1f} GB"
-    
     def _format_datetime(self, dt) -> str:
         """Format datetime to readable string.
         
         Args:
-            dt: Datetime object
+            dt: Datetime object or string
             
         Returns:
             Formatted datetime string
         """
         try:
-            if hasattr(dt, 'strftime'):
+            if isinstance(dt, str):
+                # Try to parse ISO format datetime string
+                from datetime import datetime
+                try:
+                    parsed_dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                    return parsed_dt.strftime("%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    return dt
+            elif hasattr(dt, 'strftime'):
                 return dt.strftime("%Y-%m-%d %H:%M:%S")
             else:
                 return str(dt)
         except:
             return str(dt)
+
+
+class ShowPagesCommand(ChatCommand):
+    """Show document pages/segments with content and metadata.
     
-    def _get_status_emoji(self, status: str) -> str:
-        """Get emoji for document status.
+    Usage:
+    - /show-pages <doc-id> - Show all pages
+    - /show-pages <doc-id> --page 3 - Show specific page
+    - /show-pages <doc-id> --limit 5 - Show first 5 pages
+    - /show-pages <doc-id> --summary - Show page summaries only
+    - /show-pages <doc-id> --search "keyword" - Find pages containing keyword
+    """
+    
+    name = "show-pages"
+    description = "Show document pages/segments with content and metadata"
+    aliases = ["pages", "segments", "show-segments"]
+    
+    async def execute(self, args: str, controller: ChatController) -> bool:
+        """Execute the show-pages command.
         
         Args:
-            status: Document status
+            args: Command arguments containing document ID and options
+            controller: The ChatController instance
             
         Returns:
-            Appropriate emoji
+            True to continue the chat session
         """
-        status_emojis = {
-            "pending": "⏳",
-            "processing": "🔄",
-            "completed": "✅",
-            "failed": "❌",
-            "cancelled": "⏹️",
-            "uploaded": "📤",
-            "ready": "✅"
-        }
-        return status_emojis.get(status.lower(), "📄")
+        if not args.strip():
+            controller.display.show_error("Please provide a document ID: /show-pages <document-id>")
+            controller.display.show_status_rich("Example: /show-pages doc_abc123")
+            controller.display.show_status_rich("Options: --page N, --limit N, --summary, --search 'keyword'")
+            return True
+        
+        # Parse arguments
+        arg_parts = args.strip().split()
+        document_id = arg_parts[0]
+        
+        # Parse options
+        specific_page = None
+        limit_pages = None
+        show_summary = False
+        search_keyword = None
+        page_range = None
+        
+        i = 1
+        while i < len(arg_parts):
+            if arg_parts[i] == "--page" and i + 1 < len(arg_parts):
+                try:
+                    specific_page = int(arg_parts[i + 1])
+                    i += 2
+                except ValueError:
+                    controller.display.show_error("Invalid page number")
+                    return True
+            elif arg_parts[i] == "--limit" and i + 1 < len(arg_parts):
+                try:
+                    limit_pages = int(arg_parts[i + 1])
+                    i += 2
+                except ValueError:
+                    controller.display.show_error("Invalid limit number")
+                    return True
+            elif arg_parts[i] == "--summary":
+                show_summary = True
+                i += 1
+            elif arg_parts[i] == "--search" and i + 1 < len(arg_parts):
+                search_keyword = arg_parts[i + 1].strip('"\'')
+                i += 2
+            elif arg_parts[i] == "--range" and i + 1 < len(arg_parts):
+                range_str = arg_parts[i + 1]
+                if "-" in range_str:
+                    try:
+                        start, end = map(int, range_str.split("-"))
+                        page_range = (start, end)
+                        i += 2
+                    except ValueError:
+                        controller.display.show_error("Invalid range format. Use: --range 2-4")
+                        return True
+                else:
+                    controller.display.show_error("Invalid range format. Use: --range 2-4")
+                    return True
+            else:
+                i += 1
+        
+        controller.display.show_status_rich(f"🔍 Fetching pages for document: {document_id}")
+        
+        try:
+            # Import SDK function
+            from forge_cli.sdk import async_fetch_document_content
+            
+            # Fetch the document
+            document = await async_fetch_document_content(document_id)
+            
+            if document is None:
+                controller.display.show_error(f"❌ Document not found: {document_id}")
+                controller.display.show_status_rich("💡 Make sure the document ID is correct and exists")
+                return True
+            
+            if not document.content or not document.content.segments:
+                controller.display.show_status_rich("📄 No pages/segments found in this document")
+                return True
+            
+            segments = document.content.segments
+            total_pages = len(segments)
+            
+            # Apply filtering
+            if search_keyword:
+                segments = [s for s in segments if search_keyword.lower() in s.content.lower()]
+                controller.display.show_status_rich(f"🔍 Found {len(segments)} pages containing '{search_keyword}'")
+            
+            if specific_page:
+                if 1 <= specific_page <= total_pages:
+                    segments = [segments[specific_page - 1]]
+                else:
+                    controller.display.show_error(f"❌ Page {specific_page} not found. Document has {total_pages} pages.")
+                    return True
+            elif page_range:
+                start, end = page_range
+                if 1 <= start <= end <= total_pages:
+                    segments = segments[start-1:end]
+                else:
+                    controller.display.show_error(f"❌ Invalid range {start}-{end}. Document has {total_pages} pages.")
+                    return True
+            elif limit_pages:
+                segments = segments[:limit_pages]
+            
+            if not segments:
+                controller.display.show_status_rich("📄 No pages match your criteria")
+                return True
+            
+            # Display header
+            controller.display.show_status_rich(f"📖 Document Pages: {document.title}")
+            controller.display.show_status_rich("=" * 60)
+            controller.display.show_status_rich(f"📊 Showing {len(segments)} of {total_pages} pages")
+            controller.display.show_status_rich("")
+            
+            # Display each page/segment
+            for i, segment in enumerate(segments):
+                page_num = segment.index + 1  # Convert 0-based to 1-based
+                
+                controller.display.show_status_rich(f"📄 Page {page_num} (ID: {segment.id})")
+                controller.display.show_status_rich("-" * 40)
+                
+                # Content preview
+                if show_summary:
+                    # Show just a brief summary
+                    content_preview = segment.content[:100] + "..." if len(segment.content) > 100 else segment.content
+                    controller.display.show_status_rich(f"📝 Content: {content_preview}")
+                else:
+                    # Show detailed content
+                    content_lines = segment.content.split('\n')
+                    preview_lines = []
+                    char_count = 0
+                    
+                    for line in content_lines[:10]:  # Max 10 lines
+                        if char_count + len(line) > 400:  # Max 400 chars
+                            remaining_chars = 400 - char_count
+                            if remaining_chars > 0:
+                                preview_lines.append(line[:remaining_chars] + "...")
+                            break
+                        preview_lines.append(line)
+                        char_count += len(line)
+                    
+                    if len(content_lines) > 10 or char_count >= 400:
+                        preview_lines.append("... [content truncated]")
+                    
+                    controller.display.show_status_rich("📝 Content:")
+                    for line in preview_lines:
+                        if line.strip():  # Skip empty lines for cleaner display
+                            controller.display.show_status_rich(f"   {line}")
+                
+                # Content statistics
+                word_count = len(segment.content.split())
+                char_count = len(segment.content)
+                controller.display.show_status_rich(f"📊 Stats: {word_count} words, {char_count} characters")
+                
+                # Metadata display
+                if segment.metadata:
+                    metadata = segment.metadata
+                    
+                    # Keywords
+                    if metadata.get('keywords'):
+                        keywords = metadata['keywords'][:8]  # Show first 8 keywords
+                        controller.display.show_status_rich(f"🏷️  Keywords: {', '.join(keywords)}")
+                    
+                    # Contexts
+                    if metadata.get('contexts'):
+                        contexts_count = len(metadata['contexts'])
+                        controller.display.show_status_rich(f"🔗 Contexts: {contexts_count} context(s)")
+                        # Show first context if available
+                        if contexts_count > 0:
+                            first_context = metadata['contexts'][0]
+                            if len(first_context) > 150:
+                                first_context = first_context[:147] + "..."
+                            controller.display.show_status_rich(f"   └─ {first_context}")
+                    
+                    # Entities
+                    if metadata.get('entities'):
+                        entities_count = len(metadata['entities'])
+                        controller.display.show_status_rich(f"🎯 Entities: {entities_count} entities")
+                    
+                    # Images
+                    if metadata.get('images'):
+                        images_count = len(metadata['images'])
+                        controller.display.show_status_rich(f"🖼️  Images: {images_count} image(s)")
+                
+                # URL if available
+                if segment.url and segment.url.strip():
+                    controller.display.show_status_rich(f"🔗 URL: {segment.url}")
+                
+                # Add spacing between pages
+                if i < len(segments) - 1:
+                    controller.display.show_status_rich("")
+            
+            # Footer with navigation hints
+            controller.display.show_status_rich("")
+            controller.display.show_status_rich("💡 Navigation commands:")
+            if not specific_page and not page_range:
+                controller.display.show_status_rich(f"  • Specific page: /show-pages {document_id} --page <N>")
+            if not limit_pages and total_pages > 5:
+                controller.display.show_status_rich(f"  • Limit results: /show-pages {document_id} --limit <N>")
+            if not search_keyword:
+                controller.display.show_status_rich(f"  • Search pages: /show-pages {document_id} --search 'keyword'")
+            controller.display.show_status_rich(f"  • Show summary: /show-pages {document_id} --summary")
+            controller.display.show_status_rich(f"  • Document info: /show-doc {document_id}")
+            
+        except Exception as e:
+            controller.display.show_error(f"❌ Failed to fetch pages: {str(e)}")
+            controller.display.show_status_rich("💡 Check the document ID and server connectivity")
+        
+        return True
+
+
+class ShowDocumentJsonCommand(ChatCommand):
+    """Show raw JSON response from document API.
+    
+    Usage:
+    - /show-doc-json <doc-id> - Show raw JSON response
+    - /doc-json <doc-id> - Short alias
+    """
+    
+    name = "show-doc-json"
+    description = "Show raw JSON response from document API"
+    aliases = ["doc-json", "json-doc", "raw-doc"]
+    
+    async def execute(self, args: str, controller: ChatController) -> bool:
+        """Execute the show-doc-json command.
+        
+        Args:
+            args: Command arguments containing the document ID
+            controller: The ChatController instance
+            
+        Returns:
+            True to continue the chat session
+        """
+        if not args.strip():
+            controller.display.show_error("Please provide a document ID: /show-doc-json <document-id>")
+            controller.display.show_status_rich("Example: /show-doc-json doc_abc123")
+            return True
+        
+        document_id = args.strip()
+        
+        controller.display.show_status_rich(f"🔍 Fetching raw JSON for document: {document_id}")
+        
+        try:
+            # Import SDK internal functions to get raw response
+            from forge_cli.sdk.http_client import async_make_request
+            from forge_cli.sdk.config import BASE_URL
+            import json
+            
+            # Make raw API call
+            url = f"{BASE_URL}/v1/files/{document_id}/content"
+            status_code, response_data = await async_make_request("GET", url)
+            
+            if status_code == 200 and isinstance(response_data, dict):
+                # Display raw JSON response
+                controller.display.show_status_rich("📄 Raw JSON Response:")
+                controller.display.show_status_rich("=" * 60)
+                
+                # Pretty print JSON with indentation
+                json_str = json.dumps(response_data, indent=2, ensure_ascii=False)
+                
+                # Display JSON in chunks to avoid overwhelming the terminal
+                lines = json_str.split('\n')
+                for line in lines:
+                    controller.display.show_status_rich(line)
+                
+                controller.display.show_status_rich("")
+                controller.display.show_status_rich("💡 JSON Structure Analysis:")
+                controller.display.show_status_rich(f"  • Total keys: {len(response_data.keys())}")
+                controller.display.show_status_rich(f"  • Top-level keys: {', '.join(response_data.keys())}")
+                
+                # Analyze content structure if available
+                if 'content' in response_data and response_data['content']:
+                    content = response_data['content']
+                    if isinstance(content, dict):
+                        controller.display.show_status_rich(f"  • Content keys: {', '.join(content.keys())}")
+                        if 'segments' in content and isinstance(content['segments'], list):
+                            controller.display.show_status_rich(f"  • Segments count: {len(content['segments'])}")
+                
+            elif status_code == 404:
+                controller.display.show_error(f"❌ Document not found: {document_id}")
+                controller.display.show_status_rich("💡 Make sure the document ID is correct and exists")
+            else:
+                controller.display.show_error(f"❌ API returned status {status_code}")
+                if isinstance(response_data, dict):
+                    json_str = json.dumps(response_data, indent=2, ensure_ascii=False)
+                    controller.display.show_status_rich("Error response:")
+                    controller.display.show_status_rich(json_str)
+                else:
+                    controller.display.show_status_rich(f"Response: {response_data}")
+                
+        except Exception as e:
+            controller.display.show_error(f"❌ Failed to fetch document JSON: {str(e)}")
+            controller.display.show_status_rich("💡 Check the document ID and server connectivity")
+        
+        return True
 
 
 class FileHelpCommand(ChatCommand):
@@ -787,6 +1091,8 @@ class FileHelpCommand(ChatCommand):
             ("🔗 /join-docs", "Join documents to collections", "Advanced"),
             ("🏗️ /new-collection", "Create new vector store collections", "Advanced"),
             ("📄 /show-doc", "Show detailed document information", "Utility"),
+            ("📖 /show-pages", "Show document pages with content and metadata", "Utility"),
+            ("🔧 /show-doc-json", "Show raw JSON response from document API", "Debug"),
             ("📚 /show-collection", "Show detailed collection information", "Utility"),
             ("❓ /file-help", "This help system", "Help")
         ]
@@ -834,6 +1140,16 @@ class FileHelpCommand(ChatCommand):
             "document": self._show_show_doc_help,
             "file-info": self._show_show_doc_help,
             
+            "show-pages": self._show_show_pages_help,
+            "pages": self._show_show_pages_help,
+            "segments": self._show_show_pages_help,
+            "show-segments": self._show_show_pages_help,
+            
+            "show-doc-json": self._show_show_doc_json_help,
+            "doc-json": self._show_show_doc_json_help,
+            "json-doc": self._show_show_doc_json_help,
+            "raw-doc": self._show_show_doc_json_help,
+            
             "show-collection": self._show_show_collection_help,
             "collection": self._show_show_collection_help,
             "vs": self._show_show_collection_help,
@@ -850,7 +1166,7 @@ class FileHelpCommand(ChatCommand):
             await help_method(controller)
         else:
             controller.display.show_error(f"❌ No help available for command: {command_name}")
-            controller.display.show_status("Available commands: upload, documents, join-docs, new-collection, show-doc, show-collection, file-help")
+            controller.display.show_status("Available commands: upload, documents, join-docs, new-collection, show-doc, show-pages, show-doc-json, show-collection, file-help")
     
     async def _show_upload_help(self, controller: ChatController) -> None:
         """Show detailed help for upload command."""
@@ -1068,6 +1384,122 @@ class FileHelpCommand(ChatCommand):
         controller.display.show_status("  • /join-docs <vs-id> <doc-id>   # Add document to collection")
         controller.display.show_status("  • /upload <file>                # Upload new documents")
     
+    async def _show_show_pages_help(self, controller: ChatController) -> None:
+        """Show detailed help for show-pages command."""
+        controller.display.show_status("📖 Show Pages Command - Detailed Help")
+        controller.display.show_status("=" * 50)
+        controller.display.show_status("")
+        
+        controller.display.show_status("📋 Purpose:")
+        controller.display.show_status("  Display document pages/segments with content previews and rich metadata")
+        controller.display.show_status("")
+        
+        controller.display.show_status("⚡ Basic Usage:")
+        controller.display.show_status("  /show-pages <document-id>")
+        controller.display.show_status("  /pages <document-id>        # Short alias")
+        controller.display.show_status("  /segments <document-id>     # Alternative alias")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🎛️ Advanced Options:")
+        controller.display.show_status("  /show-pages <doc-id> --page 3           # Show specific page")
+        controller.display.show_status("  /show-pages <doc-id> --limit 5          # Show first 5 pages")
+        controller.display.show_status("  /show-pages <doc-id> --range 2-4        # Show pages 2 through 4")
+        controller.display.show_status("  /show-pages <doc-id> --summary          # Show page summaries only")
+        controller.display.show_status("  /show-pages <doc-id> --search \"keyword\" # Find pages containing keyword")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📝 Examples:")
+        controller.display.show_status("  /show-pages doc_abc123")
+        controller.display.show_status("  /pages doc_456 --page 2")
+        controller.display.show_status("  /segments doc_789 --limit 3")
+        controller.display.show_status("  /show-pages doc_abc --search \"AI\"")
+        controller.display.show_status("  /pages doc_def --summary")
+        controller.display.show_status("")
+        
+        controller.display.show_status("✨ Information Displayed:")
+        controller.display.show_status("  • Page number and segment ID")
+        controller.display.show_status("  • Content preview (smart-truncated to 400 characters)")
+        controller.display.show_status("  • Word and character count statistics")
+        controller.display.show_status("  • Keywords and entities from metadata")
+        controller.display.show_status("  • Context information and image counts")
+        controller.display.show_status("  • URL references if available")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🎯 Smart Features:")
+        controller.display.show_status("  • Intelligent content truncation (10 lines max, 400 chars max)")
+        controller.display.show_status("  • Keyword search across all page content")
+        controller.display.show_status("  • Page range selection for focused viewing")
+        controller.display.show_status("  • Summary mode for quick overview")
+        controller.display.show_status("  • Rich metadata display with context previews")
+        controller.display.show_status("")
+        
+        controller.display.show_status("💡 Use Cases:")
+        controller.display.show_status("  • Explore document structure and content flow")
+        controller.display.show_status("  • Find specific information across pages")
+        controller.display.show_status("  • Review document segmentation quality")
+        controller.display.show_status("  • Analyze keyword distribution and context")
+        controller.display.show_status("  • Navigate large documents efficiently")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🔗 Related Commands:")
+        controller.display.show_status("  • /show-doc <doc-id>           # View document overview")
+        controller.display.show_status("  • /documents                   # List all uploaded documents")
+        controller.display.show_status("  • /join-docs <vs-id> <doc-id> # Add document to collection")
+        controller.display.show_status("  • /upload <file>              # Upload new documents")
+    
+    async def _show_show_doc_json_help(self, controller: ChatController) -> None:
+        """Show detailed help for show-doc-json command."""
+        controller.display.show_status("🔧 Show Document JSON Command - Detailed Help")
+        controller.display.show_status("=" * 50)
+        controller.display.show_status("")
+        
+        controller.display.show_status("📋 Purpose:")
+        controller.display.show_status("  Display the raw JSON response from the document API for debugging")
+        controller.display.show_status("")
+        
+        controller.display.show_status("⚡ Basic Usage:")
+        controller.display.show_status("  /show-doc-json <document-id>")
+        controller.display.show_status("  /doc-json <document-id>      # Short alias")
+        controller.display.show_status("  /json-doc <document-id>      # Alternative alias")
+        controller.display.show_status("  /raw-doc <document-id>       # Descriptive alias")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📝 Examples:")
+        controller.display.show_status("  /show-doc-json file_abc123")
+        controller.display.show_status("  /doc-json doc_456789")
+        controller.display.show_status("  /raw-doc upload-task-123")
+        controller.display.show_status("")
+        
+        controller.display.show_status("📊 Information Displayed:")
+        controller.display.show_status("  • Complete raw JSON response from API")
+        controller.display.show_status("  • Pretty-printed with proper indentation")
+        controller.display.show_status("  • JSON structure analysis summary")
+        controller.display.show_status("  • Top-level keys and content organization")
+        controller.display.show_status("  • Segments count and content structure")
+        controller.display.show_status("  • Error responses with full details")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🎯 Use Cases:")
+        controller.display.show_status("  • Debug API response structure")
+        controller.display.show_status("  • Understand document data model")
+        controller.display.show_status("  • Analyze metadata and segments format")
+        controller.display.show_status("  • Troubleshoot parsing issues")
+        controller.display.show_status("  • Examine full document content without processing")
+        controller.display.show_status("")
+        
+        controller.display.show_status("⚠️ Important Notes:")
+        controller.display.show_status("  • Shows unprocessed API response")
+        controller.display.show_status("  • May contain large amounts of text data")
+        controller.display.show_status("  • Useful for developers and debugging")
+        controller.display.show_status("  • Does not apply any formatting or truncation")
+        controller.display.show_status("")
+        
+        controller.display.show_status("🔗 Related Commands:")
+        controller.display.show_status("  • /show-doc <doc-id>           # Formatted document information")
+        controller.display.show_status("  • /show-pages <doc-id>         # Structured page content")
+        controller.display.show_status("  • /documents                   # List all uploaded documents")
+        controller.display.show_status("  • /upload <file>              # Upload new documents")
+    
     async def _show_show_collection_help(self, controller: ChatController) -> None:
         """Show detailed help for show-collection command."""
         controller.display.show_status("📚 Show Collection Command - Detailed Help")
@@ -1166,3 +1598,173 @@ class FileHelpCommand(ChatCommand):
         controller.display.show_status("  • Use specific command help when stuck")
         controller.display.show_status("  • Check related commands for workflow ideas")
         controller.display.show_status("  • Commands work with all their aliases")
+
+
+class ShowCollectionCommand(ChatCommand):
+    """Show detailed information about a specific collection.
+    
+    Usage:
+    - /show-collection <collection-id>
+    - /collection vs_abc123
+    - /vs vs_abc123 --summary (to include summary if available)
+    """
+    
+    name = "show-collection"
+    description = "Show detailed information about a specific collection"
+    aliases = ["collection", "vs", "show-vs"]
+    
+    async def execute(self, args: str, controller: ChatController) -> bool:
+        """Execute the show-collection command.
+        
+        Args:
+            args: Command arguments containing the collection ID and optional flags
+            controller: The ChatController instance
+            
+        Returns:
+            True to continue the chat session
+        """
+        if not args.strip():
+            controller.display.show_error("Please provide a collection ID: /show-collection <collection-id>")
+            controller.display.show_status("Example: /show-collection vs_abc123")
+            controller.display.show_status("Optional: --summary to include collection summary")
+            return True
+        
+        # Parse arguments
+        arg_parts = args.strip().split()
+        collection_id = arg_parts[0]
+        show_summary = "--summary" in arg_parts
+        
+        controller.display.show_status(f"🔍 Fetching collection information: {collection_id}")
+        
+        try:
+            # Import SDK functions
+            from forge_cli.sdk import async_get_vectorstore, async_get_vectorstore_summary
+            
+            # Fetch the collection
+            collection = await async_get_vectorstore(collection_id)
+            
+            if collection is None:
+                controller.display.show_error(f"❌ Collection not found: {collection_id}")
+                controller.display.show_status("💡 Make sure the collection ID is correct and exists")
+                return True
+            
+            # Display collection information
+            controller.display.show_status("📚 Collection Information")
+            controller.display.show_status("=" * 50)
+            
+            # Basic information
+            controller.display.show_status(f"🆔 Collection ID: {collection.id}")
+            controller.display.show_status(f"📝 Name: {collection.name}")
+            
+            if collection.description:
+                controller.display.show_status(f"📄 Description: {collection.description}")
+            
+            # Statistics
+            file_counts = collection.file_counts
+            controller.display.show_status(f"📊 File Statistics:")
+            controller.display.show_status(f"  📁 Total Files: {file_counts.total}")
+            
+            if file_counts.completed > 0:
+                controller.display.show_status(f"  ✅ Completed: {file_counts.completed}")
+            if file_counts.in_progress > 0:
+                controller.display.show_status(f"  🔄 In Progress: {file_counts.in_progress}")
+            if file_counts.failed > 0:
+                controller.display.show_status(f"  ❌ Failed: {file_counts.failed}")
+            if file_counts.cancelled > 0:
+                controller.display.show_status(f"  ⏹️ Cancelled: {file_counts.cancelled}")
+            
+            # File list (with smart truncation)
+            if collection.file_ids:
+                controller.display.show_status(f"📋 Files in Collection:")
+                if len(collection.file_ids) <= 10:
+                    for i, file_id in enumerate(collection.file_ids, 1):
+                        controller.display.show_status(f"  {i}. {file_id}")
+                else:
+                    # Show first 8 and last 2
+                    for i, file_id in enumerate(collection.file_ids[:8], 1):
+                        controller.display.show_status(f"  {i}. {file_id}")
+                    controller.display.show_status(f"  ... ({len(collection.file_ids) - 10} more files)")
+                    for i, file_id in enumerate(collection.file_ids[-2:], len(collection.file_ids) - 1):
+                        controller.display.show_status(f"  {i}. {file_id}")
+            
+            # Size information
+            if collection.bytes:
+                size_str = self._format_file_size(collection.bytes)
+                controller.display.show_status(f"💾 Total Size: {size_str}")
+            
+            # Creation date
+            created_str = self._format_datetime(collection.created_at)
+            controller.display.show_status(f"📅 Created: {created_str}")
+            
+            # Metadata
+            if collection.metadata:
+                controller.display.show_status("🏷️ Metadata:")
+                for key, value in collection.metadata.items():
+                    if isinstance(value, (list, dict)):
+                        controller.display.show_status(f"  • {key}: {len(value)} items")
+                    else:
+                        controller.display.show_status(f"  • {key}: {value}")
+            
+            # Collection summary (if requested)
+            if show_summary:
+                controller.display.show_status("")
+                controller.display.show_status("📋 Fetching collection summary...")
+                try:
+                    summary = await async_get_vectorstore_summary(collection_id)
+                    if summary:
+                        controller.display.show_status(f"📝 Summary:")
+                        controller.display.show_status(f"   {summary.summary_text}")
+                        controller.display.show_status(f"🤖 Generated by: {summary.model_used}")
+                    else:
+                        controller.display.show_status("ℹ️ No summary available for this collection")
+                except Exception as e:
+                    controller.display.show_error(f"❌ Failed to fetch summary: {str(e)}")
+            
+            # Usage tips
+            controller.display.show_status("")
+            controller.display.show_status("💡 Related commands:")
+            controller.display.show_status(f"  • Add documents: /join-docs {collection.id} <doc_id1> <doc_id2>")
+            controller.display.show_status(f"  • Search collection: (enable file search and ask questions)")
+            controller.display.show_status(f"  • Show summary: /show-collection {collection.id} --summary")
+            controller.display.show_status("  • List all collections: /tools")
+            
+        except Exception as e:
+            controller.display.show_error(f"❌ Failed to fetch collection information: {str(e)}")
+            controller.display.show_status("💡 Check the collection ID and server connectivity")
+        
+        return True
+    
+    def _format_file_size(self, bytes_size: int) -> str:
+        """Format file size in human-readable format.
+        
+        Args:
+            bytes_size: Size in bytes
+            
+        Returns:
+            Formatted size string
+        """
+        if bytes_size < 1024:
+            return f"{bytes_size} bytes"
+        elif bytes_size < 1024 * 1024:
+            return f"{bytes_size / 1024:.1f} KB"
+        elif bytes_size < 1024 * 1024 * 1024:
+            return f"{bytes_size / (1024 * 1024):.1f} MB"
+        else:
+            return f"{bytes_size / (1024 * 1024 * 1024):.1f} GB"
+    
+    def _format_datetime(self, dt) -> str:
+        """Format datetime to readable string.
+        
+        Args:
+            dt: Datetime object
+            
+        Returns:
+            Formatted datetime string
+        """
+        try:
+            if hasattr(dt, 'strftime'):
+                return dt.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                return str(dt)
+        except:
+            return str(dt)

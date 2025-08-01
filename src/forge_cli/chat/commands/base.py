@@ -76,6 +76,8 @@ class CommandRegistry:
             NewCollectionCommand, 
             ShowCollectionCommand,
             ShowDocumentCommand,
+            ShowDocumentJsonCommand,
+            ShowPagesCommand,
             UploadCommand
         )
         from .info import InspectCommand
@@ -100,7 +102,9 @@ class CommandRegistry:
             JoinDocumentsCommand(),
             NewCollectionCommand(),
             ShowDocumentCommand(),
+            ShowDocumentJsonCommand(),
             ShowCollectionCommand(),
+            ShowPagesCommand(),
             FileHelpCommand(),
             # Web Search Toggle Commands
             ToggleToolCommand(

@@ -15,6 +15,7 @@ from .config import BASE_URL
 from .files import (
     async_check_task_status,
     async_delete_file,
+    async_fetch_document_content,
     async_fetch_file,
     async_upload_file,
     async_wait_for_task_completion,
@@ -51,6 +52,7 @@ __all__ = [
     "async_check_task_status",
     "async_wait_for_task_completion",
     "async_fetch_file",
+    "async_fetch_document_content",
     "async_delete_file",
     # Vector store operations (all use typed returns)
     "async_create_vectorstore",
