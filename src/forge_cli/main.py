@@ -34,8 +34,8 @@ def create_config_from_args(args) -> AppConfig:
             print(f"  Vector Store ID: {dataset.vectorstore_id}")
             print(f"  Files: {len(dataset.files)}")
 
-    # Apply dataset-specific configuration
-    config.apply_dataset_config(dataset, args)
+    # Apply dataset-specific configuration (returns new config instance)
+    config = config.apply_dataset_config(dataset, args)
 
     # Update environment if server specified
     if config.server_url != os.environ.get("KNOWLEDGE_FORGE_URL"):

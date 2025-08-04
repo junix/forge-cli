@@ -95,11 +95,11 @@ class ChatSessionManager:
         # ConversationState is now the authoritative source, no need to pass config
         request = self.controller.conversation.new_request(content)
 
-        # Create typed handler and stream
-        handler = TypedStreamHandler(self.display, debug=self.config.debug)
+        # Create typed handler and stream - use conversation state as authoritative source
+        handler = TypedStreamHandler(self.display, debug=self.controller.conversation.debug)
 
         # Stream the response
-        event_stream = astream_typed_response(request, debug=self.config.debug)
+        event_stream = astream_typed_response(request, debug=self.controller.conversation.debug)
         response = await handler.handle_stream(event_stream)
 
         # Update conversation state from response (includes adding assistant message)
