@@ -1,32 +1,34 @@
 """File operation commands for chat mode.
 
-This module contains all file and document related commands organized into sub-modules:
-- upload: File upload operations
-- documents: Document listing and management
-- document_ops: Individual document operations (show, delete, dump)
-- collection_ops: Collection management operations
-- utils: Utility commands (help, join, pages)
+This module contains all file and document related commands, with each command in its own file
+for maximum modularity and maintainability.
 """
 
-from .collection_ops import (
-    DeleteCollectionCommand,
-    NewCollectionCommand,
-    ShowCollectionCommand,
-    ShowCollectionsCommand,
-    UnuseCollectionCommand,
-    UseCollectionCommand,
-)
-from .document_ops import (
-    DeleteDocumentCommand,
-    DumpCommand,
-    NewDocumentCommand,
-    ShowDocumentCommand,
-    ShowDocumentJsonCommand,
-    ShowPagesCommand,
-)
-from .documents import DocumentsCommand, ShowDocumentsCommand
+# Core file operations
+# Collection operations
+from .delete_collection import DeleteCollectionCommand
+
+# Document operations
+from .delete_document import DeleteDocumentCommand
+
+# Document listing
+from .documents_list import DocumentsCommand
+from .dump import DumpCommand
+
+# Utility commands
+from .file_help import FileHelpCommand
+from .join_documents import JoinDocumentsCommand
+from .new_collection import NewCollectionCommand
+from .new_document import NewDocumentCommand
+from .show_collection import ShowCollectionCommand
+from .show_collections import ShowCollectionsCommand
+from .show_document import ShowDocumentCommand
+from .show_document_json import ShowDocumentJsonCommand
+from .show_documents import ShowDocumentsCommand
+from .show_pages import ShowPagesCommand
+from .unuse_collection import UnuseCollectionCommand
 from .upload import UploadCommand
-from .utils import FileHelpCommand, JoinDocumentsCommand
+from .use_collection import UseCollectionCommand
 
 __all__ = [
     # Core file operations
