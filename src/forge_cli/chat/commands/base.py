@@ -85,6 +85,7 @@ class CommandRegistry:
             ShowDocumentJsonCommand,
             ShowPagesCommand,
             UploadCommand,
+            UseCollectionCommand,
         )
         from .info import InspectCommand
         from .session import ClearCommand, ExitCommand, HelpCommand, NewCommand
@@ -111,6 +112,7 @@ class CommandRegistry:
             ShowDocumentCommand(),
             ShowDocumentJsonCommand(),
             ShowCollectionCommand(),
+            UseCollectionCommand(),
             ShowPagesCommand(),
             DumpCommand(),
             DeleteDocumentCommand(),

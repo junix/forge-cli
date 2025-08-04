@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any  # Added Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class FileCounts(BaseModel):
@@ -27,11 +27,20 @@ class Vectorstore(BaseModel):
     metadata: dict[str, Any] | None = None
     created_at: datetime
     bytes: int | None = None
-    file_counts: FileCounts
+    file_counts: FileCounts | None = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def parse_created_at(cls, v):
+        """Convert Unix timestamp to datetime if needed."""
+        if isinstance(v, int):
+            return datetime.fromtimestamp(v)
+        elif isinstance(v, str):
+            return datetime.fromisoformat(v.replace("Z", "+00:00"))
+        return v
 
     class Config:
         populate_by_name = True
-        allow_population_by_field_name = True
         json_encoders = {datetime: lambda v: v.isoformat() if v else None}
 
 
