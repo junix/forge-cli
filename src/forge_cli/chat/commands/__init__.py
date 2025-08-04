@@ -11,6 +11,7 @@ from .files import (
     NewDocumentCommand,
     ShowCollectionsCommand,
     ShowDocumentsCommand,
+    TopKQueryCommand,
     UnuseCollectionCommand,
     UploadCommand,
 )
@@ -45,6 +46,7 @@ __all__ = [
     "NewDocumentCommand",
     "ShowCollectionsCommand",
     "ShowDocumentsCommand",
+    "TopKQueryCommand",
     "UnuseCollectionCommand",
     "DeleteDocumentCommand",
     "DeleteCollectionCommand",

@@ -26,6 +26,7 @@ from .show_document import ShowDocumentCommand
 from .show_document_json import ShowDocumentJsonCommand
 from .show_documents import ShowDocumentsCommand
 from .show_pages import ShowPagesCommand
+from .topk_query import TopKQueryCommand
 from .unuse_collection import UnuseCollectionCommand
 from .upload import UploadCommand
 from .use_collection import UseCollectionCommand
@@ -50,6 +51,8 @@ __all__ = [
     "ShowCollectionsCommand",
     "UnuseCollectionCommand",
     "UseCollectionCommand",
+    # Query operations
+    "TopKQueryCommand",
     # Utilities
     "FileHelpCommand",
     "JoinDocumentsCommand",
