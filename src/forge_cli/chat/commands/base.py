@@ -70,7 +70,7 @@ class CommandRegistry:
         from .config import ModelCommand, ToolsCommand, VectorStoreCommand
         from .conversation import HistoryCommand, ListConversationsCommand, LoadCommand, SaveCommand
 
-        # Import new commands
+        # Import new commands from refactored files module
         from .files import (
             DeleteCollectionCommand,
             DeleteDocumentCommand,
@@ -86,6 +86,7 @@ class CommandRegistry:
             ShowDocumentJsonCommand,
             ShowDocumentsCommand,
             ShowPagesCommand,
+            UnuseCollectionCommand,
             UploadCommand,
             UseCollectionCommand,
         )
@@ -116,6 +117,7 @@ class CommandRegistry:
             ShowDocumentsCommand(),
             ShowCollectionCommand(),
             ShowCollectionsCommand(),
+            UnuseCollectionCommand(),
             UseCollectionCommand(),
             ShowPagesCommand(),
             DumpCommand(),

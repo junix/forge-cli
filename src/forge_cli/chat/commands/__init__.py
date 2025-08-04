@@ -11,6 +11,7 @@ from .files import (
     NewDocumentCommand,
     ShowCollectionsCommand,
     ShowDocumentsCommand,
+    UnuseCollectionCommand,
     UploadCommand,
 )
 from .info import InspectCommand
@@ -44,6 +45,7 @@ __all__ = [
     "NewDocumentCommand",
     "ShowCollectionsCommand",
     "ShowDocumentsCommand",
+    "UnuseCollectionCommand",
     "DeleteDocumentCommand",
     "DeleteCollectionCommand",
 ]

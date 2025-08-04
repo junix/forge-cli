@@ -498,16 +498,21 @@ class ShowCollectionsCommand(ChatCommand):
 
             collection = await async_get_vectorstore(collection_id)
             if collection:
-                # Handle file_counts properly - it might be a Pydantic model or dict
+                # Handle file_counts properly - it's a FileCounts Pydantic model
                 file_counts = getattr(collection, "file_counts", None)
                 if file_counts:
-                    # Convert Pydantic model to dict if needed
+                    # Convert FileCounts Pydantic model to dict
                     if hasattr(file_counts, "model_dump"):
+                        # Pydantic v2
                         file_counts_dict = file_counts.model_dump()
                     elif hasattr(file_counts, "dict"):
+                        # Pydantic v1
                         file_counts_dict = file_counts.dict()
+                    elif isinstance(file_counts, dict):
+                        # Already a dict
+                        file_counts_dict = file_counts
                     else:
-                        # Try to access as attributes if it's a Pydantic model
+                        # Fallback: access as attributes (FileCounts model)
                         file_counts_dict = {
                             "total": getattr(file_counts, "total", 0),
                             "completed": getattr(file_counts, "completed", 0),
@@ -2519,6 +2524,100 @@ class UseCollectionCommand(ChatCommand):
         except Exception as e:
             controller.display.show_error(f"❌ Error adding collection: {str(e)}")
             controller.display.show_status("💡 Check the collection ID and server connectivity")
+
+        return True
+
+
+class UnuseCollectionCommand(ChatCommand):
+    """Remove a collection from active vector stores for file search.
+
+    Usage:
+    - /unuse-collection <collection-id> - Remove collection from active vector stores
+    - /unuse-vs vs_123 - Short alias
+    """
+
+    name = "unuse-collection"
+    description = "Remove a collection from active vector stores for file search"
+    aliases = ["unuse-vs", "remove-collection", "remove-vs"]
+
+    async def execute(self, args: str, controller: ChatController) -> bool:
+        """Execute the unuse-collection command.
+
+        Args:
+            args: Command arguments containing the collection ID
+            controller: The ChatController instance
+
+        Returns:
+            True to continue the chat session
+        """
+        if not args.strip():
+            controller.display.show_error("Please provide a collection ID: /unuse-collection <collection-id>")
+            controller.display.show_status("Example: /unuse-collection vs_abc123")
+            controller.display.show_status("This will remove the collection from active vector stores")
+            return True
+
+        # Parse collection ID
+        collection_id = args.strip().split()[0]
+
+        # Check if collection is currently in use
+        if collection_id not in controller.config.vec_ids:
+            controller.display.show_status(f"ℹ️ Collection '{collection_id}' is not in active vector stores")
+
+            # Show current active collections if any
+            if controller.config.vec_ids:
+                controller.display.show_status("📚 Currently active collections:")
+                for idx, vs_id in enumerate(controller.config.vec_ids, 1):
+                    controller.display.show_status(f"  {idx}. {vs_id}")
+            else:
+                controller.display.show_status("📂 No collections are currently active")
+                controller.display.show_status("💡 Use /use-collection to add collections")
+
+            return True
+
+        # Optional: Get collection info before removing (for better user feedback)
+        collection_name = collection_id  # Default to ID
+        try:
+            from forge_cli.sdk import async_get_vectorstore
+
+            collection = await async_get_vectorstore(collection_id)
+            if collection and hasattr(collection, "name"):
+                collection_name = collection.name
+        except Exception:
+            # If we can't get collection info, that's okay - just use the ID
+            pass
+
+        # Remove from config.vec_ids
+        controller.config.vec_ids.remove(collection_id)
+        controller.display.show_status(
+            f"✅ Collection '{collection_name}' ({collection_id}) removed from active vector stores"
+        )
+
+        # Also remove from conversation's vector store IDs for consistency
+        current_vs_ids = controller.conversation.get_current_vector_store_ids()
+        if collection_id in current_vs_ids:
+            current_vs_ids.remove(collection_id)
+            controller.conversation.set_vector_store_ids(current_vs_ids)
+
+        # Show updated status
+        remaining_count = len(controller.config.vec_ids)
+        controller.display.show_status(f"📊 Active collections: {remaining_count}")
+
+        if remaining_count > 0:
+            controller.display.show_status("📚 Remaining active collections:")
+            for idx, vs_id in enumerate(controller.config.vec_ids, 1):
+                controller.display.show_status(f"  {idx}. {vs_id}")
+        else:
+            controller.display.show_status("📂 No collections are currently active")
+            controller.display.show_status("💡 File search will not work without active collections")
+
+            # Auto-disable file search if no collections left
+            if controller.conversation.file_search_enabled:
+                controller.conversation.disable_file_search()
+                controller.display.show_status("🔍 Auto-disabled file search (no active collections)")
+
+        # Show helpful next steps
+        controller.display.show_status("💡 Use /show-collections to see all available collections")
+        controller.display.show_status("💡 Use /use-collection <id> to add collections back")
 
         return True
 
