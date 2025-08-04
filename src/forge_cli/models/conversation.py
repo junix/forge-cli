@@ -591,6 +591,13 @@ class ConversationState(BaseModel):
         # Parse the message to extract file references
         parsed_message = FileReferenceParser.parse(content)
 
+        # Validate file references
+        invalid_files = self._validate_file_references(parsed_message.file_references)
+        if invalid_files:
+            # Create user-friendly error message
+            error_msg = self._create_file_reference_error_message(invalid_files)
+            raise ValueError(error_msg)
+
         # Create input content with file references
         file_input_content = create_file_input_message(parsed_message)
 
@@ -642,3 +649,89 @@ class ConversationState(BaseModel):
             effort=self.effort,
             instructions=instructions,
         )
+
+    def _validate_file_references(self, file_references: list) -> list[str]:
+        """Validate that file references exist in the system.
+        
+        Args:
+            file_references: List of FileReference objects
+            
+        Returns:
+            List of invalid file IDs
+        """
+        invalid_files = []
+        
+        # Get all known file IDs
+        known_file_ids = set()
+        
+        # Add uploaded files
+        for doc in self.uploaded_documents:
+            known_file_ids.add(doc["id"])
+        
+        # Add vector store files (if we have cached them)
+        # For now, we'll skip vector store validation as it requires API calls
+        # In the future, we could maintain a file cache
+        
+        # Check each reference
+        for file_ref in file_references:
+            if file_ref.file_id not in known_file_ids:
+                # Check if it looks like a valid file ID format
+                if not self._is_valid_file_id_format(file_ref.file_id):
+                    invalid_files.append(file_ref.file_id)
+        
+        return invalid_files
+    
+    def _is_valid_file_id_format(self, file_id: str) -> bool:
+        """Check if a file ID matches expected format.
+        
+        Args:
+            file_id: The file ID to check
+            
+        Returns:
+            True if format is valid
+        """
+        # Common file ID patterns:
+        # - UUID format: 8-4-4-4-12 hex characters
+        # - file_ prefix: file_xxxxxxxxxxxx
+        # - doc_ prefix: doc_xxxxxxxxxxxx
+        import re
+        
+        # UUID pattern
+        uuid_pattern = r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+        # Prefixed ID pattern (file_, doc_, etc. followed by alphanumeric)
+        prefix_pattern = r'^(file_|doc_|document_)[a-zA-Z0-9]+$'
+        
+        return bool(re.match(uuid_pattern, file_id) or re.match(prefix_pattern, file_id))
+    
+    def _create_file_reference_error_message(self, invalid_files: list[str]) -> str:
+        """Create a user-friendly error message for invalid file references.
+        
+        Args:
+            invalid_files: List of invalid file IDs
+            
+        Returns:
+            Formatted error message
+        """
+        if len(invalid_files) == 1:
+            return (
+                f"❌ Invalid file reference: @{invalid_files[0]}\n\n"
+                f"This doesn't appear to be a valid file ID. File IDs typically look like:\n"
+                f"  • UUID format: @b0a9c8d7-6e5f-4d3e-2b1a-098767432009\n"
+                f"  • Prefixed format: @file_abc123 or @doc_xyz789\n\n"
+                f"💡 Tips:\n"
+                f"  • Use /show-docs to see available documents\n"
+                f"  • Use /refresh-files to update the file list\n"
+                f"  • Check your spelling - file IDs are case-sensitive"
+            )
+        else:
+            files_list = ", ".join(f"@{fid}" for fid in invalid_files)
+            return (
+                f"❌ Invalid file references: {files_list}\n\n"
+                f"These don't appear to be valid file IDs. File IDs typically look like:\n"
+                f"  • UUID format: @b0a9c8d7-6e5f-4d3e-2b1a-098767432009\n"
+                f"  • Prefixed format: @file_abc123 or @doc_xyz789\n\n"
+                f"💡 Tips:\n"
+                f"  • Use /show-docs to see available documents\n"
+                f"  • Use /refresh-files to update the file list\n"
+                f"  • Check your spelling - file IDs are case-sensitive"
+            )

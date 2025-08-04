@@ -91,9 +91,16 @@ class ChatSessionManager:
         # Increment turn count for each user message
         self.controller.conversation.increment_turn_count()
 
-        # Create typed request with full conversation history (automatically adds user message)
-        # ConversationState is now the authoritative source, no need to pass config
-        request = self.controller.conversation.new_request(content)
+        try:
+            # Create typed request with full conversation history (automatically adds user message)
+            # ConversationState is now the authoritative source, no need to pass config
+            request = self.controller.conversation.new_request(content)
+        except ValueError as e:
+            # Handle file reference validation errors
+            self.display.show_error(str(e))
+            # Decrement turn count since we didn't actually process the message
+            self.controller.conversation.turn_count -= 1
+            return
 
         # Create typed handler and stream - use conversation state as authoritative source
         handler = TypedStreamHandler(self.display, debug=self.controller.conversation.debug)
