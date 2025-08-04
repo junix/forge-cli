@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 class JoinDocumentsCommand(ChatCommand):
     """Join documents to a collection."""
-    
+
     name = "join-documents"
     description = "Join documents to a collection"
     aliases = ["join-docs"]
