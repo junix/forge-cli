@@ -9,6 +9,7 @@ from .files import (
     DeleteCollectionCommand,
     DeleteDocumentCommand,
     NewDocumentCommand,
+    ShowCollectionsCommand,
     ShowDocumentsCommand,
     UploadCommand,
 )
@@ -41,6 +42,7 @@ __all__ = [
     # File commands
     "UploadCommand",
     "NewDocumentCommand",
+    "ShowCollectionsCommand",
     "ShowDocumentsCommand",
     "DeleteDocumentCommand",
     "DeleteCollectionCommand",
