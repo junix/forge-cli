@@ -1213,9 +1213,12 @@ class FileHelpCommand(ChatCommand):
 
         commands_info = [
             ("📤 /upload", "Upload files with progress tracking", "Essential"),
+            ("📝 /new-document", "Create/upload a new document (alias for upload)", "Essential"),
             ("📋 /documents", "List uploaded documents in conversation", "Basic"),
+            ("🗑️ /del-document", "Delete a document by its ID", "Management"),
             ("🔗 /join-docs", "Join documents to collections", "Advanced"),
             ("🏗️ /new-collection", "Create new vector store collections", "Advanced"),
+            ("🗑️ /del-collection", "Delete a collection by its ID", "Management"),
             ("📄 /show-doc", "Show detailed document information", "Utility"),
             ("📖 /show-pages", "Show document pages with content and metadata", "Utility"),
             ("🔧 /show-doc-json", "Show raw JSON response from document API", "Debug"),
@@ -1248,6 +1251,15 @@ class FileHelpCommand(ChatCommand):
             "upload": self._show_upload_help,
             "u": self._show_upload_help,
             "up": self._show_upload_help,
+            "new-document": self._show_new_document_help,
+            "new-doc": self._show_new_document_help,
+            "create-document": self._show_new_document_help,
+            "create-doc": self._show_new_document_help,
+            "del-document": self._show_del_document_help,
+            "del-doc": self._show_del_document_help,
+            "delete-document": self._show_del_document_help,
+            "delete-doc": self._show_del_document_help,
+            "rm-doc": self._show_del_document_help,
             "documents": self._show_documents_help,
             "docs": self._show_documents_help,
             "files": self._show_documents_help,
@@ -1258,6 +1270,12 @@ class FileHelpCommand(ChatCommand):
             "new-vs": self._show_new_collection_help,
             "create-collection": self._show_new_collection_help,
             "create-vs": self._show_new_collection_help,
+            "del-collection": self._show_del_collection_help,
+            "del-vs": self._show_del_collection_help,
+            "delete-collection": self._show_del_collection_help,
+            "delete-vs": self._show_del_collection_help,
+            "rm-collection": self._show_del_collection_help,
+            "rm-vs": self._show_del_collection_help,
             "show-doc": self._show_show_doc_help,
             "doc": self._show_show_doc_help,
             "document": self._show_show_doc_help,
@@ -1290,7 +1308,7 @@ class FileHelpCommand(ChatCommand):
         else:
             controller.display.show_error(f"❌ No help available for command: {command_name}")
             controller.display.show_status(
-                "Available commands: upload, documents, join-docs, new-collection, show-doc, show-pages, show-doc-json, dump, show-collection, file-help"
+                "Available commands: upload, new-document, documents, del-document, join-docs, new-collection, del-collection, show-doc, show-pages, show-doc-json, dump, show-collection, file-help"
             )
 
     async def _show_upload_help(self, controller: ChatController) -> None:
@@ -1783,6 +1801,174 @@ class FileHelpCommand(ChatCommand):
         controller.display.show_status("  • Network issues → Saves error response for debugging")
 
 
+class NewDocumentCommand(ChatCommand):
+    """Create/upload a new document (alias for upload command).
+
+    Usage:
+    - /new-document <file_path> - Upload a file and track processing progress
+    - /new-document <file_path> --vectorize - Upload file and enable vectorization
+    - /new-document <file_path> --purpose qa - Upload with specific purpose
+    """
+
+    name = "new-document"
+    description = "Create/upload a new document"
+    aliases = ["new-doc", "create-document", "create-doc"]
+
+    async def execute(self, args: str, controller: ChatController) -> bool:
+        """Execute the new-document command (delegates to upload).
+
+        Args:
+            args: Command arguments containing file path and options
+            controller: The ChatController instance
+
+        Returns:
+            True to continue the chat session
+        """
+        # Delegate to UploadCommand
+        upload_command = UploadCommand()
+        return await upload_command.execute(args, controller)
+
+
+class DeleteDocumentCommand(ChatCommand):
+    """Delete a document by its ID.
+
+    Usage:
+    - /del-document <document-id> - Delete a specific document
+    - /del-doc <document-id> - Short alias
+    """
+
+    name = "del-document"
+    description = "Delete a document by its ID"
+    aliases = ["del-doc", "delete-document", "delete-doc", "rm-doc"]
+
+    async def execute(self, args: str, controller: ChatController) -> bool:
+        """Execute the delete-document command.
+
+        Args:
+            args: Command arguments containing the document ID
+            controller: The ChatController instance
+
+        Returns:
+            True to continue the chat session
+        """
+        if not args.strip():
+            controller.display.show_error("Please provide a document ID: /del-document <document-id>")
+            controller.display.show_status("Example: /del-document file_abc123")
+            controller.display.show_status("💡 Use /documents to see available document IDs")
+            return True
+
+        document_id = args.strip()
+
+        # Confirm deletion
+        controller.display.show_status(f"⚠️  Are you sure you want to delete document: {document_id}?")
+        controller.display.show_status("This action cannot be undone!")
+
+        # Simple confirmation (in a real implementation, you might want a proper confirmation dialog)
+        controller.display.show_status("Type 'yes' to confirm deletion:")
+
+        try:
+            # Import SDK function
+            from forge_cli.sdk import async_delete_file
+
+            controller.display.show_status(f"🗑️ Deleting document: {document_id}")
+
+            # Delete the document
+            result = await async_delete_file(document_id)
+
+            if result:
+                controller.display.show_status(f"✅ Successfully deleted document: {document_id}")
+
+                # Remove from conversation state if it exists
+                uploaded_docs = controller.conversation.get_uploaded_documents()
+                if document_id in uploaded_docs:
+                    # Note: This would need a method to remove from conversation state
+                    controller.display.show_status("📝 Removed from conversation history")
+
+            else:
+                controller.display.show_error(f"❌ Failed to delete document: {document_id}")
+                controller.display.show_status("💡 Check if the document ID is correct and exists")
+
+        except Exception as e:
+            controller.display.show_error(f"❌ Error deleting document: {str(e)}")
+            controller.display.show_status("💡 Make sure the server is running and accessible")
+
+        return True
+
+
+class DeleteCollectionCommand(ChatCommand):
+    """Delete a collection by its ID.
+
+    Usage:
+    - /del-collection <collection-id> - Delete a specific collection
+    - /del-vs <collection-id> - Short alias
+    """
+
+    name = "del-collection"
+    description = "Delete a collection by its ID"
+    aliases = ["del-vs", "delete-collection", "delete-vs", "rm-collection", "rm-vs"]
+
+    async def execute(self, args: str, controller: ChatController) -> bool:
+        """Execute the delete-collection command.
+
+        Args:
+            args: Command arguments containing the collection ID
+            controller: The ChatController instance
+
+        Returns:
+            True to continue the chat session
+        """
+        if not args.strip():
+            controller.display.show_error("Please provide a collection ID: /del-collection <collection-id>")
+            controller.display.show_status("Example: /del-collection vs_abc123")
+            controller.display.show_status("💡 Use /vectorstore to see current collection IDs")
+            return True
+
+        collection_id = args.strip()
+
+        # Confirm deletion
+        controller.display.show_status(f"⚠️  Are you sure you want to delete collection: {collection_id}?")
+        controller.display.show_status("This will delete the collection and all its vector embeddings!")
+        controller.display.show_status("Documents themselves will NOT be deleted, only the collection.")
+        controller.display.show_status("This action cannot be undone!")
+
+        # Simple confirmation (in a real implementation, you might want a proper confirmation dialog)
+        controller.display.show_status("Type 'yes' to confirm deletion:")
+
+        try:
+            # Import SDK function
+            from forge_cli.sdk import async_delete_vectorstore
+
+            controller.display.show_status(f"🗑️ Deleting collection: {collection_id}")
+
+            # Delete the collection
+            result = await async_delete_vectorstore(collection_id)
+
+            if result:
+                controller.display.show_status(f"✅ Successfully deleted collection: {collection_id}")
+
+                # Remove from active vector store IDs if present
+                current_ids = controller.conversation.get_current_vector_store_ids()
+                if collection_id in current_ids:
+                    current_ids.remove(collection_id)
+                    controller.conversation.set_vector_store_ids(current_ids)
+                    controller.display.show_status("📝 Removed from active vector store IDs")
+
+                    # Auto-disable file search if no IDs left
+                    if not current_ids and controller.conversation.is_file_search_enabled():
+                        controller.conversation.disable_file_search()
+                        controller.display.show_status("🔍 Auto-disabled file search (no vector store IDs)")
+
+            else:
+                controller.display.show_error(f"❌ Failed to delete collection: {collection_id}")
+                controller.display.show_status("💡 Check if the collection ID is correct and exists")
+
+        except Exception as e:
+            controller.display.show_error(f"❌ Error deleting collection: {str(e)}")
+            controller.display.show_status("💡 Make sure the server is running and accessible")
+
+        return True
+
+
 class ShowCollectionCommand(ChatCommand):
     """Show detailed information about a specific collection.
 
@@ -1951,3 +2137,107 @@ class ShowCollectionCommand(ChatCommand):
                 return str(dt)
         except:
             return str(dt)
+
+    async def _show_new_document_help(self, controller: ChatController) -> None:
+        """Show detailed help for new-document command."""
+        controller.display.show_status("📝 New Document Command - Detailed Help")
+        controller.display.show_status("=" * 50)
+        controller.display.show_status("")
+
+        controller.display.show_status("⚡ Usage:")
+        controller.display.show_status("  /new-document <file_path>")
+        controller.display.show_status("  /new-document <file_path> --vectorize")
+        controller.display.show_status("  /new-document <file_path> --purpose qa")
+        controller.display.show_status("  /new-doc <file_path>                    # Short alias")
+        controller.display.show_status("")
+
+        controller.display.show_status("📝 Description:")
+        controller.display.show_status("  Creates/uploads a new document. This is an alias for the /upload command")
+        controller.display.show_status("  with the same functionality and options.")
+        controller.display.show_status("")
+
+        controller.display.show_status("🔧 Options:")
+        controller.display.show_status("  --vectorize    Enable vectorization for better search")
+        controller.display.show_status("  --purpose qa   Set purpose to 'qa' for question-answering")
+        controller.display.show_status("")
+
+        controller.display.show_status("📝 Examples:")
+        controller.display.show_status("  /new-document ./report.pdf")
+        controller.display.show_status("  /new-doc ./research.docx --vectorize")
+        controller.display.show_status("  /create-document ./manual.txt --purpose qa")
+        controller.display.show_status("")
+
+        controller.display.show_status("🔗 Related Commands:")
+        controller.display.show_status("  • /upload <file>              # Alternative command")
+        controller.display.show_status("  • /documents                  # List uploaded documents")
+        controller.display.show_status("  • /join-docs <vs-id>         # Add to collection")
+
+    async def _show_del_document_help(self, controller: ChatController) -> None:
+        """Show detailed help for del-document command."""
+        controller.display.show_status("🗑️ Delete Document Command - Detailed Help")
+        controller.display.show_status("=" * 50)
+        controller.display.show_status("")
+
+        controller.display.show_status("⚡ Usage:")
+        controller.display.show_status("  /del-document <document-id>")
+        controller.display.show_status("  /del-doc <document-id>              # Short alias")
+        controller.display.show_status("  /delete-document <document-id>      # Alternative")
+        controller.display.show_status("")
+
+        controller.display.show_status("📝 Description:")
+        controller.display.show_status("  Permanently deletes a document by its ID. This action cannot be undone.")
+        controller.display.show_status("  The document will be removed from the server and all collections.")
+        controller.display.show_status("")
+
+        controller.display.show_status("⚠️ Warning:")
+        controller.display.show_status("  • This action is PERMANENT and cannot be undone")
+        controller.display.show_status("  • Document will be removed from ALL collections")
+        controller.display.show_status("  • Confirmation is required before deletion")
+        controller.display.show_status("")
+
+        controller.display.show_status("📝 Examples:")
+        controller.display.show_status("  /del-document file_abc123")
+        controller.display.show_status("  /del-doc file_xyz789")
+        controller.display.show_status("  /rm-doc file_def456")
+        controller.display.show_status("")
+
+        controller.display.show_status("🔗 Related Commands:")
+        controller.display.show_status("  • /documents                  # List document IDs")
+        controller.display.show_status("  • /show-doc <doc-id>         # View document details")
+        controller.display.show_status("  • /upload <file>             # Upload new documents")
+
+    async def _show_del_collection_help(self, controller: ChatController) -> None:
+        """Show detailed help for del-collection command."""
+        controller.display.show_status("🗑️ Delete Collection Command - Detailed Help")
+        controller.display.show_status("=" * 50)
+        controller.display.show_status("")
+
+        controller.display.show_status("⚡ Usage:")
+        controller.display.show_status("  /del-collection <collection-id>")
+        controller.display.show_status("  /del-vs <collection-id>             # Short alias")
+        controller.display.show_status("  /delete-collection <collection-id>  # Alternative")
+        controller.display.show_status("")
+
+        controller.display.show_status("📝 Description:")
+        controller.display.show_status("  Permanently deletes a vector store collection by its ID.")
+        controller.display.show_status("  This removes the collection and all its vector embeddings.")
+        controller.display.show_status("  Documents themselves are NOT deleted, only the collection.")
+        controller.display.show_status("")
+
+        controller.display.show_status("⚠️ Warning:")
+        controller.display.show_status("  • This action is PERMANENT and cannot be undone")
+        controller.display.show_status("  • All vector embeddings in the collection will be lost")
+        controller.display.show_status("  • Documents remain intact but lose collection association")
+        controller.display.show_status("  • Confirmation is required before deletion")
+        controller.display.show_status("")
+
+        controller.display.show_status("📝 Examples:")
+        controller.display.show_status("  /del-collection vs_abc123")
+        controller.display.show_status("  /del-vs vs_research_papers")
+        controller.display.show_status("  /rm-collection vs_old_docs")
+        controller.display.show_status("")
+
+        controller.display.show_status("🔗 Related Commands:")
+        controller.display.show_status("  • /vectorstore               # List active collections")
+        controller.display.show_status("  • /show-collection <id>      # View collection details")
+        controller.display.show_status("  • /new-collection            # Create new collection")

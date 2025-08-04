@@ -69,12 +69,17 @@ class CommandRegistry:
         """Registers all predefined default chat commands."""
         from .config import ModelCommand, ToolsCommand, VectorStoreCommand
         from .conversation import HistoryCommand, ListConversationsCommand, LoadCommand, SaveCommand
+
+        # Import new commands
         from .files import (
+            DeleteCollectionCommand,
+            DeleteDocumentCommand,
             DocumentsCommand,
             DumpCommand,
             FileHelpCommand,
             JoinDocumentsCommand,
             NewCollectionCommand,
+            NewDocumentCommand,
             ShowCollectionCommand,
             ShowDocumentCommand,
             ShowDocumentJsonCommand,
@@ -99,6 +104,7 @@ class CommandRegistry:
             InspectCommand(),
             VectorStoreCommand(),
             UploadCommand(),
+            NewDocumentCommand(),
             DocumentsCommand(),
             JoinDocumentsCommand(),
             NewCollectionCommand(),
@@ -107,6 +113,8 @@ class CommandRegistry:
             ShowCollectionCommand(),
             ShowPagesCommand(),
             DumpCommand(),
+            DeleteDocumentCommand(),
+            DeleteCollectionCommand(),
             FileHelpCommand(),
             # Web Search Toggle Commands
             ToggleToolCommand(

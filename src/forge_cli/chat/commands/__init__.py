@@ -5,7 +5,7 @@ from __future__ import annotations
 from .base import ChatCommand, CommandRegistry
 from .config import ModelCommand, ToolsCommand, VectorStoreCommand
 from .conversation import HistoryCommand, ListConversationsCommand, LoadCommand, SaveCommand
-from .files import UploadCommand
+from .files import DeleteCollectionCommand, DeleteDocumentCommand, NewDocumentCommand, UploadCommand
 from .info import InspectCommand
 from .session import ClearCommand, ExitCommand, HelpCommand, NewCommand
 from .tool import ToggleToolCommand
@@ -34,4 +34,7 @@ __all__ = [
     "ToggleToolCommand",
     # File commands
     "UploadCommand",
+    "NewDocumentCommand",
+    "DeleteDocumentCommand",
+    "DeleteCollectionCommand",
 ]
