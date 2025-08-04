@@ -14,12 +14,15 @@ from .delete_document import DeleteDocumentCommand
 # Document listing
 from .documents_list import DocumentsCommand
 from .dump import DumpCommand
+from .list_collections import ListCollectionsCommand
+from .list_docs import ListDocsCommand
 
 # Utility commands
 from .file_help import FileHelpCommand
 from .join_documents import JoinDocumentsCommand
 from .new_collection import NewCollectionCommand
 from .new_document import NewDocumentCommand
+from .refresh_files import RefreshFilesCommand
 from .show_collection import ShowCollectionCommand
 from .show_collections import ShowCollectionsCommand
 from .show_document import ShowDocumentCommand
@@ -28,6 +31,8 @@ from .show_documents import ShowDocumentsCommand
 from .show_pages import ShowPagesCommand
 from .topk_query import TopKQueryCommand
 from .unuse_collection import UnuseCollectionCommand
+from .update_collection import UpdateCollectionCommand
+from .update_document import UpdateDocumentCommand
 from .upload import UploadCommand
 from .use_collection import UseCollectionCommand
 
@@ -37,6 +42,8 @@ __all__ = [
     # Document listing
     "DocumentsCommand",
     "ShowDocumentsCommand",
+    "ListDocsCommand",
+    "ListCollectionsCommand",
     # Document operations
     "DeleteDocumentCommand",
     "DumpCommand",
@@ -44,16 +51,19 @@ __all__ = [
     "ShowDocumentCommand",
     "ShowDocumentJsonCommand",
     "ShowPagesCommand",
+    "UpdateDocumentCommand",
     # Collection operations
     "DeleteCollectionCommand",
     "NewCollectionCommand",
     "ShowCollectionCommand",
     "ShowCollectionsCommand",
     "UnuseCollectionCommand",
+    "UpdateCollectionCommand",
     "UseCollectionCommand",
     # Query operations
     "TopKQueryCommand",
     # Utilities
     "FileHelpCommand",
     "JoinDocumentsCommand",
+    "RefreshFilesCommand",
 ]

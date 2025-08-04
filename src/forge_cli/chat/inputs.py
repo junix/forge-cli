@@ -25,6 +25,7 @@ class InputHandler:
         self.conversation = conversation
         self.input_history = None
         self.history_file = None
+        self._completer = None  # Cache the completer instance
 
     async def get_user_input(self) -> str | None:
         """Gets input from the user.
@@ -51,7 +52,10 @@ class InputHandler:
         from prompt_toolkit.styles import Style
 
         # Create custom completer with conversation for file completion
-        completer = CommandCompleter(self.commands.commands, self.commands.aliases, self.conversation)
+        # Cache the completer for reuse
+        if self._completer is None:
+            self._completer = CommandCompleter(self.commands.commands, self.commands.aliases, self.conversation)
+        completer = self._completer
 
         # Initialize input history if not already done
         if self.input_history is None:

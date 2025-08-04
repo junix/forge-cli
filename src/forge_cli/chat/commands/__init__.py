@@ -9,6 +9,7 @@ from .files import (
     DeleteCollectionCommand,
     DeleteDocumentCommand,
     NewDocumentCommand,
+    RefreshFilesCommand,
     ShowCollectionsCommand,
     ShowDocumentsCommand,
     TopKQueryCommand,
@@ -44,6 +45,7 @@ __all__ = [
     # File commands
     "UploadCommand",
     "NewDocumentCommand",
+    "RefreshFilesCommand",
     "ShowCollectionsCommand",
     "ShowDocumentsCommand",
     "TopKQueryCommand",

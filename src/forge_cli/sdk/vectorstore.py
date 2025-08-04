@@ -255,3 +255,77 @@ async def async_get_vectorstore_summary(
     except Exception as e:
         logger.error(f"Error getting vector store summary for {vector_store_id}: {str(e)}")
         return None
+
+
+async def async_modify_vectorstore(
+    vector_store_id: str,
+    name: str = None,
+    description: str = None,
+    metadata: dict[str, str] = None,
+    expires_after: int = None,
+    join_file_ids: list[str] = None,
+    left_file_ids: list[str] = None,
+) -> Vectorstore | None:
+    """
+    Asynchronously modify an existing vector store.
+
+    Args:
+        vector_store_id: The ID of the vector store to modify
+        name: Optional new name for the vector store
+        description: Optional new description for the vector store
+        metadata: Optional new metadata key-value pairs
+        expires_after: Optional new expiration policy (seconds)
+        join_file_ids: Optional list of file IDs to add to the vector store
+        left_file_ids: Optional list of file IDs to remove from the vector store
+
+    Returns:
+        Vectorstore object with updated information or None if modification failed
+    """
+    url = f"{BASE_URL}/v1/vector_stores/{vector_store_id}"
+    payload = {}
+
+    # Add non-None parameters to payload
+    if name is not None:
+        payload["name"] = name
+    if description is not None:
+        payload["description"] = description
+    if metadata is not None:
+        payload["metadata"] = metadata
+    if expires_after is not None:
+        payload["expires_after"] = expires_after
+    if join_file_ids is not None:
+        payload["join_file_ids"] = join_file_ids
+    if left_file_ids is not None:
+        payload["left_file_ids"] = left_file_ids
+
+    if not payload:
+        logger.error("No update parameters provided for vector store modification")
+        return None
+
+    try:
+        status_code, response_data = await async_make_request("POST", url, json_payload=payload)
+        if status_code == 200 and isinstance(response_data, dict):
+            try:
+                return Vectorstore.model_validate(response_data)
+            except Exception as e:
+                logger.error(
+                    f"Vector store modification for {vector_store_id} succeeded but failed to parse response: {e}. Data: {response_data}"
+                )
+                return None
+        elif status_code == 200 and isinstance(response_data, str):
+            logger.error(
+                f"Vector store modification failed: Server returned 200 but response was not valid JSON. VSID: {vector_store_id}. Content: {response_data}"
+            )
+            return None
+        elif status_code == 404:
+            logger.error(f"Vector store {vector_store_id} not found")
+            return None
+        elif status_code != 200:
+            logger.error(
+                f"Vector store modification for {vector_store_id} returned unhandled status {status_code}. Data: {response_data}"
+            )
+            return None
+        return None
+    except Exception as e:
+        logger.error(f"Error modifying vector store {vector_store_id}: {str(e)}")
+        return None

@@ -29,8 +29,8 @@ async def async_upload_file(
         purpose: The intended purpose of the file (e.g., "qa", "general")
         custom_id: Optional custom ID for the file
         skip_exists: Whether to skip upload if file with same MD5 exists
-        parse_options: Optional dict of parsing options. Keys: "abstract", "summary", 
-                      "outline", "keywords", "contexts", "graph", "vectorize", 
+        parse_options: Optional dict of parsing options. Keys: "abstract", "summary",
+                      "outline", "keywords", "contexts", "graph", "vectorize",
                       "outline_json_style", "fast_mode". Values: "enable" or "disable".
 
     Returns:
@@ -60,9 +60,10 @@ async def async_upload_file(
 
     if skip_exists:
         form_data.add_field("skip_exists", "true")
-    
+
     if parse_options:
         import json
+
         form_data.add_field("parse_options", json.dumps(parse_options))
 
     status_code, response_data = await async_make_request("POST", url, data=form_data)
@@ -195,7 +196,7 @@ async def async_fetch_document_content(document_id: str):
         DocumentResponse object containing document details or None if not found
     """
     from .file_types import DocumentResponse
-    
+
     url = f"{BASE_URL}/v1/files/{document_id}/content"
 
     try:
@@ -271,4 +272,96 @@ async def async_delete_file(file_id: str) -> DeleteResponse | None:  # Changed r
             return None
     except Exception as e:
         logger.error(f"Error deleting file {file_id}: {str(e)}")
+        return None
+
+
+async def async_update_document(
+    document_id: str,
+    title: str = None,
+    author: str = None,
+    read_progress: float = None,
+    bookmarks: list[int] = None,
+    highlights: list[str] = None,
+    notes: list[str] = None,
+    related_docs: list[str] = None,
+    is_favorite: bool = None,
+    owner: str = None,
+    permissions: list[str] = None,
+    metadata: dict = None,
+    vector_store_ids: list[str] = None,
+) -> dict | None:
+    """
+    Asynchronously update a document's metadata and properties.
+
+    Args:
+        document_id: The ID of the document to update
+        title: Optional new title for the document
+        author: Optional new author for the document
+        read_progress: Optional reading progress (0.0 to 1.0)
+        bookmarks: Optional list of bookmark page numbers
+        highlights: Optional list of highlighted text snippets
+        notes: Optional list of notes
+        related_docs: Optional list of related document IDs
+        is_favorite: Optional favorite status
+        owner: Optional owner identifier
+        permissions: Optional list of permissions
+        metadata: Optional metadata dictionary
+        vector_store_ids: Optional list of vector store IDs
+
+    Returns:
+        Dictionary with update confirmation or None if update failed
+    """
+    url = f"{BASE_URL}/v1/files/{document_id}/content"
+    payload = {}
+
+    # Add non-None parameters to payload
+    if title is not None:
+        payload["title"] = title
+    if author is not None:
+        payload["author"] = author
+    if read_progress is not None:
+        payload["read_progress"] = read_progress
+    if bookmarks is not None:
+        payload["bookmarks"] = bookmarks
+    if highlights is not None:
+        payload["highlights"] = highlights
+    if notes is not None:
+        payload["notes"] = notes
+    if related_docs is not None:
+        payload["related_docs"] = related_docs
+    if is_favorite is not None:
+        payload["is_favorite"] = is_favorite
+    if owner is not None:
+        payload["owner"] = owner
+    if permissions is not None:
+        payload["permissions"] = permissions
+    if metadata is not None:
+        payload["metadata"] = metadata
+    if vector_store_ids is not None:
+        payload["vector_store_ids"] = vector_store_ids
+
+    if not payload:
+        logger.error("No update parameters provided for document update")
+        return None
+
+    try:
+        status_code, response_data = await async_make_request("POST", url, json_payload=payload)
+        if status_code == 200 and isinstance(response_data, dict):
+            return response_data
+        elif status_code == 200 and isinstance(response_data, str):
+            logger.error(
+                f"Document update failed: Server returned 200 but response was not valid JSON. Doc ID: {document_id}. Content: {response_data}"
+            )
+            return None
+        elif status_code == 404:
+            logger.error(f"Document {document_id} not found")
+            return None
+        elif status_code != 200:
+            logger.error(
+                f"Document update for {document_id} returned unhandled status {status_code}. Data: {response_data}"
+            )
+            return None
+        return None
+    except Exception as e:
+        logger.error(f"Error updating document {document_id}: {str(e)}")
         return None
