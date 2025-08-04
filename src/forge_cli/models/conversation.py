@@ -504,15 +504,22 @@ class ConversationState(BaseModel):
         and creates a typed Request object ready for the API. All settings are taken from
         the conversation state, making it the authoritative source of configuration.
 
+        Supports @ file reference syntax (e.g., "@file_123 What is this about?")
+
         Args:
-            content: The new user message content
+            content: The new user message content (may contain @ file references)
 
         Returns:
             A typed Request object ready for the API
         """
+        from ..chat.file_reference_parser import FileReferenceParser
         from ..response._types import FileSearchTool, InputMessage, PageReaderTool, Request, WebSearchTool
 
-        # Add the new user message to conversation history first
+        # Check if the message contains file references
+        if FileReferenceParser.has_file_references(content):
+            return self._create_request_with_file_references(content)
+
+        # Add the new user message to conversation history first (regular message)
         self.add_user_message(content)
 
         # Build tools list based on conversation state only
@@ -561,6 +568,73 @@ class ConversationState(BaseModel):
 
         return Request(
             input=input_messages,
+            model=self.model,
+            tools=tools,
+            temperature=self.temperature,
+            max_output_tokens=self.max_output_tokens,
+            effort=self.effort,
+            instructions=instructions,
+        )
+
+    def _create_request_with_file_references(self, content: str) -> "Request":
+        """Create a request with file references using input_file content.
+
+        Args:
+            content: Message content with @ file references
+
+        Returns:
+            A typed Request object with file inputs
+        """
+        from ..chat.file_reference_parser import FileReferenceParser, create_file_input_message
+        from ..response._types import FileSearchTool, PageReaderTool, Request, WebSearchTool
+
+        # Parse the message to extract file references
+        parsed_message = FileReferenceParser.parse(content)
+
+        # Create input content with file references
+        file_input_content = create_file_input_message(parsed_message)
+
+        # Add user message with file references to conversation history using ResponseInputMessageItem
+        from ..response._types.response_input_text import ResponseInputText
+
+        message = ResponseInputMessageItem(
+            id=f"user_{uuid.uuid4().hex[:8]}",
+            role="user",
+            content=file_input_content,  # This is already a list of ResponseInputFile and ResponseInputText
+        )
+        self.add_message(message)
+
+        # Build tools list (same as regular request)
+        tools = []
+
+        # File search tool
+        if self.file_search_enabled and self.current_vector_store_ids:
+            tools.append(
+                FileSearchTool(
+                    type="file_search",
+                    vector_store_ids=self.current_vector_store_ids,
+                    max_num_results=self.max_results,
+                )
+            )
+
+        # Web search tool
+        if self.web_search_enabled:
+            tools.append(WebSearchTool(type="web_search"))
+
+        # Page reader tool
+        if self.page_reader_enabled:
+            tools.append(PageReaderTool(type="page_reader"))
+
+        # Build input messages with ResponseInputMessageItem directly
+        input_messages = self.messages.copy()
+
+        # Create request using ResponseInputMessageItem
+        instructions = None
+        if self.debug and instructions:
+            print(f"Custom instructions: {instructions}")
+
+        return Request(
+            input=input_messages,  # Use ResponseInputMessageItem directly
             model=self.model,
             tools=tools,
             temperature=self.temperature,

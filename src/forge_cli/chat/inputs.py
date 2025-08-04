@@ -50,8 +50,8 @@ class InputHandler:
         from prompt_toolkit.history import FileHistory
         from prompt_toolkit.styles import Style
 
-        # Create custom completer
-        completer = CommandCompleter(self.commands.commands, self.commands.aliases)
+        # Create custom completer with conversation for file completion
+        completer = CommandCompleter(self.commands.commands, self.commands.aliases, self.conversation)
 
         # Initialize input history if not already done
         if self.input_history is None:
@@ -114,3 +114,43 @@ class InputHandler:
         future = loop.run_in_executor(None, input)
         user_input: str = await future
         return user_input.strip()
+
+    async def _populate_file_cache(self, completer) -> None:
+        """Pre-populate the file cache for better completion performance.
+
+        Args:
+            completer: The CommandCompleter instance to populate
+        """
+        if not self.conversation:
+            return
+
+        try:
+            files = []
+
+            # Get uploaded documents (synchronous)
+            uploaded_docs = self.conversation.get_uploaded_documents()
+            files.extend(uploaded_docs)
+
+            # For vector stores, we'll use a simpler approach
+            # Try to get files from vector stores, but don't fail if it doesn't work
+            vector_store_ids = self.conversation.get_current_vector_store_ids()
+            if vector_store_ids:
+                # Try to get files from the first vector store as a sample
+                try:
+                    vs_files = await completer._get_vector_store_files_async(vector_store_ids[0])
+                    files.extend(vs_files)
+                except Exception:
+                    # If vector store query fails, add a placeholder to indicate files are available
+                    files.append(
+                        {
+                            "id": "vs_files_hint",
+                            "filename": f"📦 Use /show-documents to see {len(vector_store_ids)} vector store file(s)",
+                        }
+                    )
+
+            # Cache the results
+            completer._file_cache = files
+
+        except Exception:
+            # If anything fails, just continue without cache
+            pass
