@@ -39,58 +39,30 @@ class ShowDocumentsCommand(ChatCommand):
         # Get vector store IDs from conversation state
         vector_store_ids = controller.conversation.get_current_vector_store_ids()
 
-        # Track total document count
-        total_docs = 0
-
         # Show conversation documents
         if conversation_docs:
-            total_docs += len(conversation_docs)
-            controller.display.show_status(f"📚 {len(conversation_docs)} document(s) uploaded in this conversation:")
-
-            for i, doc in enumerate(conversation_docs, 1):
-                # Format upload time
-                try:
-                    from datetime import datetime
-
-                    upload_dt = datetime.fromisoformat(doc["uploaded_at"])
-                    time_str = upload_dt.strftime("%Y-%m-%d %H:%M:%S")
-                except (ValueError, KeyError):
-                    time_str = doc.get("uploaded_at", "Unknown time")
-
-                controller.display.show_status(f"  {i}. 📄 {doc['filename']} (ID: {doc['id']}) - {time_str}")
+            controller.display.show_status(f"📄 Uploaded Documents ({len(conversation_docs)}):")
+            for doc in conversation_docs:
+                controller.display.show_status(f"  {doc['id']} - {doc['filename']}")
 
         # Show vector store documents
         if vector_store_ids:
-            controller.display.show_status(f"\n🗂️ Documents from {len(vector_store_ids)} configured vector store(s):")
+            controller.display.show_status(f"\n📦 Vector Store Documents:")
 
             for vs_id in vector_store_ids:
                 vs_docs = await self._get_vector_store_documents(vs_id, controller)
                 if vs_docs:
-                    total_docs += len(vs_docs)
-                    controller.display.show_status(f"  📦 Vector Store {vs_id}: {len(vs_docs)} document(s)")
+                    controller.display.show_status(f"  From {vs_id}:")
+                    for doc in vs_docs[:20]:  # Limit to 20 per store
+                        doc_id = doc.get("file_id", doc.get("id", "unknown"))
+                        filename = doc.get("filename", doc.get("name", "unnamed"))
+                        controller.display.show_status(f"    {doc_id} - {filename}")
+                    
+                    if len(vs_docs) > 20:
+                        controller.display.show_status(f"    ... and {len(vs_docs) - 20} more")
 
-                    for i, doc in enumerate(vs_docs[:10], 1):  # Limit to first 10 per vector store
-                        doc_id = doc.get("file_id", "Unknown ID")
-                        filename = doc.get("filename", "Unknown filename")
-                        score = doc.get("score", 0.0)
-                        controller.display.show_status(f"    {i}. 📄 {filename} (ID: {doc_id}) - Score: {score:.2f}")
-
-                    if len(vs_docs) > 10:
-                        controller.display.show_status(f"    ... and {len(vs_docs) - 10} more documents")
-                else:
-                    controller.display.show_status(f"  📦 Vector Store {vs_id}: No documents found or inaccessible")
-
-        # Summary
-        if total_docs == 0:
-            if not vector_store_ids:
-                controller.display.show_status(
-                    "📂 No documents found. Upload documents with /upload or configure vector stores with /vectorstore"
-                )
-            else:
-                controller.display.show_status("📂 No documents found in conversation or configured vector stores")
-        else:
-            controller.display.show_status(f"\n📊 Total: {total_docs} document(s) across all sources")
-            controller.display.show_status("💡 Use /show-doc <id> for detailed document information")
+        if not conversation_docs and not vector_store_ids:
+            controller.display.show_status("No documents found.")
 
         return True
 
@@ -105,21 +77,26 @@ class ShowDocumentsCommand(ChatCommand):
             List of document dictionaries from the vector store
         """
         try:
-            from forge_cli.sdk.vectorstore import async_query_vectorstore
-
-            # Use a broad query to get all documents
-            # We use a generic query that should match most documents
-            result = await async_query_vectorstore(
-                vector_store_id=vector_store_id,
-                query="document content text information",  # Broad query
-                top_k=50,  # Get up to 50 documents
-                filters=None,
-            )
-
-            if result and hasattr(result, "results"):
-                return result.results
-            elif result and isinstance(result, dict) and "results" in result:
-                return result["results"]
+            # Use direct HTTP request to avoid Pydantic parsing issues
+            from forge_cli.sdk.config import BASE_URL
+            from forge_cli.sdk.http_client import async_make_request
+            
+            url = f"{BASE_URL}/v1/vector_stores/{vector_store_id}/search"
+            payload = {
+                "query": "document content text information",
+                "top_k": 50
+            }
+            
+            status_code, response_data = await async_make_request("POST", url, json_payload=payload)
+            
+            if status_code == 200 and isinstance(response_data, dict):
+                # Handle the actual response structure
+                if "results" in response_data:
+                    return response_data["results"]
+                elif "data" in response_data:
+                    return response_data["data"]
+                else:
+                    return []
             else:
                 return []
 

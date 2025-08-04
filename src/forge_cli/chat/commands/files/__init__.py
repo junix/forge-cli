@@ -14,12 +14,13 @@ from .delete_document import DeleteDocumentCommand
 # Document listing
 from .documents_list import DocumentsCommand
 from .dump import DumpCommand
-from .list_collections import ListCollectionsCommand
-from .list_docs import ListDocsCommand
 
 # Utility commands
 from .file_help import FileHelpCommand
 from .join_documents import JoinDocumentsCommand
+from .leave_documents import LeaveDocumentsCommand, LeftFileCommand
+from .list_collections import ListCollectionsCommand
+from .list_docs import ListDocsCommand
 from .new_collection import NewCollectionCommand
 from .new_document import NewDocumentCommand
 from .refresh_files import RefreshFilesCommand
@@ -65,5 +66,7 @@ __all__ = [
     # Utilities
     "FileHelpCommand",
     "JoinDocumentsCommand",
+    "LeaveDocumentsCommand",
+    "LeftFileCommand",
     "RefreshFilesCommand",
 ]

@@ -78,6 +78,8 @@ class CommandRegistry:
             DumpCommand,
             FileHelpCommand,
             JoinDocumentsCommand,
+            LeaveDocumentsCommand,
+            LeftFileCommand,
             NewCollectionCommand,
             NewDocumentCommand,
             RefreshFilesCommand,
@@ -89,6 +91,8 @@ class CommandRegistry:
             ShowPagesCommand,
             TopKQueryCommand,
             UnuseCollectionCommand,
+            UpdateCollectionCommand,
+            UpdateDocumentCommand,
             UploadCommand,
             UseCollectionCommand,
         )
@@ -113,6 +117,8 @@ class CommandRegistry:
             NewDocumentCommand(),
             DocumentsCommand(),
             JoinDocumentsCommand(),
+            LeaveDocumentsCommand(),
+            LeftFileCommand(),
             NewCollectionCommand(),
             RefreshFilesCommand(),
             ShowDocumentCommand(),
@@ -127,6 +133,8 @@ class CommandRegistry:
             DumpCommand(),
             DeleteDocumentCommand(),
             DeleteCollectionCommand(),
+            UpdateDocumentCommand(),
+            UpdateCollectionCommand(),
             FileHelpCommand(),
             # Web Search Toggle Commands
             ToggleToolCommand(

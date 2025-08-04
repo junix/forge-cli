@@ -34,49 +34,35 @@ class ShowCollectionsCommand(ChatCommand):
             True to continue the chat session
         """
         # Get all unique collection IDs from conversation state (now authoritative)
-        conversation_ids = set(controller.conversation.get_current_vector_store_ids())
-        all_collection_ids = conversation_ids
+        collection_ids = controller.conversation.get_current_vector_store_ids()
 
-        if not all_collection_ids:
-            controller.display.show_status("📂 No collections configured")
-            controller.display.show_status(
-                "💡 Use /new-collection to create a collection or /vectorstore to configure existing ones"
-            )
+        if not collection_ids:
+            controller.display.show_status("No collections configured.")
             return True
 
-        controller.display.show_status(f"📚 Found {len(all_collection_ids)} collection(s):")
-        controller.display.show_status("=" * 60)
+        controller.display.show_status(f"📦 Collections ({len(collection_ids)}):")
 
-        # Track collections by status
-        active_collections = []
-        failed_collections = []
-
-        # Fetch information for each collection
-        for collection_id in sorted(all_collection_ids):
-            collection_info = await self._get_collection_info(collection_id, controller)
-
-            if collection_info:
-                active_collections.append((collection_id, collection_info, "Active"))
+        for collection_id in sorted(collection_ids):
+            # Try to get collection name
+            name = await self._get_collection_name(collection_id)
+            if name:
+                controller.display.show_status(f"  {collection_id} - {name}")
             else:
-                failed_collections.append((collection_id, None, "Inaccessible"))
-
-        # Display collections by category
-        self._display_collection_category("🟢 Active Collections", active_collections, controller)
-        self._display_collection_category("🔴 Inaccessible Collections", failed_collections, controller)
-
-        # Summary and tips
-        total_accessible = len(active_collections)
-        controller.display.show_status(
-            f"\n📊 Summary: {total_accessible} accessible, {len(failed_collections)} inaccessible"
-        )
-
-        if active_collections:
-            controller.display.show_status("💡 Active collections are available for file search")
-
-        controller.display.show_status("💡 Use /show-collection <id> for detailed information")
-        controller.display.show_status("💡 Use /vectorstore to manage active collections")
+                controller.display.show_status(f"  {collection_id} - (inaccessible)")
 
         return True
+
+    async def _get_collection_name(self, collection_id: str) -> str | None:
+        """Get collection name from API."""
+        try:
+            from forge_cli.sdk.vectorstore import async_get_vectorstore
+            
+            collection = await async_get_vectorstore(collection_id)
+            if collection:
+                return getattr(collection, "name", "Unknown")
+            return None
+        except:
+            return None
 
     async def _get_collection_info(self, collection_id: str, controller: ChatController) -> dict | None:
         """Get collection information from the API.
