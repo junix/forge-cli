@@ -70,15 +70,16 @@ class CommandRegistry:
         from .config import ModelCommand, ToolsCommand, VectorStoreCommand
         from .conversation import HistoryCommand, ListConversationsCommand, LoadCommand, SaveCommand
         from .files import (
-            DocumentsCommand, 
+            DocumentsCommand,
+            DumpCommand,
             FileHelpCommand,
-            JoinDocumentsCommand, 
-            NewCollectionCommand, 
+            JoinDocumentsCommand,
+            NewCollectionCommand,
             ShowCollectionCommand,
             ShowDocumentCommand,
             ShowDocumentJsonCommand,
             ShowPagesCommand,
-            UploadCommand
+            UploadCommand,
         )
         from .info import InspectCommand
         from .session import ClearCommand, ExitCommand, HelpCommand, NewCommand
@@ -105,6 +106,7 @@ class CommandRegistry:
             ShowDocumentJsonCommand(),
             ShowCollectionCommand(),
             ShowPagesCommand(),
+            DumpCommand(),
             FileHelpCommand(),
             # Web Search Toggle Commands
             ToggleToolCommand(

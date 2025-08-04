@@ -1,0 +1,131 @@
+{
+  "id": "6dce5827-3ea5-4718-9f07-c03274287208",
+  "md5sum": "254ff15cff73185dd3e7abc3436d5746",
+  "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "content": {
+    "id": "254ff15cff73185dd3e7abc3436d5746",
+    "abstract": "该项目由微软亚洲研究院合作开发，旨在构建一个AI产品专家模型，能够理解云学堂产品知识并回答用户咨询。项目分为两个子项目：一是实现产品知识问答系统，二是进行产品专业度分析并提供建议。计划通过多阶段实现不同级别（L1、L2）的问答能力，并依赖产品数据和现有FAQ进行训练与评估。项目采用操作链路日志和功能点资料，设定严格评价标准，要求回答准确率高于95%。微软承诺其方案在多个公开数据集上达到较高准确性指标。",
+    "summary": "该项目由微软亚洲研究院合作开发，旨在构建一个AI产品专家模型，能够理解云学堂产品知识并回答用户咨询。项目分为两个子项目：一是实现产品知识问答系统，二是进行产品专业度分析并提供建议。计划通过多阶段实现不同级别（L1、L2）的问答能力，并依赖产品数据和现有FAQ进行训练与评估。项目采用操作链路日志和功能点资料，设定严格评价标准，要求回答准确率高于95%。微软承诺其方案在多个公开数据集上达到较高准确性指标。",
+    "outline": "",
+    "keywords": [
+      "AI产品专家模型",
+      "产品知识问答",
+      "专业度分析",
+      "微软亚洲研究院",
+      "多跳问答",
+      "知识检索",
+      "自动化回复",
+      "领域理论",
+      "模块提升",
+      "问答系统"
+    ],
+    "language": "",
+    "url": null,
+    "page_count": 5,
+    "file_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "encoding": null,
+    "status": null,
+    "metadata": {
+      "id": "ec8a0713-b290-4f1f-826d-3496a874ab8c",
+      "entities": []
+    },
+    "vector_store_ids": [],
+    "segments": [
+      {
+        "id": "254ff15cff73185dd3e7abc3436d5746-P0000",
+        "content": "# ￿￿￿￿￿￿-V1.30\n\n# 1 ￿￿￿￿\n\n本项目旨在通过与微软亚洲研究院的合作，建立一个 AI 产品专家模型，能对云学堂的产品知识进行学习并深刻理解，能够准确回答用户对于产品功能的咨询问题，并能对产品中涉及到的业务进行世界知识的检索，并给出能提升产品专业度的有效建议。\n\n# 2 ￿￿￿￿\n\n<html><body><table><tr><td colspan=\"4\">一、产品知识问答</td></tr><tr><td colspan=\"4\">一、项目基本情况</td></tr><tr><td>项目名称：</td><td>产品知识问答</td><td>项目编号：</td><td></td></tr><tr><td>制作人：</td><td></td><td>审核人：</td><td></td></tr><tr><td>项目经理：</td><td></td><td>制作日期：</td><td></td></tr><tr><td>二、项目描述</td><td colspan=\"3\"></td></tr><tr><td colspan=\"4\">1．项目背景与目的（所有的项目均起始于某个商业问题，该部分简要描述这些问题)</td></tr><tr><td colspan=\"4\">在日常服务客户的过程中，每天都会收到数百条来自客户的咨询问题，这些问题涵盖了功能操 作、场景实现、系统提示信息解读，甚至包括忘记登录账号和密码等各类情况。为了解决这些 答助手的功能，以确保能够及时且准确地回应客户的需求。</td></tr><tr><td colspan=\"4\">2．项目目标（包含质量目标，工期目标、费用目标和交付产品特征与特征的主要描述)</td></tr><tr><td colspan=\"4\">利用AI产品知识问答助手自动回复客户的咨询问题，以此释放产品经理和研发人员的人力资 源，使他们能够集中精力处理更为复杂和重要的任务。</td></tr><tr><td colspan=\"4\">三、项目里程碑计划（包含里程碑的时间和成果）</td></tr></table></body></html>",
+        "index": 0,
+        "metadata": {
+          "id": "b521febc-5501-4562-bafd-fcb698315692",
+          "keywords": [],
+          "contexts": [
+            "本项目旨在通过与微软亚洲研究院的合作，建立一个AI产品专家模型，能够对云学堂的产品知识进行学习并深刻理解，准确回答用户对于产品功能的咨询问题，并能结合世界知识检索，给出提升产品专业度的有效建议。项目分为多个阶段，涵盖产品知识问答和产品专业度分析及建议两个子项目，目标是在特定场景中实现不同级别的问答能力（L1-L4），并通过依赖产品定位、模块描述、操作链路日志、功能点位资料及现有FAQ等数据，提升问答的准确性与专业性。"
+          ],
+          "images": [],
+          "entities": []
+        },
+        "url": ""
+      },
+      {
+        "id": "254ff15cff73185dd3e7abc3436d5746-P0001",
+        "content": "选择一：\n\n阶段 1：在一个特定场景实现 L1 级别的问答，预期第 1-2 个月.  \n阶段 2：在另外 1 个场景实现 L1 级别的问答，预期第 3-4 个月。  \n阶段 3：在一个特定场景实现 L2 级别的问答，预期第 3-5 个月。  \n阶段 4：在另外 1 个场景实现 L2 级别的问答，预期第 6-7 个月。  \n预期第 1-3 个月\n\n选择二：\n\n阶段 1：在一个特定场景实现 L1 级别的问答，预期第 1-2 个月.阶段 2：在另外 1 个场景实现 L1 级别的问答，预期第 3-4 个月。阶段 3：在一个特定场景实现 L2 级别的问答，预期第 3-5 个月。阶段 4：总结，部署，解决应用中的问题，预期第 5-6 个月\n\n# 依赖数据\n\n1. 产品定位及业务描述\n\n2. 产品模块定位及业务描述\n\n3. 模块包含的页面\n\n# 4. 操作链路日志（页面 Id/页面信息/操作点位/功能名称/操作结果）\n\n注：这个数据量很大，能够覆盖所有的需求场景。如果有特别的长尾需求，可以让后台先操作一遍。（需要有对应操作的目的或者完成的功能描述）\n\n# 5. 功能点位参考资料（PRD/测试用例/操作手册）\n\n5.6.现有 FAQ（问题和答案，覆盖 L1 和 L2）注 1：对于目前没有答案的 L2 问题，系统自动推理生成答案注 2：已有的 L2 问题将被作为示例和测试用例。注 3：不包含截图（流程图等）生成。\n\n# 四、评价标准（说明项目成果在何种情况下将被接受）\n\n对于涉及产品功能的问题，回答中必须包含相关的截图或详细的操作路径。例如，如果问题是关于 “如何创建一个项目”，则回答应指明创建项目的具体位置（即所属的导航菜单），并附上详细的操作步骤及相应的截图。  \n我们指定随机 100 条客户服务中碰到的问题，回答的准确性高于 95%视作合格。  \n微软注：回答准确性与具体问题的分布及评价标准关系密切，在看到实际的问题及初步试验完成前，无法预估回答准确性。\n\n# 如何评价是否完整？\n\n如何评价是否准确？\n\n五、项目主要利益干系人（包括高管、客户、职能部门主管、供应商、项目赞助人、项目经理、项目组成员等干系人）\n\n<html><body><table><tr><td>姓名</td><td>类别</td><td>部内</td><td>职务</td></tr><tr><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td></tr></table></body></html>",
+        "index": 1,
+        "metadata": {
+          "id": "4e0a8244-04c0-4e5e-a9b4-e93a571e5a46",
+          "keywords": [],
+          "contexts": [
+            "本项目旨在通过与微软亚洲研究院的合作，建立一个 AI 产品专家模型，能够学习并深刻理解云学堂的产品知识，准确回答用户关于产品功能的咨询问题，并能结合世界知识进行业务检索，提供提升产品专业度的建议。 chunk 中内容描述了项目实施的阶段计划、依赖数据、评价标准及利益干系人信息，用于指导项目执行和评估成果是否符合预期。"
+          ],
+          "images": [],
+          "entities": []
+        },
+        "url": ""
+      },
+      {
+        "id": "254ff15cff73185dd3e7abc3436d5746-P0002",
+        "content": "<html><body><table><tr><td colspan=\"4\">二、产品专业度分析及建议</td></tr><tr><td colspan=\"4\">一项目基本情况</td></tr><tr><td>项目名称：</td><td>产品专业度分析及建议</td><td>项目编号：</td><td></td></tr><tr><td>制作人： 项目经理：</td><td></td><td>审核人： 制作日期：</td><td></td></tr><tr><td colspan=\"4\">二、项目描述</td></tr><tr><td colspan=\"4\">基于“产品知识问答\"子项目所述的产品知识，结合业界公开的专业领域知识，对产品功能进行</td></tr><tr><td colspan=\"4\">专业度分析，并给出改善建议。（例如：针对在线考试模块，结合测评有效性的公开领域知识</td></tr><tr><td colspan=\"4\">2.项目目标一（包含质量目标，工期目标、费用目标和交付产品特征与特征的主要描述）</td></tr><tr><td colspan=\"4\">1.针对特定指定的两个模块，以及每个模块的两个指定提升方向，根据其信息特征，找到对</td></tr><tr><td colspan=\"4\">应的专业理论与最佳实践。 2.基手1，给出有质量的分析维度和每个维度下的专业度提升建议。</td></tr><tr><td colspan=\"4\">3.基手 2，给出具体的改善清单。</td></tr><tr><td colspan=\"4\">三、项目里程碑计划一(包含里程碑的时间和成果) III. Project milestones (including time limit and deliverables of</td></tr><tr><td colspan=\"4\">在选定的模块/提升发现上实现L3&L4级别的问答，预期6个月，安排在第一个项目完全结束后开始执 行。</td></tr><tr><td colspan=\"4\">预期第4-6个月 依赖数据 “产品知识问答”子项目中的所有数据</td></tr><tr><td colspan=\"4\">指定的两个模块名称，以及每个模块各两个具体的提升方向 指定的3-5个相关领域的专业网站</td></tr><tr><td colspan=\"4\">不少手30千优秀的人工完成的问题和答案一（用于示例和测试）</td></tr><tr><td colspan=\"4\">四、评价标准一（说明项目成果在何种情况下将被接受） IV. Project acceptance criteria (describing conditions for</td></tr><tr><td colspan=\"4\">对于涉及产品功能的分析及改善建议，回答中必须包含相关的领域理论知识的原文信息，该功 能的专业与否的分析维度，每个维度下的具体评价列表信息以及相应的改善建议清单。</td></tr><tr><td colspan=\"4\">五、项目主要利益干系人（包括高管、客户、职能部内主管、供应商、项目赞助人、项目经理 项目组成员等干系人）</td></tr><tr><td>姓名-</td><td>类别</td><td>部中</td><td>职务</td></tr><tr><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td></tr></table></body></html>",
+        "index": 2,
+        "metadata": {
+          "id": "512a4fa8-83c0-4b53-a008-aca41ecac920",
+          "keywords": [],
+          "contexts": [
+            "本项目是“产品知识问答”项目的子项目，旨在基于“产品知识问答”中所涉及的产品知识，结合业界公开的专业领域知识，对产品功能进行专业度分析并提出改善建议。项目目标包括：针对指定的两个模块及其每个模块的两个提升方向，找到对应的专业理论与最佳实践；基于上述内容，构建分析维度并提供专业度提升建议；最终形成具体的改善清单。项目计划在“产品知识问答”项目完成后启动，预计在第4-6个月完成。项目依赖数据包括“产品知识问答”子项目的所有数据、指定模块及提升方向、相关专业网站资源及不少于30,000条人工完成的问题和答案。评价标准要求分析及建议必须包含相关领域理论知识原文、分析维度、评价列表及改善建议清单。"
+          ],
+          "images": [],
+          "entities": []
+        },
+        "url": ""
+      },
+      {
+        "id": "254ff15cff73185dd3e7abc3436d5746-P0003",
+        "content": "# 3 ￿￿\n\n微软亚洲研究院计划投入的人员及其时间分配如下：\n\n1. 首席研究员或者首席研究经理：0.3  \n2. 高级研究员，高级应用科学家：0.5  \n3. 研究工程师：0.3\n\n注：\n\n1. 以上时间分配量可能有一个或者多个同级别人员共同组成。  \n2. 微软可能根据项目执行需求或者人员分配情况调整具体分配在该项目的人员，但总分配量不低于上述计划。\n\n# 关于所提供方案在公开数据集准确性的承诺：\n\n微软亚洲研究院所提供的方案在下述公开数据集能够达到下表中的准确性指标，可以在客户的 Azure 订阅环境中复现。\n\n<html><body><table><tr><td rowspan=\"2\">Method</td><td colspan=\"3\">HotpotQA</td><td colspan=\"3\">2WikiMultiHopQA</td><td colspan=\"3\">MuSiQue</td></tr><tr><td>EM</td><td>F1</td><td>Acc</td><td>EM</td><td>F1</td><td>Acc</td><td>EM</td><td>F1</td><td>Acc</td></tr><tr><td>Zero-Shot CoT</td><td>32.60</td><td>43.94</td><td>53.60</td><td>35.67</td><td>41.40</td><td>44.40</td><td>12.93</td><td>22.90</td><td>23.47</td></tr><tr><td>Dense ChunkRetrieval</td><td>55.00</td><td>70.33</td><td>80.47</td><td>51.47</td><td>59.50</td><td>63.53</td><td>28.73</td><td>39.07</td><td>39.73</td></tr><tr><td>GraphRAG</td><td>00.00</td><td>10.66</td><td>89.00</td><td>00.00</td><td>11.83</td><td>71.20</td><td>00.60</td><td>09.62</td><td>49.80</td></tr><tr><td>Ours</td><td>61.00</td><td>75.96</td><td>86.60</td><td>66.20</td><td>74.44</td><td>81.40</td><td>45.60</td><td>56.00</td><td>60.00</td></tr></table></body></html>\n\nAbove results are obtained using 所有以上结果基于 GPT-4-1106-  \npreview  \nMetrics:评价指标：",
+        "index": 3,
+        "metadata": {
+          "id": "ddce9a26-a957-489e-a1cd-4f74caeae7c0",
+          "keywords": [],
+          "contexts": [
+            "微软亚洲研究院计划在云学堂 AI 产品专家模型项目中投入以下人员及其时间分配：\n\n1. 首席研究员或者首席研究经理：0.3  \n2. 高级研究员，高级应用科学家：0.5  \n3. 研究工程师：0.3  \n\n此外，微软亚洲研究院承诺其提供的方案在多个公开数据集（包括 HotpotQA、2WikiMultiHopQA 和 MuSiQue）上能够达到指定的准确性指标，并可在客户的 Azure 订阅环境中复现。"
+          ],
+          "images": [],
+          "entities": []
+        },
+        "url": ""
+      },
+      {
+        "id": "254ff15cff73185dd3e7abc3436d5746-P0004",
+        "content": "EM – Exact match 精确匹配 Acc – 用 use GPT-4 来确认答案给标准答案的语义一致性（推荐） to determine whether the answer is correct (recommended) Metric Calculator:指标计算器： https://github.com/RUCNLPIR/FlashRAG/blob/main/flashrag/evaluator/metrics.py\n\n# HotpotQA\n\n￿ 领域：多跳问答（Multi-hop Question Answering）\n\n￿ 问题性质：HotpotQA 包含约 113,000 个基于维基百科的问题-答案对。问题需要通过多个支持文档进行查找和推理才能回答。它测试系统在多文档推理、事实比较和解释预测方面的能力。\n\n# 2WikiMultiHopQA\n\n￿ 领域：多跳问答（Multi-hop Question Answering）\n\n￿ 问题性质：2WikiMultiHopQA 使用结构化和非结构化数据，包含推理路径的证据信息。问题需要通过多个推理步骤才能回答，旨在全面评估推理步骤。\n\n# MuSiQue\n\n￿ 领域：多跳问答（Multi-hop Question Answering）\n\n￿ 问题性质：MuSiQue 通过组合单跳问题来创建多跳问题，包含约 25,000 个 2-4 跳的问题。它旨在测试系统在多跳推理中的真实能力，并包含不可回答的对比问题以增加数据集的严格性。",
+        "index": 4,
+        "metadata": {
+          "id": "cdb4856c-e545-41af-ac28-cf2ecd4450a0",
+          "keywords": [],
+          "contexts": [
+            "在文档的第四页中，该 chunk 位于关于微软亚洲研究院所提供方案在公开数据集准确性承诺的部分。此部分描述了不同方法在多个多跳问答数据集上的表现，并解释了评价指标（EM、F1、Acc）及其计算方式。该 chunk 具体介绍了 HotpotQA、2WikiMultiHopQA 和 MuSiQue 三个数据集的领域和问题性质，用于评估系统在多文档推理和多跳问答方面的能力。"
+          ],
+          "images": [],
+          "entities": []
+        },
+        "url": ""
+      }
+    ],
+    "contexts": [],
+    "images": [],
+    "graph": null
+  },
+  "title": "x.docx",
+  "author": null,
+  "created_at": "2025-08-01T09:36:18.540000",
+  "updated_at": "2025-08-01T09:36:18.540000",
+  "read_progress": null,
+  "bookmarks": [],
+  "highlights": [],
+  "notes": [],
+  "related_docs": [],
+  "is_favorite": false,
+  "last_read_at": null,
+  "owner": null,
+  "permissions": [],
+  "metadata": {},
+  "vector_store_ids": [],
+  "url": null,
+  "is_delete": false
+}
