@@ -68,25 +68,24 @@ class UnuseCollectionCommand(ChatCommand):
             # If we can't get collection info, that's okay - just use the ID
             pass
 
-        # Remove from config.vec_ids
-        controller.config.vec_ids.remove(collection_id)
-        controller.display.show_status(
-            f"✅ Collection '{collection_name}' ({collection_id}) removed from active vector stores"
-        )
-
-        # Also remove from conversation's vector store IDs for consistency
+        # Only modify conversation state - it's now the authoritative source
         current_vs_ids = controller.conversation.get_current_vector_store_ids()
         if collection_id in current_vs_ids:
             current_vs_ids.remove(collection_id)
             controller.conversation.set_vector_store_ids(current_vs_ids)
+            controller.display.show_status(
+                f"✅ Collection '{collection_name}' ({collection_id}) removed from active vector stores"
+            )
+        else:
+            controller.display.show_status(f"ℹ️ Collection '{collection_id}' was not in active vector stores")
 
         # Show updated status
-        remaining_count = len(controller.config.vec_ids)
+        remaining_count = len(current_vs_ids)
         controller.display.show_status(f"📊 Active collections: {remaining_count}")
 
         if remaining_count > 0:
             controller.display.show_status("📚 Remaining active collections:")
-            for idx, vs_id in enumerate(controller.config.vec_ids, 1):
+            for idx, vs_id in enumerate(current_vs_ids, 1):
                 controller.display.show_status(f"  {idx}. {vs_id}")
         else:
             controller.display.show_status("📂 No collections are currently active")

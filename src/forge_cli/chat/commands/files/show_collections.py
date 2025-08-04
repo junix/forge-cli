@@ -33,10 +33,9 @@ class ShowCollectionsCommand(ChatCommand):
         Returns:
             True to continue the chat session
         """
-        # Get all unique collection IDs from both sources
-        config_ids = set(controller.config.vec_ids) if controller.config.vec_ids else set()
+        # Get all unique collection IDs from conversation state (now authoritative)
         conversation_ids = set(controller.conversation.get_current_vector_store_ids())
-        all_collection_ids = config_ids | conversation_ids
+        all_collection_ids = conversation_ids
 
         if not all_collection_ids:
             controller.display.show_status("📂 No collections configured")
@@ -50,36 +49,23 @@ class ShowCollectionsCommand(ChatCommand):
 
         # Track collections by status
         active_collections = []
-        config_only_collections = []
-        conversation_only_collections = []
         failed_collections = []
 
         # Fetch information for each collection
         for collection_id in sorted(all_collection_ids):
             collection_info = await self._get_collection_info(collection_id, controller)
 
-            # Determine collection status
-            in_config = collection_id in config_ids
-            in_conversation = collection_id in conversation_ids
-
             if collection_info:
-                if in_config and in_conversation:
-                    active_collections.append((collection_id, collection_info, "Active"))
-                elif in_config:
-                    config_only_collections.append((collection_id, collection_info, "Config Only"))
-                else:
-                    conversation_only_collections.append((collection_id, collection_info, "Conversation Only"))
+                active_collections.append((collection_id, collection_info, "Active"))
             else:
                 failed_collections.append((collection_id, None, "Inaccessible"))
 
         # Display collections by category
         self._display_collection_category("🟢 Active Collections", active_collections, controller)
-        self._display_collection_category("🔵 Config Collections", config_only_collections, controller)
-        self._display_collection_category("🟡 Conversation Collections", conversation_only_collections, controller)
         self._display_collection_category("🔴 Inaccessible Collections", failed_collections, controller)
 
         # Summary and tips
-        total_accessible = len(active_collections) + len(config_only_collections) + len(conversation_only_collections)
+        total_accessible = len(active_collections)
         controller.display.show_status(
             f"\n📊 Summary: {total_accessible} accessible, {len(failed_collections)} inaccessible"
         )

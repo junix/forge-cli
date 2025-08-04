@@ -33,13 +33,12 @@ class ModelCommand(ChatCommand):
             True, indicating the chat session should continue.
         """
         if not args.strip():
-            # Show current model
-            controller.display.show_status(f"🤖 Current model: {controller.config.model}")
+            # Show current model from conversation state (authoritative)
+            controller.display.show_status(f"🤖 Current model: {controller.conversation.model}")
             controller.display.show_status("Available models: qwen-max-latest, gpt-4, gpt-3.5-turbo, deepseek-chat")
         else:
-            # Change model
+            # Change model - only modify conversation state
             new_model = args.strip()
-            controller.config.model = new_model
             controller.conversation.model = new_model
             controller.display.show_status(f"🤖 Model changed to: {new_model}")
 
@@ -71,9 +70,9 @@ class ToolsCommand(ChatCommand):
             True, indicating the chat session should continue.
         """
         if not args.strip():
-            # Show current tools
-            if controller.config.enabled_tools:
-                tools_str = ", ".join(controller.config.enabled_tools)
+            # Show current tools from conversation state (authoritative)
+            if controller.conversation.enabled_tools:
+                tools_str = ", ".join(controller.conversation.enabled_tools)
                 controller.display.show_status(f"🛠️ Enabled tools: {tools_str}")
             else:
                 controller.display.show_status("🛠️ No tools enabled")
@@ -95,15 +94,17 @@ class ToolsCommand(ChatCommand):
                     controller.display.show_error(f"Unknown tool: {tool_name}")
                     return True
 
-                if tool_name not in controller.config.enabled_tools:
-                    controller.config.enabled_tools.append(tool_name)
+                # Only modify conversation state
+                if not controller.conversation.is_tool_enabled(tool_name):
+                    controller.conversation.enable_tool(tool_name)
                     controller.display.show_status(f"✅ Added tool: {tool_name}")
                 else:
                     controller.display.show_status(f"Tool already enabled: {tool_name}")
 
             elif action == "remove":
-                if tool_name in controller.config.enabled_tools:
-                    controller.config.enabled_tools.remove(tool_name)
+                # Only modify conversation state
+                if controller.conversation.is_tool_enabled(tool_name):
+                    controller.conversation.disable_tool(tool_name)
                     controller.display.show_status(f"❌ Removed tool: {tool_name}")
                 else:
                     controller.display.show_status(f"Tool not enabled: {tool_name}")

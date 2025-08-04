@@ -23,11 +23,13 @@ Following the successful implementation of the modular chat command system (ADR-
 Through implementation experience, we've identified patterns that work well and areas needing standardization:
 
 **Excellent Implementations:**
+
 - Upload command with async progress tracking and sophisticated error handling
 - Configuration commands with consistent show/modify patterns
 - Tool toggle commands with parameterized generic design
 
 **Inconsistent Areas:**
+
 - Argument parsing approaches vary significantly
 - Error handling patterns differ across commands
 - User feedback formatting lacks consistency
@@ -40,6 +42,7 @@ Through implementation experience, we've identified patterns that work well and 
 ### 1. Command Implementation Standards
 
 #### Base Command Structure
+
 ```python
 class ExampleCommand(ChatCommand):
     """Brief description of command purpose.
@@ -65,6 +68,7 @@ class ExampleCommand(ChatCommand):
 ```
 
 #### Argument Parsing Patterns
+
 ```python
 # Pattern 1: Simple flag-based parsing
 def _parse_simple_args(self, args: str) -> tuple[str, dict[str, bool]]:
@@ -89,6 +93,7 @@ def _parse_subcommand_args(self, args: str) -> tuple[str, list[str]]:
 ### 2. Error Handling Standards
 
 #### Validation Pattern
+
 ```python
 async def execute(self, args: str, controller: ChatController) -> bool:
     # Input validation with helpful messages
@@ -120,6 +125,7 @@ async def execute(self, args: str, controller: ChatController) -> bool:
 ### 3. User Feedback Standards
 
 #### Status Message Patterns
+
 ```python
 # Success messages with appropriate emojis
 controller.display.show_status("✅ Operation completed successfully")
@@ -137,6 +143,7 @@ controller.display.show_status(f"🛠️ Enabled tools: {tools_list}")
 ```
 
 #### Error Message Patterns
+
 ```python
 # Clear, actionable error messages
 controller.display.show_error("File not found: /path/to/file")
@@ -151,6 +158,7 @@ controller.display.show_status("Did you mean: /help, /history, /tools?")
 ### 4. Async Operation Patterns
 
 #### Progress Tracking Template
+
 ```python
 async def _track_async_operation(self, controller: ChatController, operation_id: str):
     """Standard pattern for tracking long-running operations."""
@@ -177,4 +185,219 @@ async def _track_async_operation(self, controller: ChatController, operation_id:
                 controller.display.show_error("Too many errors, stopping tracking")
                 return
             controller.display.show_error(f"Error (attempt {consecutive_errors}): {e}")
+
+## Implementation Guidelines
+
+### 5. Command Organization Patterns
+
+#### File Command Module Structure
+The file commands demonstrate excellent modular organization:
+
+```text
+src/forge_cli/chat/commands/files/
+├── __init__.py              # Module exports and documentation
+├── upload.py                # Core file upload with progress tracking
+├── new_document.py          # Document creation
+├── show_document.py         # Document display
+├── delete_document.py       # Document deletion
+├── new_collection.py        # Collection management
+├── show_collections.py      # Collection listing
+└── ...                      # One command per file
 ```
+
+**Benefits:**
+
+- Single responsibility per file
+- Easy to locate and modify specific commands
+- Clear import structure
+- Independent testing capabilities
+
+#### Command Registration Pattern
+
+```python
+# In base.py CommandRegistry._register_default_commands()
+from .files import (
+    DeleteCollectionCommand,
+    DeleteDocumentCommand,
+    DocumentsCommand,
+    # ... all file commands
+)
+
+default_commands = [
+    # Session commands
+    ExitCommand(),
+    ClearCommand(),
+    # File commands
+    UploadCommand(),
+    NewDocumentCommand(),
+    # ... automatic registration
+]
+```
+
+### 6. Type Safety and Validation
+
+#### Type-Safe Command Implementation
+
+```python
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ...controller import ChatController
+
+class TypedCommand(ChatCommand):
+    """Example of type-safe command implementation."""
+
+    async def execute(self, args: str, controller: ChatController) -> bool:
+        # Type checker knows controller type
+        # Full IDE support and validation
+        return True
+```
+
+#### Argument Validation Helpers
+
+```python
+def _validate_file_path(self, path_str: str) -> Path | None:
+    """Validate and resolve file path."""
+    try:
+        path = Path(path_str).expanduser().resolve()
+        if not path.exists():
+            return None
+        return path
+    except (OSError, ValueError):
+        return None
+
+def _validate_model_name(self, model: str) -> bool:
+    """Validate model name against known models."""
+    valid_models = ["gpt-4", "gpt-3.5-turbo", "claude-3", "qwen-max-latest"]
+    return model in valid_models
+```
+
+### 7. Testing Patterns
+
+#### Command Unit Testing Template
+
+```python
+import pytest
+from unittest.mock import AsyncMock, MagicMock
+from forge_cli.chat.commands.example import ExampleCommand
+
+@pytest.fixture
+def mock_controller():
+    controller = MagicMock()
+    controller.display = MagicMock()
+    controller.config = MagicMock()
+    controller.conversation = MagicMock()
+    return controller
+
+@pytest.mark.asyncio
+async def test_example_command_success(mock_controller):
+    command = ExampleCommand()
+    result = await command.execute("valid_args", mock_controller)
+
+    assert result is True
+    mock_controller.display.show_status.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_example_command_validation_error(mock_controller):
+    command = ExampleCommand()
+    result = await command.execute("", mock_controller)
+
+    assert result is True
+    mock_controller.display.show_error.assert_called_once()
+```
+
+## Benefits of Standardized Patterns
+
+### 1. Consistency Across Commands
+
+- **Predictable User Experience**: Users know what to expect
+- **Uniform Error Handling**: Consistent error messages and recovery
+- **Standard Feedback**: Recognizable status indicators and emojis
+
+### 2. Developer Productivity
+
+- **Clear Templates**: New commands follow established patterns
+- **Reduced Decision Fatigue**: Standard approaches for common tasks
+- **Faster Implementation**: Copy-paste templates with modifications
+
+### 3. Maintainability
+
+- **Easier Debugging**: Consistent error handling patterns
+- **Simplified Testing**: Standard test patterns and fixtures
+- **Code Review Efficiency**: Reviewers know what to expect
+
+### 4. Quality Assurance
+
+- **Input Validation**: Standardized argument parsing and validation
+- **Error Recovery**: Consistent exception handling
+- **User Feedback**: Clear, helpful messages with appropriate formatting
+
+## Implementation Status
+
+### ✅ Well-Implemented Commands
+
+- **Upload Command**: Excellent async progress tracking, error handling
+- **Configuration Commands**: Consistent show/modify patterns
+- **Session Commands**: Clean, simple implementations
+- **Tool Commands**: Generic parameterized design
+
+### 🚧 Commands Needing Standardization
+
+- **File Commands**: Several placeholder implementations remain
+- **Argument Parsing**: Inconsistent approaches across commands
+- **Error Messages**: Varying levels of helpfulness
+- **Help Documentation**: Incomplete usage examples
+
+### 📋 Migration Tasks
+
+1. Complete extraction of remaining file commands from `files_old.py`
+2. Standardize argument parsing across all commands
+3. Implement consistent error handling patterns
+4. Add comprehensive help text and usage examples
+5. Create command testing templates and fixtures
+
+## Future Enhancements
+
+### Plugin System Foundation
+
+The standardized patterns enable future plugin capabilities:
+
+```python
+# Future: Plugin command template
+class PluginCommand(ChatCommand):
+    """Template for plugin-provided commands."""
+
+    def __init__(self, plugin_config: dict):
+        self.plugin_config = plugin_config
+        # Standard initialization
+
+    async def execute(self, args: str, controller: ChatController) -> bool:
+        # Standard execution pattern
+        return True
+```
+
+### Command Analytics
+
+```python
+# Future: Usage tracking
+class AnalyticsCommand(ChatCommand):
+    """Base class with usage analytics."""
+
+    async def execute(self, args: str, controller: ChatController) -> bool:
+        # Track command usage
+        self._record_usage(args)
+        result = await self._execute_impl(args, controller)
+        self._record_completion(result)
+        return result
+```
+
+## Related ADRs
+
+- **ADR-013**: Modular Chat Command System (architectural foundation)
+- **ADR-012**: Chat-First Architecture Migration (context for command importance)
+- **ADR-007**: Typed-Only Architecture Migration (type safety requirements)
+
+---
+
+**Key Insight**: Standardized implementation patterns transform the modular command architecture into a consistent, maintainable, and user-friendly system that scales effectively as new commands are added.

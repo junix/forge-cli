@@ -92,7 +92,8 @@ class ChatSessionManager:
         self.controller.conversation.increment_turn_count()
 
         # Create typed request with full conversation history (automatically adds user message)
-        request = self.controller.conversation.new_request(content, self.config)
+        # ConversationState is now the authoritative source, no need to pass config
+        request = self.controller.conversation.new_request(content)
 
         # Create typed handler and stream
         handler = TypedStreamHandler(self.display, debug=self.config.debug)

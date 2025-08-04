@@ -64,7 +64,7 @@ class AppConfig(BaseModel):
 
     # Custom role and response style settings
     custom_role: str | None = Field(default=None, alias="role")
-    response_language: str | None = Field(default=None, alias="language") 
+    response_language: str | None = Field(default=None, alias="language")
     response_style: str | None = Field(default=None, alias="style")
 
     @field_validator("vec_ids")
@@ -90,15 +90,23 @@ class AppConfig(BaseModel):
         """Validate response language."""
         if v is None:
             return v
-        
+
         valid_languages = {
-            "chinese", "english", "spanish", "french", "german", 
-            "japanese", "korean", "portuguese", "russian", "arabic"
+            "chinese",
+            "english",
+            "spanish",
+            "french",
+            "german",
+            "japanese",
+            "korean",
+            "portuguese",
+            "russian",
+            "arabic",
         }
-        
+
         if v.lower() not in valid_languages:
             raise ValueError(f"Invalid language: {v}. Must be one of: {', '.join(valid_languages)}")
-        
+
         return v.lower()
 
     @field_validator("response_style")
@@ -107,11 +115,11 @@ class AppConfig(BaseModel):
         """Validate response style - accepts any string."""
         if v is None:
             return v
-        
+
         # Accept any non-empty string
         if not v.strip():
             raise ValueError("Response style cannot be empty")
-            
+
         return v.strip()
 
     @model_validator(mode="after")
@@ -180,34 +188,35 @@ class AppConfig(BaseModel):
 
     def build_instructions_json(self) -> str | None:
         """Build instructions JSON from custom role and response style settings.
-        
+
         Returns:
             JSON string for instructions field, or None if no custom settings are provided
         """
         if not (self.custom_role or self.response_language or self.response_style):
             return None
-            
+
         instructions_config = {}
-        
+
         # Add custom role if provided
         if self.custom_role:
             instructions_config["custom_role"] = self.custom_role
-            
+
         # Add response style configuration
         response_style = {}
-        
+
         # Add language if provided
         if self.response_language:
             response_style["language"] = self.response_language
-            
+
         # Add custom style if provided
         if self.response_style:
             response_style["custom"] = self.response_style
-        
+
         # Only add response_style if we have any style settings
         if response_style:
             instructions_config["response_style"] = response_style
-            
+
         # Return JSON string
         import json
+
         return json.dumps(instructions_config, ensure_ascii=False)

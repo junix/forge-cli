@@ -58,37 +58,20 @@ class ToggleToolCommand(ChatCommand):
         Returns:
             True, indicating the chat session should continue.
         """
-        enabled_tools = controller.config.enabled_tools
-
+        # Only modify conversation state - it's now the authoritative source
         if self.action == "enable":
-            if self.tool_name not in enabled_tools:
-                enabled_tools.append(self.tool_name)
+            if not controller.conversation.is_tool_enabled(self.tool_name):
+                controller.conversation.enable_tool(self.tool_name)
                 controller.display.show_status(f"✅ {self.tool_display_name} enabled")
             else:
                 controller.display.show_status(f"{self.tool_display_name} is already enabled")
 
-            # Update conversation state
-            if self.tool_name == "web-search":
-                controller.conversation.enable_web_search()
-            elif self.tool_name == "file-search":
-                controller.conversation.enable_file_search()
-            elif self.tool_name == "page-reader":
-                controller.conversation.page_reader_enabled = True
-
         elif self.action == "disable":
-            if self.tool_name in enabled_tools:
-                enabled_tools.remove(self.tool_name)
+            if controller.conversation.is_tool_enabled(self.tool_name):
+                controller.conversation.disable_tool(self.tool_name)
                 controller.display.show_status(f"❌ {self.tool_display_name} disabled")
             else:
                 controller.display.show_status(f"{self.tool_display_name} is already disabled")
-
-            # Update conversation state
-            if self.tool_name == "web-search":
-                controller.conversation.disable_web_search()
-            elif self.tool_name == "file-search":
-                controller.conversation.disable_file_search()
-            elif self.tool_name == "page-reader":
-                controller.conversation.page_reader_enabled = False
 
         else:
             # Should not happen if constructor is used correctly

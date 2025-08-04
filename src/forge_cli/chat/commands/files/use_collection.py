@@ -57,16 +57,12 @@ class UseCollectionCommand(ChatCommand):
                 controller.display.show_status("Use /vectorstore to see available collections")
                 return True
 
-            # Add to config.vec_ids if not already present
-            if collection_id not in controller.config.vec_ids:
-                controller.config.vec_ids.append(collection_id)
+            # Only modify conversation state - it's now the authoritative source
+            current_vs_ids = controller.conversation.get_current_vector_store_ids()
+            if collection_id not in current_vs_ids:
+                current_vs_ids.append(collection_id)
+                controller.conversation.set_vector_store_ids(current_vs_ids)
                 controller.display.show_status(f"✅ Collection '{collection_id}' added to active vector stores")
-
-                # Also update conversation's vector store IDs for consistency
-                current_vs_ids = controller.conversation.get_current_vector_store_ids()
-                if collection_id not in current_vs_ids:
-                    current_vs_ids.append(collection_id)
-                    controller.conversation.set_vector_store_ids(current_vs_ids)
 
                 # Show collection info
                 controller.display.show_status(f"📚 Collection: {collection.name}")
@@ -84,12 +80,13 @@ class UseCollectionCommand(ChatCommand):
 
             else:
                 controller.display.show_status(f"ℹ️ Collection '{collection_id}' is already in active vector stores")
-                controller.display.show_status(f"📊 Active collections: {len(controller.config.vec_ids)}")
+                current_vs_ids = controller.conversation.get_current_vector_store_ids()
+                controller.display.show_status(f"📊 Active collections: {len(current_vs_ids)}")
 
                 # Show all active collections
-                if len(controller.config.vec_ids) > 1:
+                if len(current_vs_ids) > 1:
                     controller.display.show_status("📚 Active collections:")
-                    for idx, vs_id in enumerate(controller.config.vec_ids, 1):
+                    for idx, vs_id in enumerate(current_vs_ids, 1):
                         controller.display.show_status(f"  {idx}. {vs_id}")
 
         except Exception as e:

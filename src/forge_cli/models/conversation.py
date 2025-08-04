@@ -78,9 +78,24 @@ class ConversationState(BaseModel):
     file_search_enabled: bool = Field(default=False)
     page_reader_enabled: bool = Field(default=False)
     current_vector_store_ids: list[str] = Field(default_factory=list)
-    
+
     # Track documents uploaded during this conversation
     uploaded_documents: list[dict[str, str]] = Field(default_factory=list)
+
+    # Runtime configuration (migrated from AppConfig to be conversation-specific)
+    effort: str = Field(default="low")  # EffortLevel type will be imported
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    max_output_tokens: int = Field(default=1000, gt=0)
+    max_results: int = Field(default=10, gt=0)
+    server_url: str = Field(default="http://localhost:9999")
+
+    # Tool configuration (now authoritative in conversation state)
+    enabled_tools: list[str] = Field(default_factory=list)  # Will use ToolType later
+
+    # Display and debugging configuration
+    render_format: str = Field(default="rich")
+    debug: bool = Field(default=False)
+    quiet: bool = Field(default=False)
 
     # Pydantic configuration
     model_config = {"arbitrary_types_allowed": True}
@@ -223,32 +238,73 @@ class ConversationState(BaseModel):
         """Check if file search is enabled for this conversation."""
         return self.file_search_enabled
 
+    def enable_tool(self, tool_name: str) -> None:
+        """Enable a tool in the conversation state.
+
+        Args:
+            tool_name: Name of the tool to enable
+        """
+        if tool_name not in self.enabled_tools:
+            self.enabled_tools.append(tool_name)
+
+        # Also update specific tool flags for backward compatibility
+        if tool_name == "web-search":
+            self.web_search_enabled = True
+        elif tool_name == "file-search":
+            self.file_search_enabled = True
+        elif tool_name == "page-reader":
+            self.page_reader_enabled = True
+
+    def disable_tool(self, tool_name: str) -> None:
+        """Disable a tool in the conversation state.
+
+        Args:
+            tool_name: Name of the tool to disable
+        """
+        if tool_name in self.enabled_tools:
+            self.enabled_tools.remove(tool_name)
+
+        # Also update specific tool flags for backward compatibility
+        if tool_name == "web-search":
+            self.web_search_enabled = False
+        elif tool_name == "file-search":
+            self.file_search_enabled = False
+        elif tool_name == "page-reader":
+            self.page_reader_enabled = False
+
+    def is_tool_enabled(self, tool_name: str) -> bool:
+        """Check if a tool is enabled in the conversation state.
+
+        Args:
+            tool_name: Name of the tool to check
+
+        Returns:
+            True if the tool is enabled
+        """
+        return tool_name in self.enabled_tools
+
     def add_uploaded_document(self, document_id: str, filename: str, upload_time: str | None = None) -> None:
         """Add a document to the uploaded documents list.
-        
+
         Args:
             document_id: The unique ID of the uploaded document
             filename: The original filename of the uploaded document
             upload_time: ISO format timestamp (defaults to current time)
         """
         import datetime
-        
+
         if upload_time is None:
             upload_time = datetime.datetime.now().isoformat()
-            
-        document_info = {
-            "id": document_id,
-            "filename": filename,
-            "uploaded_at": upload_time
-        }
-        
+
+        document_info = {"id": document_id, "filename": filename, "uploaded_at": upload_time}
+
         # Avoid duplicates based on document ID
         if not any(doc["id"] == document_id for doc in self.uploaded_documents):
             self.uploaded_documents.append(document_info)
 
     def get_uploaded_documents(self) -> list[dict[str, str]]:
         """Get the list of documents uploaded during this conversation.
-        
+
         Returns:
             List of document info dictionaries with keys: id, filename, uploaded_at
         """
@@ -256,18 +312,15 @@ class ConversationState(BaseModel):
 
     def remove_uploaded_document(self, document_id: str) -> bool:
         """Remove a document from the uploaded documents list.
-        
+
         Args:
             document_id: The ID of the document to remove
-            
+
         Returns:
             True if document was found and removed, False otherwise
         """
         original_length = len(self.uploaded_documents)
-        self.uploaded_documents = [
-            doc for doc in self.uploaded_documents 
-            if doc["id"] != document_id
-        ]
+        self.uploaded_documents = [doc for doc in self.uploaded_documents if doc["id"] != document_id]
         return len(self.uploaded_documents) < original_length
 
     def clear_uploaded_documents(self) -> None:
@@ -315,6 +368,17 @@ class ConversationState(BaseModel):
             file_search_enabled="file-search" in config.enabled_tools,
             page_reader_enabled="page-reader" in config.enabled_tools,
             current_vector_store_ids=config.vec_ids.copy() if config.vec_ids else [],
+            # Copy all runtime configuration from AppConfig
+            effort=config.effort,
+            temperature=config.temperature,
+            max_output_tokens=config.max_output_tokens,
+            max_results=config.max_results,
+            server_url=config.server_url,
+            enabled_tools=config.enabled_tools.copy(),
+            render_format=config.render_format,
+            debug=config.debug,
+            quiet=config.quiet,
+            # Keep metadata for backward compatibility
             metadata={
                 "effort": config.effort,
                 "temperature": config.temperature,
@@ -433,61 +497,46 @@ class ConversationState(BaseModel):
         # Use Pydantic's model_validate for automatic validation and type conversion
         return cls.model_validate(data)
 
-    def new_request(self, content: str, config: "AppConfig") -> "Request":
+    def new_request(self, content: str) -> "Request":
         """Create a new typed request with conversation history and current content.
 
         This method automatically adds the new user message to the conversation history
-        and creates a typed Request object ready for the API. It prioritizes conversation
-        state settings over global config for tool enablement.
+        and creates a typed Request object ready for the API. All settings are taken from
+        the conversation state, making it the authoritative source of configuration.
 
         Args:
             content: The new user message content
-            config: AppConfig containing fallback tool and model settings
 
         Returns:
             A typed Request object ready for the API
         """
         from ..response._types import FileSearchTool, InputMessage, PageReaderTool, Request, WebSearchTool
-        from ..response._types.web_search_tool import UserLocation
 
         # Add the new user message to conversation history first
         self.add_user_message(content)
 
-        # Build tools list based on conversation state (prioritized) and config (fallback)
+        # Build tools list based on conversation state only
         tools = []
 
-        # File search tool - use conversation state if available, otherwise fall back to config
-        file_search_enabled = self.file_search_enabled or "file-search" in config.enabled_tools
-        vector_store_ids = self.current_vector_store_ids if self.current_vector_store_ids else config.vec_ids
-
-        if file_search_enabled and vector_store_ids:
+        # File search tool - use conversation state
+        if self.file_search_enabled and self.current_vector_store_ids:
             tools.append(
                 FileSearchTool(
                     type="file_search",
-                    vector_store_ids=vector_store_ids,
-                    max_num_results=config.max_results,
+                    vector_store_ids=self.current_vector_store_ids,
+                    max_num_results=self.max_results,
                 )
             )
 
-        # Web search tool - use conversation state if available, otherwise fall back to config
-        web_search_enabled = self.web_search_enabled or "web-search" in config.enabled_tools
-
-        if web_search_enabled:
+        # Web search tool - use conversation state
+        if self.web_search_enabled:
             tool_params = {"type": "web_search"}
-            location = config.get_web_location()
-            if location:
-                user_location = UserLocation(
-                    type="approximate",
-                    country=location.get("country"),
-                    city=location.get("city"),
-                )
-                tool_params["user_location"] = user_location
+            # For now, we'll use basic web search without location
+            # Location configuration can be added to conversation state later if needed
             tools.append(WebSearchTool(**tool_params))
 
-        # Page reader tool - use conversation state if available, otherwise fall back to config
-        page_reader_enabled = self.page_reader_enabled or "page-reader" in config.enabled_tools
-
-        if page_reader_enabled:
+        # Page reader tool - use conversation state
+        if self.page_reader_enabled:
             tools.append(PageReaderTool(type="page_reader"))
 
         # Build input messages from current conversation history (including the new message)
@@ -504,17 +553,18 @@ class ConversationState(BaseModel):
             content_str = " ".join(content_parts)
             input_messages.append(InputMessage(role=msg.role, content=content_str))
 
-        # Create typed request
-        instructions = config.build_instructions_json()
-        if config.debug and instructions:
+        # Create typed request using conversation state
+        # For now, we'll skip custom instructions (can be added to conversation state later)
+        instructions = None
+        if self.debug and instructions:
             print(f"Custom instructions: {instructions}")
-            
+
         return Request(
             input=input_messages,
-            model=config.model,
+            model=self.model,
             tools=tools,
-            temperature=config.temperature or 0.7,
-            max_output_tokens=config.max_output_tokens or 2000,
-            effort=config.effort or "low",
+            temperature=self.temperature,
+            max_output_tokens=self.max_output_tokens,
+            effort=self.effort,
             instructions=instructions,
         )
