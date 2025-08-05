@@ -227,13 +227,12 @@ class TopKQueryCommand(ChatCommand):
                 print()
 
                 for i, item in enumerate(result.data, 1):
-                    # Add separator line before each result (except the first)
-                    if i > 1:
-                        print("─" * 80)
-                        print()
+                    print(f"--- Result {i} ---")
 
-                    print(f"📄 Result {i} (Score: {item.score:.4f})")
-                    print(f"   File: {item.filename} (ID: {item.file_id})")
+                    # Print core fields with color formatting
+                    print(f"\033[33mscore\033[0m: \033[32m{item.score:.4f}\033[0m")
+                    print(f"\033[33mfile\033[0m: \033[32m{item.filename}\033[0m")
+                    print(f"\033[33mid\033[0m: \033[32m{item.file_id}\033[0m")
 
                     # Extract text from content array
                     text_content = ""
@@ -242,15 +241,15 @@ class TopKQueryCommand(ChatCommand):
                             text_content = content_item.text.strip()
                             break
 
-                    # Show text content (truncated if too long)
+                    # Show full text content without delimiters
                     if text_content:
-                        if len(text_content) > 200:
-                            text_content = text_content[:200] + "..."
-                        print(f"   Text: {text_content}")
+                        print(f"\033[33mtext\033[0m: \033[32m{text_content}\033[0m")
 
-                    # Show attributes if available
+                    # Flatten and show all attributes with color formatting
                     if item.attributes:
-                        print(f"   Attributes: {item.attributes}")
+                        for key, value in item.attributes.items():
+                            print(f"\033[33m{key}\033[0m: \033[32m{value}\033[0m")
+
                     print()
 
             else:
