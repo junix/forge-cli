@@ -147,7 +147,7 @@ class TestTopKQueryCommand:
         """Test parsing with no valid flags."""
         args = "invalid arguments without flags"
 
-        with pytest.raises(ValueError, match="No valid --flag=value parameters found"):
+        with pytest.raises(ValueError, match="No valid --flag parameters found"):
             command._parse_flag_parameters(args)
 
     def test_parse_args_missing_query(self, command, mock_controller):
@@ -168,19 +168,23 @@ class TestTopKQueryCommand:
     # Tests for simple format
     def test_parse_simple_format_basic(self, command, mock_controller):
         """Test parsing simple format with basic query."""
-        collection_id, query, top_k = command._parse_args("machine learning", mock_controller)
+        collection_id, query, top_k, json_output = command._parse_args("machine learning", mock_controller)
 
         assert collection_id == "current_vs_123"
         assert query == "machine learning"
         assert top_k == 5
+        assert json_output is False
 
     def test_parse_simple_format_with_spaces(self, command, mock_controller):
         """Test parsing simple format with spaces in query."""
-        collection_id, query, top_k = command._parse_args("neural networks and deep learning", mock_controller)
+        collection_id, query, top_k, json_output = command._parse_args(
+            "neural networks and deep learning", mock_controller
+        )
 
         assert collection_id == "current_vs_123"
         assert query == "neural networks and deep learning"
         assert top_k == 5
+        assert json_output is False
 
     def test_parse_simple_format_no_current_collection(self, command, mock_controller):
         """Test parsing simple format with no current collection."""
@@ -193,11 +197,12 @@ class TestTopKQueryCommand:
         """Test parsing simple format with multiple current collections."""
         mock_controller.conversation.get_current_vector_store_ids.return_value = ["vs_1", "vs_2", "vs_3"]
 
-        collection_id, query, top_k = command._parse_args("test query", mock_controller)
+        collection_id, query, top_k, json_output = command._parse_args("test query", mock_controller)
 
         assert collection_id == "vs_1"  # Uses first collection
         assert query == "test query"
         assert top_k == 5
+        assert json_output is False
 
         # Check that informative message was displayed
         mock_controller.display.show_status.assert_any_call("ℹ️ Using first active collection: vs_1")
@@ -215,3 +220,125 @@ class TestTopKQueryCommand:
             mock_query.assert_called_once_with(
                 vector_store_id="current_vs_123", query="machine learning techniques", top_k=5, filters=None
             )
+
+    # Tests for JSON functionality
+    def test_parse_flag_parameters_with_json(self, command):
+        """Test parsing flag parameters with JSON flag."""
+        args = '--collection=test_vs --query="machine learning" --top-k=5 --json'
+        params = command._parse_flag_parameters(args)
+
+        assert params["collection"] == "test_vs"
+        assert params["query"] == "machine learning"
+        assert params["top-k"] == "5"
+        assert "json" in params
+        assert params["json"] == "true"
+
+    def test_parse_flag_format_with_json(self, command, mock_controller):
+        """Test parsing flag format with JSON output."""
+        collection_id, query, top_k, json_output = command._parse_args(
+            '--collection=test_vs --query="test query" --json', mock_controller
+        )
+
+        assert collection_id == "test_vs"
+        assert query == "test query"
+        assert top_k == 5
+        assert json_output is True
+
+    def test_parse_flag_format_without_json(self, command, mock_controller):
+        """Test parsing flag format without JSON output."""
+        collection_id, query, top_k, json_output = command._parse_args(
+            '--collection=test_vs --query="test query"', mock_controller
+        )
+
+        assert collection_id == "test_vs"
+        assert query == "test query"
+        assert top_k == 5
+        assert json_output is False
+
+    async def test_execute_with_json_output(self, command, mock_controller):
+        """Test execute with JSON output flag."""
+        with (
+            patch("forge_cli.sdk.vectorstore.async_query_vectorstore") as mock_query,
+            patch("builtins.print") as mock_print,
+        ):
+            # Mock successful query result
+            mock_result = MagicMock()
+            mock_result.data = [
+                MagicMock(
+                    file_id="file_123",
+                    filename="test.pdf",
+                    score=0.95,
+                    attributes={"source": "test"},
+                    content=[MagicMock(type="text", text="Test content")],
+                )
+            ]
+            mock_result.model_dump.return_value = {
+                "object": "vector_store.search_results.page",
+                "search_query": "test query",
+                "data": [
+                    {
+                        "file_id": "file_123",
+                        "filename": "test.pdf",
+                        "score": 0.95,
+                        "attributes": {"source": "test"},
+                        "content": [{"type": "text", "text": "Test content"}],
+                    }
+                ],
+                "has_more": False,
+                "next_page": None,
+                "request_id": "req_123",
+            }
+            mock_query.return_value = mock_result
+
+            result = await command.execute('--collection=test_vs --query="test query" --json', mock_controller)
+
+            assert result is True
+            mock_query.assert_called_once_with(
+                vector_store_id="test_vs",
+                query="test query",
+                top_k=5,
+                filters=None,
+            )
+
+            # Check that JSON was printed
+            mock_print.assert_called()
+            printed_output = mock_print.call_args[0][0]
+            assert '"object": "vector_store.search_results.page"' in printed_output
+            assert '"search_query": "test query"' in printed_output
+
+    async def test_execute_with_json_no_results(self, command, mock_controller):
+        """Test execute with JSON output when no results found."""
+        with (
+            patch("forge_cli.sdk.vectorstore.async_query_vectorstore") as mock_query,
+            patch("builtins.print") as mock_print,
+        ):
+            mock_result = MagicMock()
+            mock_result.data = []
+            mock_query.return_value = mock_result
+
+            result = await command.execute('--query="test query" --json', mock_controller)
+
+            assert result is True
+
+            # Check that JSON was printed for no results
+            mock_print.assert_called()
+            printed_output = mock_print.call_args[0][0]
+            assert '"message": "No results found for the query"' in printed_output
+            assert '"data": []' in printed_output
+
+    async def test_execute_with_json_query_failed(self, command, mock_controller):
+        """Test execute with JSON output when query fails."""
+        with (
+            patch("forge_cli.sdk.vectorstore.async_query_vectorstore") as mock_query,
+            patch("builtins.print") as mock_print,
+        ):
+            mock_query.return_value = None
+
+            result = await command.execute('--query="test query" --json', mock_controller)
+
+            assert result is True
+
+            # Check that JSON error was printed
+            mock_print.assert_called()
+            printed_output = mock_print.call_args[0][0]
+            assert '"error": "Query failed - no results returned"' in printed_output
