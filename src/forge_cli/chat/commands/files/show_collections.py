@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 from ..base import ChatCommand
+from ..utils import has_json_flag, parse_flag_parameters
 
 if TYPE_CHECKING:
     from ...controller import ChatController
@@ -14,9 +16,12 @@ class ShowCollectionsCommand(ChatCommand):
     """Show information about all known collections from config and conversation state.
 
     Usage:
-    - /show-collections - Show all known collections
-    - /collections - Alias for show-collections command
-    - /list-collections - Another alias
+        /show-collections           (simple format, formatted output)
+        /show-collections --json    (flag format with JSON output)
+    
+    Examples:
+        /show-collections
+        /show-collections --json
     """
 
     name = "show-collections"
@@ -27,30 +32,77 @@ class ShowCollectionsCommand(ChatCommand):
         """Execute the show-collections command to list all known collections.
 
         Args:
-            args: Command arguments (unused for now)
+            args: Command arguments
             controller: The ChatController instance
 
         Returns:
             True to continue the chat session
         """
+        # Parse arguments for JSON flag
+        json_output = self._parse_args(args.strip())
+
         # Get all unique collection IDs from conversation state (now authoritative)
         collection_ids = controller.conversation.get_current_vector_store_ids()
 
         if not collection_ids:
-            controller.display.show_status("No collections configured.")
+            if json_output:
+                print(json.dumps({"collections": [], "message": "No collections configured"}, indent=2))
+            else:
+                controller.display.show_status("No collections configured.")
             return True
 
-        controller.display.show_status(f"📦 Collections ({len(collection_ids)}):")
+        # Fetch collection details
+        collections_data = []
+        
+        if not json_output:
+            controller.display.show_status(f"📦 Collections ({len(collection_ids)}):")
 
         for collection_id in sorted(collection_ids):
-            # Try to get collection name
-            name = await self._get_collection_name(collection_id)
-            if name:
-                controller.display.show_status(f"  {collection_id} - {name}")
+            if json_output:
+                # Get full collection info for JSON output
+                info = await self._get_collection_info(collection_id, controller)
+                if info:
+                    collections_data.append(info)
+                else:
+                    collections_data.append({
+                        "id": collection_id,
+                        "error": "inaccessible",
+                        "accessible": False
+                    })
             else:
-                controller.display.show_status(f"  {collection_id} - (inaccessible)")
+                # Get just the name for formatted output
+                name = await self._get_collection_name(collection_id)
+                if name:
+                    controller.display.show_status(f"  {collection_id} - {name}")
+                else:
+                    controller.display.show_status(f"  {collection_id} - (inaccessible)")
+
+        if json_output:
+            print(json.dumps({
+                "collections": collections_data,
+                "total": len(collections_data)
+            }, indent=2, ensure_ascii=False))
 
         return True
+
+    def _parse_args(self, args: str) -> bool:
+        """Parse command arguments.
+
+        Args:
+            args: Raw argument string
+
+        Returns:
+            True if --json flag is present
+        """
+        if not args:
+            return False
+        
+        # Check for flag-based format
+        if args.startswith("--"):
+            params = parse_flag_parameters(args)
+            return has_json_flag(params)
+        
+        return False
 
     async def _get_collection_name(self, collection_id: str) -> str | None:
         """Get collection name from API."""

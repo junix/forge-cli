@@ -27,7 +27,6 @@ from .refresh_files import RefreshFilesCommand
 from .show_collection import ShowCollectionCommand
 from .show_collections import ShowCollectionsCommand
 from .show_document import ShowDocumentCommand
-from .show_document_json import ShowDocumentJsonCommand
 from .show_documents import ShowDocumentsCommand
 from .show_pages import ShowPagesCommand
 from .topk_query import TopKQueryCommand
@@ -50,7 +49,6 @@ __all__ = [
     "DumpCommand",
     "NewDocumentCommand",
     "ShowDocumentCommand",
-    "ShowDocumentJsonCommand",
     "ShowPagesCommand",
     "UpdateDocumentCommand",
     # Collection operations
