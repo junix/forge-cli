@@ -1,0 +1,70 @@
+{
+  "id": "7a9793b3-444a-487b-aa04-598e761dab12",
+  "md5sum": "6f1a1af7f4b58d890f67108087c291d4",
+  "mime_type": "application/octet-stream",
+  "content": {
+    "id": "6f1a1af7f4b58d890f67108087c291d4",
+    "abstract": null,
+    "summary": null,
+    "outline": null,
+    "keywords": [],
+    "language": "unknown",
+    "url": null,
+    "page_count": 4,
+    "file_type": null,
+    "encoding": null,
+    "status": null,
+    "metadata": {},
+    "vector_store_ids": [],
+    "segments": [
+      {
+        "id": "6f1a1af7f4b58d890f67108087c291d4-P0000",
+        "content": "### ## 1.项目概述\n\n本项目旨在通过与微软亚洲研究院的合作，建立一个AI产品专家模型，能对云学堂的产品知识进行学习并深刻理解，能够准确回答用户对于产品功能的咨询问题，并能对产品中涉及到的业务进行世界知识的检索，并给出能提升产品专业度的有效建议。\n\n### ## 2.项目描述\n\n<table>\n<caption></caption>\n<tr>\n<td Colspan=\"4\">一、产品知识问答</td>\n</tr>\n<tr>\n<td Colspan=\"4\">一、项目基本情况</td>\n</tr>\n<tr>\n<td>项目名称:</td>\n<td>产品知识问答</td>\n<td>项目编号:</td>\n<td></td>\n</tr>\n<tr>\n<td>制作人:</td>\n<td></td>\n<td>审核人:</td>\n<td></td>\n</tr>\n<tr>\n<td>项目经理:</td>\n<td></td>\n<td>制作日期:</td>\n<td></td>\n</tr>\n<tr>\n<td Colspan=\"4\">二、项目描述</td>\n</tr>\n<tr>\n<td Colspan=\"4\">1 ．项目背景与目的（所有的项目均起始于某个商业问题，该部分简要描述这些问题）</td>\n</tr>\n<tr>\n<td Colspan=\"4\">在日常服务客户的过程中，每天都会收到数百条来自客户的咨询问题，这些问题涵盖了功能操作、场景实现、系统提示信息解读，甚至包括忘记登录账号和密码等各类情况。为了 解决这些问题，提升客户服务体验，并减轻产品经理和研发人员的工作压力，需要提供AI产品知识问答助手的功能，以确保能够及时且准确地回应客户的需求。</td>\n</tr>\n<tr>\n<td Colspan=\"4\">2 ．项目目标（包含质量目标，工期目标、费用目标和交付产品特征与特征的主要描述）</td>\n</tr>\n<tr>\n<td Colspan=\"4\">利用AI产品知识问答助手自动回复客户的咨询问题，以此释放产品经理和研发人员的人力资源，使他们能够集中精力处理更为复杂和重要的任务。</td>\n</tr>\n<tr>\n<td Colspan=\"4\">三、项目里程碑计划(包含里程碑的时间和成果)</td>\n</tr>\n</table>",
+        "index": 0,
+        "metadata": null,
+        "url": " "
+      },
+      {
+        "id": "6f1a1af7f4b58d890f67108087c291d4-P0001",
+        "content": "<table>\n<caption></caption>\n<tr>\n<td Colspan=\"5\">选择一: 阶段1:在一个特定场景实现L1级别的问答,预期第1-2个月. 阶段2:在另外1个场景实现L1级别的问答,预期第3-4个月。 阶段3:在一个特定场景实现L2级别的问答,预期第3-5个月。 阶段4:在另外1个场景实现L2级别的问答,预期第6-7个月。</td>\n</tr>\n<tr>\n<td Colspan=\"5\">选择二: 阶段1:在一个特定场景实现L1级别的问答,预期第1-2个月. 阶段2:在另外1个场景实现L1级别的问答,预期第3-4个月。</td>\n</tr>\n<tr>\n<td Colspan=\"5\">阶段 3:在一个特定场景实现L1级别的问答,预期第1-2个月. 阶段2:在另外1个场景实现L1级别的问答,预期第3-4个月。</td>\n</tr>\n<tr>\n<td Colspan=\"5\">阶段3:在一个特定场景实现L2级别的问答,预期第3-5个月。 阶段4:总结,部署,解决应用中的问题,预期第5-6个月</td>\n</tr>\n<tr>\n<td Colspan=\"5\">依赖数据</td>\n</tr>\n<tr>\n<td Colspan=\"5\">1. 产品定位及业务描述</td>\n</tr>\n<tr>\n<td Colspan=\"5\">2. 产品模块定位及业务描述</td>\n</tr>\n<tr>\n<td Colspan=\"5\">3. 模块包含的页面</td>\n</tr>\n<tr>\n<td Colspan=\"5\">4. 操作链路日志(页面Id/页面信息/操作点位/功能名称/操作结果)</td>\n</tr>\n<tr>\n<td Colspan=\"5\">注:这个数据量很大,能够覆盖所有的需求场景。如果有特别的长尾需求,可以让后台先操作一遍。(需要有对应操作的目的或者完成的功能描述)</td>\n</tr>\n<tr>\n<td Colspan=\"5\">5. 功能点位参考资料(PRD/测试用例/操作手册)</td>\n</tr>\n<tr>\n<td Colspan=\"5\">6. 现有 FAQ(问题和答案,覆盖 L1和 L2)。 注 1:对于目前没有答案的L2问题,系统自动推理生成答案 注 2:已有的 L2问题将被作为示例和测试用例。 注 3:不包含截图(流程图等)生成。</td>\n</tr>\n<tr>\n<td Colspan=\"5\">四、评价标准(说明项目成果在何种情况下将被接受)</td>\n</tr>\n<tr>\n<td Colspan=\"5\">对于涉及产品功能的问题,回答中必须包含相关的截图或详细的操作路径。例如,如果问题是关于\"如何创建一个项目\",则回答应指明创建项目的具体位置(即所属的导航菜单), 并附上详细的操作步骤及相应的截图。 我们指定随机100条客户服务中碰到的问题,回答的准确性高于95%视作合格。 微软注:回答准确性与具体问题的分布及评价标准关系密切,在看到实际的问题及初步试验完成前,无法预估回答准确性。</td>\n</tr>\n<tr>\n<td Colspan=\"5\">五、项目主要利益干系人(包括高管、客户、职能部门主管、供应商、项目赞助人、项目 经理、项目组成员等干系人)</td>\n</tr>\n<tr>\n<td>姓名</td>\n<td>类别</td>\n<td Colspan=\"2\">部门</td>\n<td>职务</td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td Colspan=\"2\"></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td Colspan=\"2\"></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td Colspan=\"2\"></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td Colspan=\"2\"></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td Colspan=\"2\"></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td Colspan=\"2\"></td>\n<td></td>\n</tr>\n</table>",
+        "index": 1,
+        "metadata": null,
+        "url": " "
+      },
+      {
+        "id": "6f1a1af7f4b58d890f67108087c291d4-P0002",
+        "content": "### # 3.\n\n### # 3.备注\n\n微软亚洲研究院计划投入的人员及其时间分配如下:\n\n1.首席研究员或者首席研究经理:0.3\n\n2.高级研究员,高级应用科学家:0.5\n\n3.研究工程师:0.3\n\n注:\n\n1.以上时间分配量可能有一个或者多个同级别人员共同组成。\n\n2.微软可能根据项目执行需求或者人员分配情况调整具体分配在该项目的人员，但总分配量不低于上述计划。\n\n关于所提供方案在公开数据集准确性的承诺:\n\n微软亚洲研究院所提供的方案在下述公开数据集能够达到下表中的准确性指标，可以在客户的Azure订阅环境中复现。\n\n<table>\n<caption></caption>\n<tr>\n<td Rowspan=\"2\">Method</td>\n<td Colspan=\"2\">HotpotQA</td>\n<td Colspan=\"2\">2WikiMultiHopQA</td>\n<td Colspan=\"3\">MuSiQue</td>\n</tr>\n<tr>\n<td>EM</td>\n<td>F1</td>\n<td>Acc</td>\n<td>EM</td>\n<td>F1</td>\n<td>Acc</td>\n<td>EM</td>\n</tr>\n<tr>\n<td>Zero-Shot CoT</td>\n<td>32.60</td>\n<td>43.94</td>\n<td>53.60</td>\n<td>35.67</td>\n<td>41.40</td>\n<td>44.40</td>\n<td>12.93</td>\n</tr>\n<tr>\n<td>Dense Chunk Retrieval Retrieval</td>\n<td>55.00</td>\n<td>70.33</td>\n<td>80.47</td>\n<td>51.47</td>\n<td>59.50</td>\n<td>63.53</td>\n<td>28.73</td>\n</tr>\n<tr>\n<td>GraphRAG R G</td>\n<td>00.00</td>\n<td>10.66</td>\n<td>89.00</td>\n<td>00.00</td>\n<td>11.83</td>\n<td>71.20</td>\n<td>00.60</td>\n</tr>\n<tr>\n<td>Ours</td>\n<td>61.00</td>\n<td>75.96</td>\n<td>86.60</td>\n<td>66.20</td>\n<td>74.44</td>\n<td>81.40</td>\n<td>45.60</td>\n</tr>\n</table>\n\n所有以上结果基于 GPT-4-1106-preview\n\n● 评价指标:\n\n· EM-精确匹配\n\nAcc-用GPT-4来确认答案给标准答案的语义一致性(推荐)\n\n.指标计算器:\n\nhttps://github.com/RUC-NLPIR/FlashRAG/blob/main/flashrag/evaluator/metrics.py\n\n### ## HotpotQA\n\n领域:多跳问答(Multi-hop Question Answering)\n\n问题性质:HotpotQA包含约113,000个基于维基百科的问题-答案对。问题需要通过多个支持文档进行查找和推理才能回答。它测试系统在多文档推理、事实比较和解释预测方面的能力。\n\n### ## 2WikiMultiHopQA\n\n领域:多跳问答(Multi-hop Question Answering)\n\n问题性质:2WikiMultiHopQA使用结构化和非结构化数据，包含推理路径的证据信息。问题需要通过多个推理步骤才能回答，旨在全面评估推理步骤。\n\n### ## MuSiQue\n\n领域:多跳问答(Multi-hop Question Answering)\n\n问题性质:MuSiQue通过组合单跳问题来创建多跳问题，包含约25,000个2-4跳的问题。它旨在测试系统在多跳推理中的真实能力，并包含不可回答的对比问题以增加数",
+        "index": 2,
+        "metadata": null,
+        "url": " "
+      },
+      {
+        "id": "6f1a1af7f4b58d890f67108087c291d4-P0003",
+        "content": "据集的严格性。",
+        "index": 3,
+        "metadata": null,
+        "url": " "
+      }
+    ],
+    "contexts": [],
+    "images": [],
+    "graph": null
+  },
+  "title": "x.docx",
+  "author": null,
+  "created_at": "2025-08-05T09:23:56.315165",
+  "updated_at": "2025-08-05T09:23:56.315167",
+  "read_progress": null,
+  "bookmarks": [],
+  "highlights": [],
+  "notes": [],
+  "related_docs": [],
+  "is_favorite": false,
+  "last_read_at": null,
+  "owner": null,
+  "permissions": [],
+  "metadata": {},
+  "vector_store_ids": [],
+  "url": null,
+  "is_delete": false
+}
