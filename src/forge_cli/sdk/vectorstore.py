@@ -6,7 +6,12 @@ from .config import BASE_URL
 from .http_client import async_make_request
 
 # Import new types
-from .types import DeleteResponse, Vectorstore, VectorStoreQueryResponse, VectorStoreSummary  # Updated imports
+from .types import (
+    ActualVectorStoreSearchResponse,
+    DeleteResponse,
+    Vectorstore,
+    VectorStoreSummary,
+)  # Updated imports
 
 
 async def async_create_vectorstore(
@@ -64,12 +69,12 @@ async def async_query_vectorstore(
     query: str,
     top_k: int = 10,
     filters: dict[str, str | int | float | bool | list | dict] = None,
-) -> VectorStoreQueryResponse | None:  # Changed return type
+) -> ActualVectorStoreSearchResponse | None:  # Changed return type to match actual API response
     """
     Asynchronously query a vector store.
     ...
     Returns:
-        VectorStoreQueryResponse object containing search results or None if query failed
+        ActualVectorStoreSearchResponse object containing search results or None if query failed
     """
     url = f"{BASE_URL}/v1/vector_stores/{vector_store_id}/search"
     payload = {"query": query, "top_k": top_k}
@@ -80,7 +85,7 @@ async def async_query_vectorstore(
         status_code, response_data = await async_make_request("POST", url, json_payload=payload)
         if status_code == 200 and isinstance(response_data, dict):
             try:
-                return VectorStoreQueryResponse.model_validate(response_data)
+                return ActualVectorStoreSearchResponse.model_validate(response_data)
             except Exception as e:
                 logger.error(
                     f"Vector store query for {vector_store_id} succeeded but failed to parse response: {e}. Data: {response_data}"

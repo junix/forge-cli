@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -71,3 +71,41 @@ class VectorStoreQueryResponse(BaseModel):
 #     "top_k": 1
 # }
 # query_response = VectorStoreQueryResponse(**response_data)
+
+
+# New models that match the actual API response format
+class ContentItem(BaseModel):
+    """Represents a content item within a search result."""
+
+    type: Literal["text"] = Field(description="The type of content, typically 'text'.")
+    text: str = Field(description="The actual text content.")
+
+
+class ActualVectorStoreSearchResultItem(BaseModel):
+    """
+    Represents a single item in the actual vector store search result format.
+    This matches the format returned by the API.
+    """
+
+    file_id: str = Field(description="Identifier of the source file.")
+    filename: str = Field(description="Name of the source file.")
+    score: float = Field(description="Relevance score of the result item for the query.")
+    attributes: dict[str, Any] | None = Field(None, description="Additional attributes and metadata.")
+    content: list[ContentItem] = Field(description="List of content items, typically containing text.")
+
+
+class ActualVectorStoreSearchResponse(BaseModel):
+    """
+    Represents the actual response format from vector store search operations.
+    This matches the format returned by the API.
+    """
+
+    object: str = Field(description="The type of object, e.g., 'vector_store.search_results.page'.")
+    search_query: str = Field(description="The original search query string.")
+    data: list[ActualVectorStoreSearchResultItem] = Field(description="A list of search result items.")
+    has_more: bool = Field(description="Whether there are more results available.")
+    next_page: str | None = Field(None, description="Token for fetching the next page of results.")
+    request_id: str = Field(description="Unique identifier for this request.")
+
+    class Config:
+        populate_by_name = True

@@ -4,43 +4,63 @@ The `/topk` command allows you to query a vector store collection with top-k res
 
 ## Usage
 
+The command supports two formats:
+
+### Simple Format (Recommended)
+
+```bash
+/topk <query-text>
 ```
-/topk <collection-id> query="<query-text>" [top_k=10]
+
+### Flag Format (Advanced)
+
+```bash
+/topk --collection=<collection-id> --query="<query-text>" [--top-k=N]
 ```
 
 ### Parameters
 
-- `<collection-id>`: The vector store ID to query (required)
-- `query="<query-text>"`: The search query text in quotes (required)
-- `top_k=N`: Number of results to return (optional, default: 10)
+**Simple Format:**
+
+- `<query-text>`: The search query (can contain spaces, uses current collection and default top-k=5)
+
+**Flag Format:**
+
+- `--collection=<collection-id>`: The vector store ID to query (optional, uses current collection if not set)
+- `--query="<query-text>"`: The search query text in quotes (required)
+- `--top-k=N`: Number of results to return (optional, default: 5)
 
 ### Aliases
 
 The command has the following aliases:
+
 - `/query`
 - `/search`
 
 ## Examples
 
-### Basic Query
-```
-/topk vs_123 query="machine learning techniques"
+### Simple Format Examples
+
+```bash
+/topk machine learning techniques
+/topk neural networks and deep learning
+/query artificial intelligence
+/search natural language processing
 ```
 
-### Query with Custom Top-K
-```
-/topk vs_456 query="neural networks" top_k=5
-```
+### Flag Format Examples
 
-### Using Aliases
-```
-/query vs_789 query="artificial intelligence"
-/search vs_abc query="deep learning" top_k=3
+```bash
+/topk --collection=my_collection --query="machine learning techniques"
+/topk --collection=my_collection --query="neural networks" --top-k=10
+/topk --query="artificial intelligence"  # uses current collection
+/query --collection=vs_789 --query="deep learning" --top-k=3
 ```
 
 ## Output Format
 
 The command displays:
+
 1. Query information (collection ID, query text, top-k value)
 2. Results with:
    - Result number and relevance score
@@ -51,8 +71,8 @@ The command displays:
 
 ## Example Output
 
-```
-🔍 Querying collection: vs_123
+```text
+🔍 Querying collection: my_collection
 📝 Query: machine learning techniques
 🔢 Top-K: 5
 
@@ -74,6 +94,7 @@ The command displays:
 ## Error Handling
 
 The command provides helpful error messages for:
+
 - Missing arguments
 - Invalid argument format
 - Query execution failures
