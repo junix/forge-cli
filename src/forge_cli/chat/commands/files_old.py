@@ -72,10 +72,16 @@ class UploadCommand(ChatCommand):
             # Import SDK functions
             from forge_cli.sdk import async_upload_file
 
-            # Prepare parse options
+            # Prepare parse options - skip for Excel files
             parse_options = None
             if enable_vectorize:
-                parse_options = {"abstract": "enable", "summary": "enable", "keywords": "enable", "vectorize": "enable"}
+                # Check if file is Excel format
+                is_excel_file = file_path.suffix.lower() in ['.xlsx', '.xls', '.xlsm', '.xlsb']
+                
+                if not is_excel_file:
+                    parse_options = {"abstract": "enable", "summary": "enable", "keywords": "enable", "vectorize": "enable"}
+                else:
+                    controller.display.show_status("ℹ️ Skipping parse options for Excel file")
 
             # Upload file
             controller.display.show_status("⏳ Uploading file...")

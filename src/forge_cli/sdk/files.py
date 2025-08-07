@@ -15,9 +15,15 @@ from .types import DeleteResponse, File, TaskStatus  # Updated imports
 
 
 async def async_upload_file(
-    path: str,
+    path: str = None,
+    url: str = None,
+    name: str = None,
+    file_type: str = None,
     purpose: str = "general",
     custom_id: str = None,
+    id: str = None,  # Alias for custom_id
+    md5: str = None,
+    request_id: str = None,
     skip_exists: bool = False,
     parse_options: dict[str, str] = None,
 ) -> File:  # Changed return type
@@ -25,9 +31,15 @@ async def async_upload_file(
     Asynchronously upload a file to the Knowledge Forge API and return the file details.
 
     Args:
-        path: Path to the file to upload
+        path: Path to the file to upload (mutually exclusive with url)
+        url: URL of the file to download and upload (mutually exclusive with path)
+        name: Name of the file (required when using url)
+        file_type: MIME type of the file (required when using url)
         purpose: The intended purpose of the file (e.g., "qa", "general")
-        custom_id: Optional custom ID for the file
+        custom_id: Optional custom ID for the file (deprecated, use 'id')
+        id: Optional custom UUID for the file (must be valid UUID format)
+        md5: Optional MD5 hash of the file (32-character hex string)
+        request_id: Optional request ID for tracking
         skip_exists: Whether to skip upload if file with same MD5 exists
         parse_options: Optional dict of parsing options. Keys: "abstract", "summary",
                       "outline", "keywords", "contexts", "graph", "vectorize",
@@ -35,38 +47,69 @@ async def async_upload_file(
 
     Returns:
         File object containing file details including id and task_id
+
+    Raises:
+        ValueError: If invalid parameters are provided
+        FileNotFoundError: If file path doesn't exist
     """
-    file_path = Path(path)
-    if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {path}")
+    # Validate parameters
+    if not path and not url:
+        raise ValueError("Must provide either 'path' or 'url'")
+    
+    if path and url:
+        raise ValueError("Cannot provide both 'path' and 'url'")
+    
+    if url and (not name or not file_type):
+        raise ValueError("When using 'url', must provide 'name' and 'file_type'")
 
-    url = f"{BASE_URL}/v1/files"
+    # Handle backward compatibility for custom_id
+    file_id = id or custom_id
 
-    content_type, _ = mimetypes.guess_type(str(file_path))
-    if content_type is None:
-        content_type = "application/octet-stream"
-
+    api_url = f"{BASE_URL}/v1/files"
     form_data = aiohttp.FormData()
-    form_data.add_field(
-        "file",
-        open(file_path, "rb"),
-        filename=file_path.name,
-        content_type=content_type,
-    )
+
+    if path:
+        # File upload
+        file_path = Path(path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
+
+        content_type, _ = mimetypes.guess_type(str(file_path))
+        if content_type is None:
+            content_type = "application/octet-stream"
+
+        form_data.add_field(
+            "file",
+            open(file_path, "rb"),
+            filename=file_path.name,
+            content_type=content_type,
+        )
+    else:
+        # URL upload
+        form_data.add_field("url", url)
+        form_data.add_field("name", name)
+        form_data.add_field("file_type", file_type)
+
+    # Common fields
     form_data.add_field("purpose", purpose)
 
-    if custom_id:
-        form_data.add_field("id", custom_id)
+    if file_id:
+        form_data.add_field("id", file_id)
+
+    if md5:
+        form_data.add_field("md5", md5)
+
+    if request_id:
+        form_data.add_field("request_id", request_id)
 
     if skip_exists:
         form_data.add_field("skip_exists", "true")
 
     if parse_options:
         import json
-
         form_data.add_field("parse_options", json.dumps(parse_options))
 
-    status_code, response_data = await async_make_request("POST", url, data=form_data)
+    status_code, response_data = await async_make_request("POST", api_url, data=form_data)
 
     if status_code == 200 and isinstance(response_data, dict):
         try:
