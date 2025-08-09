@@ -1,12 +1,13 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, List
 
 if TYPE_CHECKING:
     pass
 from typing import Literal
 
 from ._models import BaseModel
+from .annotations import AnnotationFileCitation
 
 __all__ = ["ResponseFileSearchToolCall"]
 
@@ -28,3 +29,6 @@ class ResponseFileSearchToolCall(BaseModel):
 
     file_id: str | None = None
     """The ID of the specific file being searched, if filtered to a single document."""
+
+    annotations: Optional[List[AnnotationFileCitation]] = None
+    """Annotations field exposing metadata about searched documents (no content)."""

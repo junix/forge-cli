@@ -1,7 +1,9 @@
 """Web search tool renderer for Rich display system."""
 
+from typing import Optional, List
 from rich.text import Text
 from forge_cli.response._types.response_function_web_search import ResponseFunctionWebSearch
+from forge_cli.response._types.annotations import AnnotationURLCitation
 from ....style import ICONS, STATUS_ICONS, pack_queries, get_status_color
 from ....builder import TextBuilder
 from ...rendable import Rendable
@@ -21,6 +23,9 @@ class WebSearchToolRender(Rendable):
         self._execution_trace = None
         self._progress = None
         self._queries = []
+        self._annotations: Optional[List[AnnotationURLCitation]] = None
+        self._max_annotations = 5  # Default max annotations to show
+        self._show_snippets = False  # Whether to show annotation snippets
     
     def with_queries(self, *queries: str) -> "WebSearchToolRender":
         """Add search queries display to the render using consistent styling.
@@ -86,6 +91,42 @@ class WebSearchToolRender(Rendable):
         self._execution_trace = execution_trace
         return self
     
+    def with_annotations(self, annotations: Optional[List[AnnotationURLCitation]]) -> "WebSearchToolRender":
+        """Add annotations (search results) to the render.
+        
+        Args:
+            annotations: List of URL citation annotations
+            
+        Returns:
+            Self for method chaining
+        """
+        self._annotations = annotations
+        return self
+    
+    def with_max_annotations(self, max_annotations: int) -> "WebSearchToolRender":
+        """Set maximum number of annotations to display.
+        
+        Args:
+            max_annotations: Maximum number of annotations to show
+            
+        Returns:
+            Self for method chaining
+        """
+        self._max_annotations = max_annotations
+        return self
+    
+    def with_show_snippets(self, show_snippets: bool) -> "WebSearchToolRender":
+        """Configure whether to show annotation snippets.
+        
+        Args:
+            show_snippets: Whether to show snippets
+            
+        Returns:
+            Self for method chaining
+        """
+        self._show_snippets = show_snippets
+        return self
+    
 
     
     def render(self) -> list[Text]:
@@ -141,6 +182,59 @@ class WebSearchToolRender(Rendable):
         
         parts.append(tool_line)
         
+        # Add annotations (search results) if available and status is completed
+        if self._annotations and self._status == "completed":
+            # Limit number of annotations shown
+            annotations_to_show = self._annotations[:self._max_annotations]
+            remaining = len(self._annotations) - len(annotations_to_show)
+            
+            for i, annotation in enumerate(annotations_to_show):
+                is_last = (i == len(annotations_to_show) - 1) and remaining == 0
+                
+                # Build annotation line with tree structure
+                annotation_line = Text()
+                if is_last:
+                    annotation_line.append("  └─ ", style="dim")
+                else:
+                    annotation_line.append("  ├─ ", style="dim")
+                
+                # Add link icon
+                annotation_line.append("🔗 ", style="green")
+                
+                # Format title and domain
+                title = annotation.title if annotation.title else "Untitled"
+                # Truncate long titles
+                if len(title) > 40:
+                    title = title[:37] + "..."
+                
+                # Extract domain from URL
+                try:
+                    from urllib.parse import urlparse
+                    domain = urlparse(annotation.url).netloc
+                    if domain.startswith("www."):
+                        domain = domain[4:]
+                except:
+                    domain = "web"
+                
+                # Add title with link styling
+                annotation_line.append(f"[{title}]", style="green underline")
+                annotation_line.append(f"({domain})", style="dim")
+                
+                # Add snippet if configured and available
+                if self._show_snippets and annotation.snippet:
+                    snippet = annotation.snippet[:50] + "..." if len(annotation.snippet) > 50 else annotation.snippet
+                    annotation_line.append(f" - ", style="dim")
+                    annotation_line.append(f'"{snippet}"', style="dim italic")
+                
+                parts.append(annotation_line)
+            
+            # Add remaining count if any
+            if remaining > 0:
+                remaining_line = Text()
+                remaining_line.append("  └─ ", style="dim")
+                remaining_line.append(f"...and {remaining} more", style="dim italic")
+                parts.append(remaining_line)
+        
         # Add execution trace if available
         if self._execution_trace:
             trace_block = TextBuilder.from_text(self._execution_trace).with_slide(max_lines=3, format_type="text").build()
@@ -180,6 +274,10 @@ class WebSearchToolRender(Rendable):
         
         # Add status
         renderer.with_status(tool_item.status)
+        
+        # Add annotations if available
+        if hasattr(tool_item, 'annotations') and tool_item.annotations:
+            renderer.with_annotations(tool_item.annotations)
         
         # Add execution trace if available
         execution_trace = getattr(tool_item, "execution_trace", None)

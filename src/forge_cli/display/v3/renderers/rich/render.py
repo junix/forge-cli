@@ -59,12 +59,22 @@ class RichDisplayConfig(BaseModel):
     show_metadata: bool = Field(False, description="Whether to show response metadata")
     max_text_preview: int = Field(100, description="Maximum characters for text previews")
     refresh_rate: int = Field(10, description="Live display refresh rate per second")
+    show_tool_annotations: bool = Field(True, description="Whether to show tool search results/annotations")
+    max_annotations_per_tool: int = Field(5, description="Maximum number of annotations to show per tool")
+    show_annotation_snippets: bool = Field(False, description="Whether to show snippets in annotations")
 
     @field_validator("refresh_rate")
     @classmethod
     def validate_refresh_rate(cls, v):
         if v < 1 or v > 30:
             raise ValueError("Refresh rate must be between 1 and 30")
+        return v
+    
+    @field_validator("max_annotations_per_tool")
+    @classmethod
+    def validate_max_annotations(cls, v):
+        if v < 1 or v > 20:
+            raise ValueError("Max annotations per tool must be between 1 and 20")
         return v
 
 
@@ -262,7 +272,22 @@ class RichRenderer(BaseRenderer):
         
         renderer_class = renderer_map.get(tool_type)
         if renderer_class:
-            return renderer_class.from_tool_item(tool_item)
+            renderer = renderer_class.from_tool_item(tool_item)
+            
+            # Apply configuration for file and web search renderers
+            if tool_type in ["file_search_call", "web_search_call"]:
+                if self._config.show_tool_annotations:
+                    # Enable annotations with configuration
+                    if hasattr(renderer, 'with_max_annotations'):
+                        renderer.with_max_annotations(self._config.max_annotations_per_tool)
+                    if hasattr(renderer, 'with_show_snippets'):
+                        renderer.with_show_snippets(self._config.show_annotation_snippets)
+                else:
+                    # Disable annotations by clearing them
+                    if hasattr(renderer, 'with_annotations'):
+                        renderer.with_annotations(None)
+            
+            return renderer
         
         return None
 

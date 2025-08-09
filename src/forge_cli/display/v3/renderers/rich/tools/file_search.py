@@ -1,7 +1,9 @@
 """File search tool renderer for Rich display system."""
 
+from typing import Optional, List
 from rich.text import Text
 from forge_cli.response._types.response_file_search_tool_call import ResponseFileSearchToolCall
+from forge_cli.response._types.annotations import AnnotationFileCitation
 from ....style import ICONS, STATUS_ICONS, pack_queries, get_status_color
 from ....builder import TextBuilder
 from ...rendable import Rendable
@@ -21,6 +23,9 @@ class FileSearchToolRender(Rendable):
         self._execution_trace = None
         self._progress = None
         self._queries = []
+        self._annotations: Optional[List[AnnotationFileCitation]] = None
+        self._max_annotations = 5  # Default max annotations to show
+        self._show_snippets = False  # Whether to show annotation snippets
     
     def with_queries(self, *queries: str) -> "FileSearchToolRender":
         """Add search queries display to the render using consistent styling.
@@ -86,6 +91,42 @@ class FileSearchToolRender(Rendable):
         self._execution_trace = execution_trace
         return self
     
+    def with_annotations(self, annotations: Optional[List[AnnotationFileCitation]]) -> "FileSearchToolRender":
+        """Add annotations (search results) to the render.
+        
+        Args:
+            annotations: List of file citation annotations
+            
+        Returns:
+            Self for method chaining
+        """
+        self._annotations = annotations
+        return self
+    
+    def with_max_annotations(self, max_annotations: int) -> "FileSearchToolRender":
+        """Set maximum number of annotations to display.
+        
+        Args:
+            max_annotations: Maximum number of annotations to show
+            
+        Returns:
+            Self for method chaining
+        """
+        self._max_annotations = max_annotations
+        return self
+    
+    def with_show_snippets(self, show_snippets: bool) -> "FileSearchToolRender":
+        """Configure whether to show annotation snippets.
+        
+        Args:
+            show_snippets: Whether to show snippets
+            
+        Returns:
+            Self for method chaining
+        """
+        self._show_snippets = show_snippets
+        return self
+    
     def render(self) -> list[Text]:
         """Build and return the complete rendered content including tool line and trace.
         
@@ -139,6 +180,52 @@ class FileSearchToolRender(Rendable):
         
         parts.append(tool_line)
         
+        # Add annotations (search results) if available and status is completed
+        if self._annotations and self._status == "completed":
+            # Limit number of annotations shown
+            annotations_to_show = self._annotations[:self._max_annotations]
+            remaining = len(self._annotations) - len(annotations_to_show)
+            
+            for i, annotation in enumerate(annotations_to_show):
+                is_last = (i == len(annotations_to_show) - 1) and remaining == 0
+                
+                # Build annotation line with tree structure
+                annotation_line = Text()
+                if is_last:
+                    annotation_line.append("  └─ ", style="dim")
+                else:
+                    annotation_line.append("  ├─ ", style="dim")
+                
+                # Add file icon
+                annotation_line.append("📄 ", style="cyan")
+                
+                # Add filename or file_id
+                if annotation.filename:
+                    annotation_line.append(annotation.filename, style="cyan")
+                elif annotation.file_id:
+                    annotation_line.append(annotation.file_id, style="cyan dim")
+                else:
+                    annotation_line.append("Unknown file", style="dim")
+                
+                # Add page number if available
+                if annotation.index is not None:
+                    annotation_line.append(f", P{annotation.index}", style="dim")
+                
+                # Add snippet if configured and available
+                if self._show_snippets and annotation.snippet:
+                    snippet = annotation.snippet[:50] + "..." if len(annotation.snippet) > 50 else annotation.snippet
+                    annotation_line.append(f" - ", style="dim")
+                    annotation_line.append(f'"{snippet}"', style="dim italic")
+                
+                parts.append(annotation_line)
+            
+            # Add remaining count if any
+            if remaining > 0:
+                remaining_line = Text()
+                remaining_line.append("  └─ ", style="dim")
+                remaining_line.append(f"...and {remaining} more", style="dim italic")
+                parts.append(remaining_line)
+        
         # Add execution trace if available
         if self._execution_trace:
             trace_block = TextBuilder.from_text(self._execution_trace).with_slide(max_lines=3, format_type="text").build()
@@ -178,6 +265,10 @@ class FileSearchToolRender(Rendable):
         
         # Add status
         renderer.with_status(tool_item.status)
+        
+        # Add annotations if available
+        if hasattr(tool_item, 'annotations') and tool_item.annotations:
+            renderer.with_annotations(tool_item.annotations)
         
         # Add execution trace if available
         execution_trace = getattr(tool_item, "execution_trace", None)

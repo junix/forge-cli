@@ -1,8 +1,9 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Literal
+from typing import Literal, Optional, List
 
 from ._models import BaseModel
+from .annotations import AnnotationURLCitation
 
 __all__ = ["ResponseFunctionWebSearch"]
 
@@ -19,3 +20,6 @@ class ResponseFunctionWebSearch(BaseModel):
 
     queries: list[str]
     """The search query used for web search."""
+
+    annotations: Optional[List[AnnotationURLCitation]] = None
+    """Annotations field exposing metadata about searched websites (no content)."""
